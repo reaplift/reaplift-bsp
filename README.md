@@ -83,3 +83,5 @@ Open the repo folder in VS Code, open Claude Code, and ask for one task at a tim
 | 0   | Repo, structure, CI (done locally); deployment to Oracle Cloud later                                          |
 | 1   | One message end to end: sent from the backend, delivered and read updates stored                              |
 | 2-8 | Logins and roles, Meta number and templates, uploads and campaigns, sending and rules, wallet, reports, pilot |
+
+> Milestone 0 skeleton branch.
