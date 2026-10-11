@@ -1,0 +1,44 @@
+# Local development: PostgreSQL, plus the API built from the Dockerfile.
+#   pnpm db:up                                      -> database only (normal day-to-day)
+#   docker compose -f infra/compose.dev.yml up --build  -> database + API in containers
+name: reaplift-bsp
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: reaplift
+      POSTGRES_PASSWORD: reaplift
+      POSTGRES_DB: reaplift
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U reaplift']
+      interval: 2s
+      retries: 30
+
+  migrate:
+    build: { context: .., dockerfile: Dockerfile }
+    command: ['node', 'dist/main.js', '--mode=migrate']
+    environment:
+      DATABASE_URL: postgres://reaplift:reaplift@postgres:5432/reaplift
+    depends_on:
+      postgres: { condition: service_healthy }
+    profiles: [app]
+
+  api:
+    build: { context: .., dockerfile: Dockerfile }
+    environment:
+      MODE: api
+      DATABASE_URL: postgres://reaplift:reaplift@postgres:5432/reaplift
+      APP_VERSION: local-docker
+    ports:
+      - '3000:3000'
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    profiles: [app]
+
+volumes:
+  pgdata:
