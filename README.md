@@ -35,6 +35,23 @@ Run all of these from the repo root.
 
 Health check: `curl http://localhost:3000/healthz` returns `{"status":"ok","version":"dev","db":"ok"}`, or HTTP 503 when the database is down.
 
+## End-of-day shutdown
+
+When you finish work for the day, stop the local app and database cleanly so nothing keeps running in the background:
+
+```bash
+# stop the dev server in the terminal where it is running
+# press Ctrl+C
+
+# stop the local Postgres container
+pnpm db:down
+
+# optional: quit Docker Desktop completely if you do not want background containers running
+# Mac: open Docker Desktop and choose Docker Desktop > Quit Docker Desktop
+```
+
+This is the local equivalent of a clean shutdown before moving from laptop/dev work to a server or cloud deployment later.
+
 ## Repository layout
 
 ```
