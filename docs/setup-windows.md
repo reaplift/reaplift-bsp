@@ -38,17 +38,60 @@ pnpm -v          # 10.x
 docker -v
 ```
 
-## 1.5 Turn on the repo review hook (required for pushes)
+## 1.5 Turn on the repo review hook (local setup required)
 
-After cloning the repo, run this once:
+This part is important: the hook file and the review script are committed in the repo, but each developer machine must turn them on locally.
+
+### What is shared in the repo
+
+The following files are in source control and are pulled by everyone:
+
+- `.githooks/pre-push`
+- `scripts/pre-push-review.mjs`
+- `agents/review/review-agent.js`
+- `agents/review/review-agent.md`
+- `docs/pre-push-review.md`
+
+### What must be enabled on each machine
+
+After cloning the repo, run this once in a Git Bash terminal or a normal PowerShell terminal that can run Git hooks:
 
 ```powershell
 git config core.hooksPath .githooks
-Set-ExecutionPolicy -Scope Process Bypass
+```
+
+If the hook is not executable on Windows, run this in Git Bash:
+
+```bash
 chmod +x .githooks/pre-push
 ```
 
-This makes every `git push` run the repo review gate before anything goes to GitHub. The hook calls `pnpm review:prepush` and blocks a push if the branch is behind `main`, the code fails lint/typecheck/tests, or the project is not ready for review.
+The hook is intentionally default-off for exploration. When a task is real and tracked, enable it for the current shell/session with:
+
+```powershell
+$env:REVIEW_GATE = "1"
+git push
+```
+
+Or run the review explicitly:
+
+```powershell
+$env:REVIEW_GATE = "1"
+pnpm review:prepush
+```
+
+This makes the review gate active only when you want it. It protects pushes when the repo work is real and you are ready to enforce tracker + lint + test checks.
+
+### Why this is not a GitHub-only rule
+
+Suraj does not need a special repo setting to see the scripts. He pulls the same files from Git. But his Windows machine still needs the local Git hook path enabled once, otherwise the hook never runs.
+
+So the pattern is:
+
+- repo files are shared
+- local activation is required
+- review is opt-in by default
+- strict validation is enabled only when `REVIEW_GATE=1`
 
 ## 2. Get the code (once)
 

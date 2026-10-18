@@ -18,11 +18,21 @@ The tracker review is currently opt-in by default so exploratory work can procee
 REVIEW_GATE=1 pnpm review:prepush
 ```
 
-The local Git hook runs the same check only when the gate is enabled:
+The hook is repo-shared, but the machine must still be activated locally. This is the setup every developer needs once on their machine:
 
 ```bash
 git config core.hooksPath .githooks
+```
+
+On Windows, run the executable-bit step in Git Bash if needed:
+
+```bash
 chmod +x .githooks/pre-push
+```
+
+After that, the local git hook runs the same check only when the gate is enabled:
+
+```bash
 REVIEW_GATE=1 git push
 ```
 
