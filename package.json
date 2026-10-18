@@ -16,7 +16,8 @@
     "migrate": "pnpm --filter @reaplift/server migrate",
     "db:up": "docker compose -f infra/compose.dev.yml up -d postgres",
     "db:down": "docker compose -f infra/compose.dev.yml down",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "review:prepush": "node ./scripts/pre-push-review.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",

@@ -30,6 +30,17 @@ pnpm -v          # 10.x
 docker -v
 ```
 
+## 1.5 Turn on the repo review hook (required for pushes)
+
+After cloning the repo, run this once:
+
+```bash
+git config core.hooksPath .githooks
+chmod +x .githooks/pre-push
+```
+
+This makes every `git push` run the repo review gate before anything goes to GitHub. The hook calls `pnpm review:prepush` and blocks a push if the branch is behind `main`, the code fails lint/typecheck/tests, or the project is not ready for review.
+
 ## 2. Get the code (once)
 
 1. In VS Code press **Cmd+Shift+P**, choose **Git: Clone**, paste `https://github.com/reaplift/reaplift-bsp`, pick a folder (for example `Documents/Code`), and click **Open**.

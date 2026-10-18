@@ -57,17 +57,25 @@ If any are missing, install them first and confirm they work before touching cod
 | M1.7 event processor | Planned | Not started | Depends on receiver and schema |
 | M1.8 send-test and show-message | Planned | Not started | Milestone end-to-end validation |
 
+## Process docs
+
+Before starting or pushing work, read the repo process docs first:
+
+- [team-workflow.md](team-workflow.md): branch model, rebase-before-push rule, merge policy.
+- [pre-push-review.md](pre-push-review.md): local checks and review gate before pushing.
+
 ## Session rules
 
 Every session should do the following:
 
 1. Read this tracker first.
-2. Check the current branch and the latest pushed state.
-3. Update the task status when work starts, changes, or is completed.
-4. If code is pushed, update the tracker immediately so the next session knows the current repo state.
-5. If a task is blocked, mark it `Blocked` and write the blocker clearly.
-6. Do not mark a task `Done` unless the code is pushed and the validation has run.
-7. Keep local-machine notes out of the tracker.
+2. Read the process docs for the branch and review policy.
+3. Check the current branch and the latest pushed state.
+4. Update the task status when work starts, changes, or is completed.
+5. If code is pushed, update the tracker immediately so the next session knows the current repo state.
+6. If a task is blocked, mark it `Blocked` and write the blocker clearly.
+7. Do not mark a task `Done` unless the code is pushed and the validation has run.
+8. Keep local-machine notes out of the tracker.
 
 ## Required update after every push
 
