@@ -85,9 +85,11 @@ Every setting is listed in `.env.example`. Copy it to `.env` for local work. `.e
 
 ## Working with Git
 
-1. Create a branch per task: `git checkout -b m1-sender-worker`.
-2. Commit, then `git push -u origin <branch>` and open a pull request into `main`.
-3. CI must be green before merging. Merge with "Squash and merge".
+1. Create a branch before starting work. Example: `git checkout -b anirudh-e2e-setup`.
+2. Rebase from `main` before pushing. Example: `git fetch origin && git rebase origin/main`.
+3. Run the repo review gate: `pnpm review:prepush`.
+4. Commit, then `git push -u origin <branch>` and open a pull request into `main`.
+5. CI must be green and a reviewer must approve before merging. Merge with "Squash and merge" or the repo's default merge policy.
 
 ## Working with Claude Code in VS Code
 
