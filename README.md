@@ -1,4 +1,4 @@
-# ReapLift WhatsApp BSP
+# ReapLift WhatsApp BSP by Anirudh and Suraj
 
 ReapLift's own WhatsApp platform, working directly with Meta: template campaigns, prepaid client wallets, delivery reports. Design documents:
 
