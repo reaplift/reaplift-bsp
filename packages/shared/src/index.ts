@@ -34,3 +34,9 @@ export const CampaignDraft = z.object({
   template: z.string(),
 });
 export type CampaignDraft = z.infer<typeof CampaignDraft>;
+
+export const PingResponse = z.object({
+  message: z.string(),
+  source: z.enum(['backend']),
+});
+export type PingResponse = z.infer<typeof PingResponse>;
