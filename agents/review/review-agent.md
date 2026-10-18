@@ -6,8 +6,12 @@ This is the repository's first agent. It enforces the pre-push review gate befor
 
 The review agent checks whether a branch is ready to be pushed and later merged.
 
+It is opt-in by default while the repo is exploring rough work and tasks are not yet fully tracked. Enable it by setting `REVIEW_GATE=1` before running the review or pushing.
+
 It validates:
 
+- the tracker is updated for the current work
+- the active task includes clear success criteria / acceptance criteria
 - the change matches the active tracker task
 - the diff is scoped and reviewable
 - lint, typecheck and tests pass
@@ -22,6 +26,12 @@ Run the script directly:
 
 ```bash
 node ./agents/review/review-agent.js
+```
+
+It also runs as part of the repo pre-push review gate:
+
+```bash
+pnpm review:prepush
 ```
 
 Or from the repo script:
@@ -52,6 +62,8 @@ pnpm test:int
 ```text
 Review this branch for safety and correctness before push.
 Check:
+- is the tracker updated for the current work?
+- does the active task in the tracker include explicit success criteria or acceptance criteria?
 - does the code match the active task in the tracker?
 - is the diff limited to the intended scope?
 - are lint, typecheck and tests passing?

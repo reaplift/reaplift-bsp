@@ -57,6 +57,20 @@ If any are missing, install them first and confirm they work before touching cod
 | M1.7 event processor | Planned | Not started | Depends on receiver and schema |
 | M1.8 send-test and show-message | Planned | Not started | Milestone end-to-end validation |
 
+## Active task success criteria
+
+For every active milestone or task, the tracker must state the required success criteria before implementation begins. This keeps code and review honest.
+
+### Current active task: M1.2 migration 0002
+
+Success criteria / acceptance criteria:
+- a new migration file is added with the correct numbered prefix and no edit to a merged migration
+- the migration is additive only and does not break existing schema assumptions
+- the migration can be applied locally with `pnpm migrate`
+- tests cover the migration and the expected schema change
+- the tracker status is updated to `In progress`, `Blocked`, `Ready`, or `Done` after each change
+- any blocker or design change is written in the tracker before the next push
+
 ## Process docs
 
 Before starting or pushing work, read the repo process docs first:

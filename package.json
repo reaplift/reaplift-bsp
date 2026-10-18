@@ -10,7 +10,7 @@
     "dev": "pnpm --parallel --filter @reaplift/server --filter @reaplift/web dev",
     "build": "pnpm -r build",
     "lint": "eslint .",
-    "typecheck": "pnpm -r typecheck",
+    "typecheck": "pnpm --filter @reaplift/shared build && pnpm -r typecheck",
     "test": "pnpm -r test",
     "test:int": "pnpm --filter @reaplift/server test:int",
     "migrate": "pnpm --filter @reaplift/server migrate",

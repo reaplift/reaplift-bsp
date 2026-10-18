@@ -12,15 +12,24 @@ The deterministic checks are automated by the script:
 pnpm review:prepush
 ```
 
-The local Git hook runs the same check before every push:
+The tracker review is currently opt-in by default so exploratory work can proceed without a fully tracked task. Enable it when a feature is ready for a stricter review:
+
+```bash
+REVIEW_GATE=1 pnpm review:prepush
+```
+
+The local Git hook runs the same check only when the gate is enabled:
 
 ```bash
 git config core.hooksPath .githooks
 chmod +x .githooks/pre-push
+REVIEW_GATE=1 git push
 ```
 
 Before a developer pushes, a lightweight review pass must confirm:
 
+- the tracker is updated for the current work
+- the active task includes explicit success criteria / acceptance criteria
 - the change matches the task in the tracker
 - the code is build-safe
 - tests are present and meaningful
@@ -58,6 +67,8 @@ Use this prompt before push:
 ```text
 Review this branch for safety and correctness before push.
 Check:
+- is the tracker updated for the current work?
+- does the active task include explicit success criteria or acceptance criteria?
 - does the code match the active task in the tracker?
 - is the diff scoped to the intended feature only?
 - are lint, typecheck and tests passing?
