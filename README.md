@@ -54,6 +54,8 @@ This is the local equivalent of a clean shutdown before moving from laptop/dev w
 
 ## Repository layout
 
+This project stays as a single monorepo. The frontend and backend are separate apps, but they share a single contract package instead of living in separate repositories.
+
 ```
 apps/
   server/             Node + Fastify (TypeScript). One program; MODE picks what it runs:
@@ -66,12 +68,16 @@ apps/
     test/               *.test.ts = unit, *.int.test.ts = needs the database
   web/                React + Vite panel
 packages/
-  shared/             Types and Zod schemas used by both server and panel
+  shared/             Shared types, schemas and contract definitions for both apps
+    src/index.ts       export DTOs, Zod schemas and shared constants
+
 db/migrations/        Numbered SQL files: 0001_init.sql, 0002_..., applied in order, never edited after merge
 infra/                Docker Compose for local development (Oracle Cloud files come later)
 .github/workflows/    CI: lint, typecheck, tests with PostgreSQL, build, Docker image
 Dockerfile            One image for every server mode
 ```
+
+The shared package is the source of truth for API payloads and types. Frontend UI code and the Node server both import from `@reaplift/shared` so they stay aligned without using separate repositories or copy-pasted contracts.
 
 ## Adding a database change
 

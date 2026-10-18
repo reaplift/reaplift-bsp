@@ -150,8 +150,13 @@ function main() {
   ensureBranchRules();
 
   const changedFiles = gatherChangedFiles();
+  const sharedBuildNeeded = changedFiles.some((file) => file.startsWith('packages/shared/'));
   const baseChecks = ['pnpm lint', 'pnpm typecheck', 'pnpm test'];
   const integrationChecks = ['pnpm db:up', 'pnpm test:int'];
+
+  if (sharedBuildNeeded) {
+    runChecks(['pnpm --filter @reaplift/shared build']);
+  }
 
   runChecks(baseChecks);
 
