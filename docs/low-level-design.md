@@ -2,6 +2,204 @@
 
 Oct 11, 2026 · @Nikhila
 
+## Spec-driven development contract
+
+This project follows a strict spec-first model: the code is expected to match the written contract, not the other way around. For every endpoint, job, or state transition, the design must document:
+
+- route, method and auth scope
+- request body fields and validation rules
+- success response shape
+- error response shape and codes
+- database writes and reads
+- external API calls and retries
+- state transitions and idempotency rules
+- test cases that prove the behavior
+
+Any task is not ready for implementation until this contract is written down. This is the low-level design that the developers build against.
+
+### API contract template
+
+Every API task should be specified in this format:
+
+```
+### POST /api/v1/wa/accounts
+
+Auth: authenticated staff or client owner
+Request schema:
+{
+  clientId: string (uuid),
+  wabaId: string,
+  phoneNumberId: string,
+  displayPhone: string (digits only, country code, no plus),
+  displayName?: string,
+  metaPayer: 'reaplift_card' | 'reaplift_credit_line' | 'partner_credit_line'
+}
+
+Success 201:
+{
+  id: string,
+  clientId: string,
+  status: 'active' | 'paused',
+  displayPhone: string,
+  createdAt: string
+}
+
+Errors:
+400 INVALID_REQUEST
+401 UNAUTHORIZED
+403 FORBIDDEN
+409 DUPLICATE_PHONE_NUMBER
+500 INTERNAL_ERROR
+```
+
+The request and response bodies are part of the design, not optional notes, because they define the exact interface that the panel and server must implement.
+
+### Example message send contract
+
+```
+POST /api/v1/messages/send
+Request:
+{
+  clientId: string,
+  waAccountId: string,
+  templateId: string,
+  toNumber: string,
+  variables: ["Amit", "2026-10-18"],
+  source: 'panel' | 'api' | 'crm' | 'cli'
+}
+
+Success 202:
+{
+  messageId: number,
+  status: 'queued',
+  queueAt: string
+}
+
+Errors:
+400 INVALID_REQUEST
+401 UNAUTHORIZED
+403 FORBIDDEN
+404 TEMPLATE_NOT_FOUND
+422 ACCOUNT_PAUSED
+429 RATE_LIMITED
+```
+
+This is the standard expected for all upcoming milestone tasks: the endpoint contract is explicitly defined before service code and storage logic are written.
+
+## Mock provider mode and product-critical flows
+
+The system must support two delivery modes for WhatsApp sending while the real Meta app and number are still being onboarded:
+
+- `providerMode = live`: call the real Meta Graph API and process real callbacks
+- `providerMode = mock`: simulate WhatsApp sending responses in a deterministic way so the app can still test the campaign, dashboard, wallet, queue, and status flows without waiting for external approval
+
+This is not a shortcut; it is a required implementation mode so development can proceed. The mock provider must produce realistic outcomes such as:
+
+- success rate: example: 98.999% success
+- fail rate: example: 1.0001% retries or terminal failures
+- blocked rate: example: 0.02% blocked due to rules or invalid target states
+
+Those numbers are not business policy; they are a test fixture model. The production live mode uses the real Meta API and real response contracts. The mock mode should be designed to match the same request/response interface and state transitions so the application code paths stay identical.
+
+The product-critical flows that have to be fully testable in mock mode are:
+
+- campaign creation and draft validation
+- message queueing and retry behavior
+- status updates and event processing
+- wallet charge and refund logic
+- dashboard aggregation and reporting
+- blocked, failed, and delivered rate tracking
+
+This means the dashboard and campaign path are not optional or later-only work; they are core to the first production-ready release and must be designed and tested in parallel with the Meta integration.
+
+### MVP must-have vs later nice-to-have
+
+#### Must-have for the first solid release
+- multi-client isolation and admin/staff roles
+- client-scoped WhatsApp account and template management
+- send queue and status machine with both mock and live provider modes
+- campaign draft, validation, and confirm flow
+- wallet charge / refund logic with ledger safety
+- dashboard summary DTOs for delivery, campaign, and client-level metrics
+- reports for recent-day and monthly trends
+- webhook processing and idempotent event reconciliation
+
+#### Good-to-have after the first release
+- extra scheduling behaviors and complex campaign rules
+- deeper operator dashboards and custom charts
+- advanced CSV/Excel export and workbook formatting
+- additional integrations beyond the core Meta flow
+- performance and scale tuning for extreme send volumes
+- UI polish and operational tooling for internal teams
+
+This split keeps the team focused on the trust-critical platform flow first, before advanced feature work.
+
+## Engineering-ready spec checklist before implementation
+
+A task is considered ready to code only when all of the following are written down and reviewed.
+
+### 1. API contract
+- route, method, auth scope, and role checks
+- request validation rules and required fields
+- response envelope for success and error paths
+- expected HTTP status codes and error codes
+- idempotency key or safe retry rules for repeated calls
+
+### 2. Data contract
+- table names, primary keys, and foreign keys
+- client scoping and access model
+- nullable vs required fields
+- money as `bigint` paise
+- phone number format rules
+- state enums and transition rules
+
+### 3. State machine
+- initial state, intermediate states, and terminal states
+- who updates state and under what trigger
+action triggers: API, worker, scheduler, webhook, ledger job
+- duplicate and out-of-order event handling
+- retry and dead-letter behavior
+
+### 4. Workflow and async behavior
+- event flow from panel to DB to worker to Meta to webhook
+- queueing, rate limits, and batch limits
+- background jobs and cron schedule
+- failure classification: transient vs permanent vs client-side validation
+- alerting and manual recovery path
+
+### 5. Security and privacy
+- authentication and authorization rules
+- client isolation enforcement at SQL/service layer
+- encryption key management and rotation plan
+- data retention and redaction expectations
+- webhook signature verification and secret storage
+
+### 6. Operational readiness
+- monitoring and structured logs
+- metrics to show queue depth, failures, retries, and latency
+- manual rollback or recovery instructions
+- DB migration safety and backward compatibility expectations
+
+### 7. Test matrix
+Every task must include the following tests before it is considered done:
+- happy path success case
+- validation failure case
+- unauthorized / forbidden case
+- idempotent retry case
+- duplicate or repeated event case
+- transient error recovery case
+- DB state correctness check
+- integration contract check with external boundary (Meta / webhook)
+
+### 8. Definition of done checklist
+- request/response contract written
+- DB model written
+- state transitions documented
+- security and tenant scope documented
+- errors and retries documented
+- tests written before implementation is considered complete
+- reviewer signs off on readiness per milestone
+
 ## Defaults this design picks
 
 This design builds on the requirements and HLD of 10 October 2026 (sections 1 to 11 treated as decided). Where the HLD left a choice open, this document picks a default below; each can be changed before milestone 0 starts without affecting anything else in the plan.
