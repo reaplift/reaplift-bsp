@@ -9,7 +9,7 @@ const pool = createPool(url);
 
 afterAll(() => pool.end());
 
-describe('migrate', () => {
+describe.sequential('migrate', () => {
   it('applies pending migrations and changes nothing on a second run', async () => {
     await pool.query('drop table if exists schema_migrations');
     const first = await migrate(pool, migrationsDir());
