@@ -169,9 +169,10 @@ Status: In progress
 - Dependency: external to the codebase
 
 #### 1.2 Migration 0002: message and account schema
-- Status: In progress
+- Status: Done
 - Owner: backend
 - Spec: [m1-0002-migration-spec.md](m1-0002-migration-spec.md)
+- Migration file: `0002_message_platform.sql`
 - Scope:
   - 1.2.1 design the schema for clients, wa_accounts, templates, messages
   - 1.2.2 add the 0002 migration file
@@ -181,6 +182,7 @@ Status: In progress
   - all tables include client_id and filtering rules
   - migration applies cleanly with `pnpm migrate`
   - test proves the table and column structure is correct
+  - verified by the migration integration test and successful local Postgres run
 
 #### 1.3 Encryption and seed account setup
 - Status: Planned
