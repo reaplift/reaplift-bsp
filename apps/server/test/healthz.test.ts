@@ -15,4 +15,14 @@ describe('GET /healthz', () => {
     expect(res.statusCode).toBe(503);
     expect(res.json()).toEqual({ status: 'error', version: 'abc123', db: 'down' });
   });
+
+  it('returns a backend message for the frontend E2E check', async () => {
+    const app = buildApp({ version: 'abc123', checkDb: async () => true });
+    const res = await app.inject({ method: 'GET', url: '/api/ping' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({
+      message: 'I am backend. Hello from the server.',
+      source: 'backend',
+    });
+  });
 });

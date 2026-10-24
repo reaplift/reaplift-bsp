@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { existsSync, readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 
 const root = globalThis.process.cwd();
@@ -37,6 +38,12 @@ function baseRef() {
 }
 
 function main() {
+  const reviewEnabled = !['0', 'false', 'off', ''].includes((globalThis.process.env.REVIEW_GATE ?? '0').toLowerCase());
+  if (!reviewEnabled) {
+    globalThis.console.log('ℹ️  Review agent is off by default. Set REVIEW_GATE=1 to enable tracker and branch validation.');
+    return;
+  }
+
   globalThis.console.log('=== Review Agent ===');
 
   const currentBranch = git(['rev-parse', '--abbrev-ref', 'HEAD']);
@@ -60,6 +67,7 @@ function main() {
   }
 
   const reviewChecks = [
+    'pnpm --filter @reaplift/shared build',
     'pnpm lint',
     'pnpm typecheck',
     'pnpm test',
@@ -83,11 +91,26 @@ function main() {
     }
   }
 
-  const changedFiles = git(['diff', '--name-only', `${mainRef}...HEAD`]);
+  const trackerFile = `${root}/docs/project-tracker.md`;
+  if (!existsSync(trackerFile)) {
+    fail('The tracker file is missing. Restore docs/project-tracker.md before pushing.');
+  }
+
+  const trackerText = readFileSync(trackerFile, 'utf8');
+  if (!/## Current status/i.test(trackerText) || !/(Success criteria|Acceptance criteria)/i.test(trackerText)) {
+    fail('The tracker is missing the required Current status and success criteria / acceptance criteria sections. Update docs/project-tracker.md before pushing.');
+  }
+
+  const changedFiles = git(['diff', '--name-only', 'HEAD']);
   const files = (changedFiles.stdout || '')
     .split(/\n/)
     .map((line) => line.trim())
     .filter(Boolean);
+
+  const codeFiles = files.filter((file) => !file.startsWith('docs/') && !file.startsWith('.githooks/') && !file.startsWith('.github/'));
+  if (codeFiles.length > 0 && !files.includes('docs/project-tracker.md')) {
+    fail('Code changes were detected without updating docs/project-tracker.md. Update the tracker before pushing.');
+  }
 
   const hasDbChange = files.some((file) => file.startsWith('db/') || file.startsWith('apps/server/') || file.startsWith('packages/shared/'));
   if (hasDbChange) {

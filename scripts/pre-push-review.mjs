@@ -146,8 +146,20 @@ function runHumanReviewNotes(changedFiles) {
 }
 
 function main() {
+  const reviewEnabled = !['0', 'false', 'off', ''].includes((globalThis.process.env.REVIEW_GATE ?? '0').toLowerCase());
+
+  if (!reviewEnabled) {
+    globalThis.console.log('ℹ️  Review gate is disabled by default. Set REVIEW_GATE=1 to enable tracker and push validation.');
+    return;
+  }
+
   printHeader('Pre-push review');
   ensureBranchRules();
+
+  const trackerReview = run('node', ['./agents/review/review-agent.js']);
+  if (trackerReview.status !== 0) {
+    fail(`Tracker review failed. ${trackerReview.stderr || trackerReview.stdout || 'Update docs/project-tracker.md and the task status before pushing.'}`);
+  }
 
   const changedFiles = gatherChangedFiles();
   const sharedBuildNeeded = changedFiles.some((file) => file.startsWith('packages/shared/'));
