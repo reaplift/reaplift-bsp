@@ -1,5 +1,5 @@
 import Fastify from 'fastify';
-import type { HealthResponse } from '@reaplift/shared';
+import type { HealthResponse, PingResponse } from '@reaplift/shared';
 
 export interface AppDeps {
   version: string;
@@ -19,6 +19,14 @@ export function buildApp({ version, checkDb, logger = false }: AppDeps) {
       db: dbOk ? 'ok' : 'down',
     };
     return reply.code(dbOk ? 200 : 503).send(body);
+  });
+
+  app.get('/api/ping', async (_req, reply) => {
+    const body: PingResponse = {
+      message: 'I am backend. Hello from the server.',
+      source: 'backend',
+    };
+    return reply.code(200).send(body);
   });
 
   return app;

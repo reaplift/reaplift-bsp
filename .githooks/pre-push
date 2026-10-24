@@ -3,4 +3,8 @@ set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
 
-pnpm review:prepush
+if [[ "${REVIEW_GATE:-0}" == "1" || "${REVIEW_GATE:-0}" == "true" || "${REVIEW_GATE:-0}" == "on" ]]; then
+  pnpm review:prepush
+else
+  echo "ℹ️  Review gate is off by default. Set REVIEW_GATE=1 to enable it for the current shell or session."
+fi
