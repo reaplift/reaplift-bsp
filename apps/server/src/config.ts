@@ -8,6 +8,8 @@ const Env = z.object({
   PORT: z.coerce.number().int().positive().default(3000),
   LOG_LEVEL: z.string().default('info'),
   DATABASE_URL: z.string().url(),
+  META_VERIFY_TOKEN: z.string().default(''),
+  META_APP_SECRET: z.string().default(''),
   APP_VERSION: z
     .string()
     .optional()

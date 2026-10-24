@@ -203,7 +203,7 @@ Status: In progress
 - Acceptance: a queued message is delivered to Meta and marked sent
 
 #### 1.6 Receiver and webhook endpoint
-- Status: Planned
+- Status: Done
 - Owner: backend
 - Scope: Meta status handler, webhook verification, raw event processing
 - Acceptance: event updates are stored and message status moves forward
