@@ -197,7 +197,7 @@ Status: In progress
 - Acceptance: backend can call Meta endpoints and classify errors correctly
 
 #### 1.5 Sender worker
-- Status: Planned
+- Status: Done
 - Owner: worker
 - Scope: queue polling, send logic, retry policy, row locking
 - Acceptance: a queued message is delivered to Meta and marked sent

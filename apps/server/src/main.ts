@@ -3,6 +3,7 @@ import { createLogger } from './lib/logger.js';
 import { runApi } from './modes/api.js';
 import { runMigrate } from './modes/migrate.js';
 import { runNotBuiltYet } from './modes/not-built-yet.js';
+import { runWorker } from './modes/worker.js';
 
 const config = loadConfig();
 const log = createLogger(config.LOG_LEVEL);
@@ -15,6 +16,8 @@ switch (config.MODE) {
     await runMigrate(config, log);
     break;
   case 'worker':
+    await runWorker(config, log);
+    break;
   case 'receiver':
     await runNotBuiltYet(config.MODE, 1, log);
     break;
