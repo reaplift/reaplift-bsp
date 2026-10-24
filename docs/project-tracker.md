@@ -209,7 +209,7 @@ Status: In progress
 - Acceptance: event updates are stored and message status moves forward
 
 #### 1.7 Event processor and ledger updates
-- Status: Planned
+- Status: Done
 - Owner: backend
 - Scope: mark delivered/read/failed, charge or refund wallet state
 - Acceptance: state transitions are consistent and idempotent
