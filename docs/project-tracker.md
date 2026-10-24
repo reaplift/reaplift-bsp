@@ -9,6 +9,199 @@ This tracker is organized like a company execution plan:
 
 This file is the source of truth for what is active, what is blocked, and what is next. It is not a local-machine notes file.
 
+## Platform design note
+
+This tracker is intentionally WhatsApp-first because that is the current BSP delivery goal, but the platform architecture should remain generic enough to support other messaging channels and provider integrations later without rewriting the core client, wallet, campaign, or admin flows. The current scope is WhatsApp and Meta; later channel expansion belongs in a separate milestone layer, not in the base product design.
+
+## Flow-based milestone model
+
+The tracker is organized around client-visible delivery milestones, not around isolated backend files. Every milestone must map to a real product flow that can be shown to a client or stakeholder and validated page by page.
+
+Example execution model:
+
+- Flow milestone 1: Login and access
+  - Page: Login
+  - Validation: user can sign in and sees only their permitted client view
+- Flow milestone 2: Dashboard
+  - Page: Dashboard
+  - Validation: client sees current totals, recent activity, and delivery health
+- Flow milestone 3: WhatsApp account and template setup
+  - Pages: Settings / Templates / Account management
+  - Validation: client can bind a WhatsApp account and template to their business
+- Flow milestone 4: Campaign creation and send
+  - Page: Push Campaign
+  - Validation: user can create a campaign, confirm it, and trigger queueing
+- Flow milestone 5: Message delivery and status
+  - Page: Dashboard / campaign detail / logs
+  - Validation: sent, delivered, read, failed and retry states are visible and correct
+- Flow milestone 6: Admin and access control
+  - Page: Admin
+  - Validation: staff and client roles are enforced correctly
+- Flow milestone 7: Wallet, reports, and operational visibility
+  - Pages: Dashboard / Reports / Admin
+  - Validation: spend, refund, and summary data are trusted by the client
+
+This means each milestone should end with a product demo, not only a backend implementation. The UI pages are not separate execution threads; they are the proof points for the underlying business slices.
+
+## Standard milestone template
+
+Every milestone in this tracker must follow the same format so the delivery plan is reviewable by both engineering and client stakeholders.
+
+### Template
+
+#### Business outcome
+What customer problem or operational outcome this milestone solves. Keep this brief and client-facing.
+
+#### User flow
+The exact user journey being delivered. State who starts it, what they click, and what result they expect.
+
+#### Frontend milestone
+The page or UI slice that exposes this flow. Describe the visible screens and the state they must show.
+
+#### Backend milestone
+The API, DB, security, and integration work that makes the flow real. This is where rent/tenant rules and data writes live.
+
+#### Roles allowed
+The role or roles that can perform the flow and what each can and cannot do. Keep it explicit and role-based.
+
+#### Tenant and access rules
+The client isolation and permission rules that must be enforced. This is where cross-client blocking is recorded.
+
+#### End state
+The final state after the milestone is complete and how a stakeholder can validate it. This should read like a demo outcome.
+
+#### Acceptance criteria
+The business and technical checks that prove the flow works. Include happy path and blocked path.
+
+#### Dependencies and blockers
+Any external services, approval gates, or upgrade requirements. Capture what is needed to complete the milestone.
+
+#### Owner
+Primary owner and any supporting roles. This makes accountability visible.
+
+## Immediate milestone set
+
+The next milestone set is intentionally narrowed to the flow that gives the client a usable platform and a safe operating model.
+
+### M2.0 Access and tenant isolation
+- Business outcome: a user can only access the correct platform view for their role and client.
+- Frontend milestone: login page and role-based landing screen.
+- Backend milestone: user sessions, auth checks, roles, client scoping, and cross-client rejection.
+- Roles: super admin; client admin; later: client staff, auditor, Meta admin.
+- End state: a logged-in user sees only the pages and data permitted for their role and tenant.
+- Acceptance: wrong role cannot open admin, client A cannot see client B data, access rules are enforced in backend queries.
+
+### M2.1 Admin control plane
+- Business outcome: the platform owner can onboard and manage clients safely.
+- Frontend milestone: admin dashboard with client create/edit, role assignment, and staff mapping.
+- Backend milestone: client creation, role assignment, staff-client mapping, audit log insertion, and client activation.
+- Roles: super admin; client admin for their own tenant later.
+- End state: a valid client is active, assigned to the correct admin, and visible only within its tenant scope.
+- Acceptance: client registration is auditable, access is role-based, and invalid assignments are rejected.
+
+### M2.2 Meta account and number linkage
+- Business outcome: the approved client is connected to a valid Meta account and WhatsApp number.
+- Frontend milestone: account connection and number status screen.
+- Backend milestone: Meta account config, number validation, status sync, and pause / resume controls.
+- Roles: super admin first; client admin later after approval.
+- End state: the client has only valid, approved Meta account and phone-number metadata attached to the tenant.
+- Acceptance: invalid number or account state is blocked, and both the client and admin are notified on account problems.
+
+### M3.0 Template approval and compliance
+- Business outcome: a client can prepare a template, but only an approved template can be used for send.
+- Frontend milestone: template draft, submit, and approval UI for client and admin.
+- Backend milestone: template state machine, admin approval flow, rejected or paused state handling, approved-only send enforcement.
+- Roles: client admin submits; super admin approves or rejects.
+- End state: only approved templates are eligible for live campaigns; rejected or paused templates are blocked.
+- Acceptance: unapproved template cannot be selected for send; admin can approve or reject; audit entry is created for each action.
+
+### M5.0 Campaign send flow
+- Business outcome: the approved client can create, confirm, and track a campaign from draft to completion.
+- Frontend milestone: dashboard + campaign create / confirm screens.
+- Backend milestone: campaign validation, queueing, send execution, status transitions, webhook processing, and campaign result updates.
+- Roles: client admin; super admin for operational oversight.
+- End state: the campaign is queued, sent, and tracked to final delivery or failure states with clear client visibility.
+- Acceptance: send works from validation to queue to final status, and failed or delayed sends are visible and notified.
+
+### M6.0 Wallet, spend, and refund controls
+- Business outcome: campaign spend is safe, auditable, and visible to the right parties.
+- Frontend milestone: wallet summary, low-balance alerts, charge and refund panel.
+- Backend milestone: wallet ledger, charge / refund logic, out-of-budget checks, alerts, and audit logs.
+- Roles: super admin and client admin for their own tenant.
+- End state: spend stays within valid limits and every charge or refund is tied to a real event and visible to the right client/admin parties.
+- Acceptance: low-balance campaigns are blocked, charges/refunds are immutable ledger entries, and audit history is preserved.
+
+### M7.0 Notification and alerting
+- Business outcome: clients and admins are informed about important lifecycle events without relying on the UI alone.
+- Frontend milestone: notification center or alert panel.
+- Backend milestone: state-change triggers, email notifications, retries, admin alerts, and audit logging.
+- Roles: client admin and super admin depending on event type.
+- End state: critical events trigger email notification to the right audience and the event is logged.
+- Acceptance: new client, template approval, out-of-budget, send completion, and account issue events produce notification records and deliver email to the right recipients.
+
+These milestones are intentionally ordered to make the product demoable in slices. Each one can be shown to a client as a real working flow, even when the later systems are still being built.
+
+### Future use cases
+
+The current design should not be treated as a WhatsApp-only dead end. Future work such as other messaging providers, Airtel integrations, chatbot flows, or additional channel-specific services can be introduced later as additional provider adapters and channel-specific modules, without changing the client, campaign, wallet, and admin core contracts. This is a P2/P3 expansion track and is not the current delivery scope.
+
+## Front-end scope and product flow map
+
+The tracker is organized around product delivery milestones, not around every screen in the React app. The UI pages are the surfaces that expose those milestones; they are part of the same business flow, but they are not separate milestones by themselves unless a page has a unique backend contract or independence requirement.
+
+### Page map in the current React app
+
+- Login: authentication entry point for staff and client users
+- Dashboard: summary view for delivery health, counts, wallet and recent activity
+- Push Campaign: campaign create / confirm / send flow
+- Admin: client, staff and access management for M2
+
+These pages are not independent delivery tracks. They are the UI for the product journey below.
+
+### Access control and client isolation model
+
+This is a mandatory part of the tracker and cannot be treated as a side note.
+
+#### 1. Page-level access
+- The UI must hide or disable pages based on role and permission.
+- Example: a normal client user should not see Admin actions or staff-only pages.
+- Example: a staff user should only see the clients assigned to them.
+- Example: super admin sees the full admin plane; a client user sees only their own dashboard and client objects.
+- The frontend should only be a convenience layer. It must never be the final authority.
+
+#### 2. Backend authorization
+- Every protected API call must verify the authenticated user and their role.
+- Every request must resolve the allowed client context before executing a query.
+- If the user is a client account, the backend enforces their client_id scope.
+- If the user is staff, the backend checks staff-client assignments or the super-admin flag.
+
+#### 3. Client isolation in data access
+- Every table in the system must carry `client_id` and every query must include a `WHERE client_id = ?` filter.
+- No dashboard, report, message, template, or wallet query is allowed to ignore the tenant scope.
+- The backend must reject requests that try to access another client's record even if the route or page is visible.
+- The same rule applies to list endpoints, detail endpoints, wallet queries, webhook updates, and admin actions.
+
+#### 4. What this means for the admin portal
+- A user can only reach the admin portal if they have an admin role or explicit permission.
+- A client cannot see another client's admin or data even if they know the route or ID.
+- A staff user sees only the clients assigned to them.
+- Super admin sees platform-wide admin views, but still only with backend scoping applied.
+
+This is not optional. If the UI hides a route but the API does not enforce it, the system is still unsafe.
+
+### Full business flow that the tracker is tracking
+
+1. User logs in
+2. User opens the dashboard and sees client-scoped metrics
+3. User creates or edits a campaign and chooses a template/account
+4. Message is validated and queued in the API / DB
+5. Worker claims the message and sends it through Meta or the mock provider
+6. Meta webhook reports delivery / read / failed status back to the receiver
+7. Event processor updates message state and any wallet or refund logic
+8. Dashboard/Reports show the final result for that client
+
+This is the real end-to-end flow that connects M1, M2 and later milestones. The tracker should be read as: backend milestones build the flow, and the front-end pages expose and consume that flow. The UI exists to make each backend milestone usable; it is not a separate independent milestone stack.
+
 ## Delivery model
 
 The system is built in milestone slices so each team member can work independently without waiting on a giant single branch or a vague requirement document.
@@ -224,6 +417,22 @@ Status: In progress
 
 Status: In progress
 
+#### M2 Admin control plane (explicit client flow)
+
+This is a major operational flow and should be treated as a separate milestone even though it sits inside M2. It is not a minor setting screen.
+
+The admin flow covers the full operations layer for the platform:
+
+- register a new client and set their account status
+- create staff users and assign client access
+- connect a client to a Meta business account and WhatsApp number
+- attach templates and business settings to that client
+- fund or manage wallet balance and top-ups
+- review campaign spend, refunds, and failed message reasons
+- audit admin actions and investigate operational issues
+
+This flow is business-critical because the platform cannot operate without a trusted admin layer. It is also the layer that gives the client and staff the runtime environment they need to actually use the product.
+
 #### 2.1 Users and sessions
 - Status: In progress
 - Scope: create users, password hashing, session creation, secure cookie behavior
@@ -243,6 +452,21 @@ Status: In progress
 - Status: In progress
 - Scope: login page, dashboard shell, sidebar, role-based menu
 - Acceptance: different roles see only their allowed screens
+
+#### 2.5 Admin onboarding and client activation
+- Status: Planned
+- Scope: register client, assign initial staff, verify business metadata, activate or suspend client
+- Acceptance: a newly created client can be activated with the correct role access and constraints
+
+#### 2.6 Meta account and wallet linkage for admin
+- Status: Planned
+- Scope: admin links client to Meta account, checks phone numbers, configures paying account, and links wallet state to the client
+- Acceptance: a client can only operate on approved Meta numbers and a valid wallet state
+
+#### 2.7 Admin audit and operational tracking
+- Status: Planned
+- Scope: view all staff actions, wallet events, client changes, Meta account changes, and message exceptions
+- Acceptance: a super user can reconstruct the timeline of what happened and who changed it
 
 ### M3. Connected number, templates, and Meta sync
 
