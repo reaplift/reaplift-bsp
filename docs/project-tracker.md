@@ -168,21 +168,21 @@ Status: In progress
 - Acceptance: valid business app and number are available for real sending
 - Dependency: external to the codebase
 
-#### 1.2 Migration 0002: message and account schema
+#### 1.2 DB creation for messaging platform
 - Status: Done
 - Owner: backend
 - Spec: [m1-0002-migration-spec.md](m1-0002-migration-spec.md)
-- Migration file: `0002_message_platform.sql`
+- DB file: `0002_message_platform.sql`
 - Scope:
   - 1.2.1 design the schema for clients, wa_accounts, templates, messages
-  - 1.2.2 add the 0002 migration file
-  - 1.2.3 validate migration locally and add schema tests
+  - 1.2.2 add the database tables for the messaging platform
+  - 1.2.3 validate the DB setup locally and add schema tests
 - Acceptance:
   - additive schema only
   - all tables include client_id and filtering rules
-  - migration applies cleanly with `pnpm migrate`
+  - DB setup applies cleanly with `pnpm migrate`
   - test proves the table and column structure is correct
-  - verified by the migration integration test and successful local Postgres run
+  - verified by the integration test and successful local Postgres run
 
 #### 1.3 Encryption and seed account setup
 - Status: Planned
@@ -222,21 +222,25 @@ Status: In progress
 
 ### M2. Logins, roles, clients, and access scope
 
-Status: Planned
+Status: In progress
 
 #### 2.1 Users and sessions
+- Status: In progress
 - Scope: create users, password hashing, session creation, secure cookie behavior
 - Acceptance: valid login works; invalid login fails; session can be revoked
 
 #### 2.2 Request scope and authorization
+- Status: Planned
 - Scope: every request gets role and client context; enforce client isolation and staff access rules
 - Acceptance: client A cannot read or modify client B data
 
 #### 2.3 Client and staff admin flows
+- Status: In progress
 - Scope: add and manage clients, users, staff-client assignments, audit logs
 - Acceptance: super user can create and manage the entity graph
 
 #### 2.4 Panel shell and menu by role
+- Status: In progress
 - Scope: login page, dashboard shell, sidebar, role-based menu
 - Acceptance: different roles see only their allowed screens
 

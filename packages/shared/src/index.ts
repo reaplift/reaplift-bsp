@@ -35,6 +35,25 @@ export const CampaignDraft = z.object({
 });
 export type CampaignDraft = z.infer<typeof CampaignDraft>;
 
+export const AdminClient = z.object({
+  id: z.string(),
+  name: z.string(),
+  status: z.enum(['active', 'suspended']),
+  contactEmail: z.string().nullable(),
+  walletBalance: z.number(),
+  assignedStaff: z.string(),
+});
+export type AdminClient = z.infer<typeof AdminClient>;
+
+export const TeamMember = z.object({
+  id: z.string(),
+  name: z.string(),
+  role: z.enum(['super_admin', 'staff', 'client']),
+  email: z.string(),
+  clientCount: z.number(),
+});
+export type TeamMember = z.infer<typeof TeamMember>;
+
 export const PingResponse = z.object({
   message: z.string(),
   source: z.enum(['backend']),

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Layout, type PageId } from './components/Layout';
+import { Admin } from './pages/Admin';
 import { Dashboard } from './pages/Dashboard';
 import { Login } from './pages/Login';
 import { PushCampaign } from './pages/PushCampaign';
@@ -11,7 +12,7 @@ type PingState = {
 } | null;
 
 export function App() {
-  const [page, setPage] = useState<PageId>('dashboard');
+  const [page, setPage] = useState<PageId>('admin');
   const [ping, setPing] = useState<PingState>(null);
 
   useEffect(() => {
@@ -29,6 +30,7 @@ export function App() {
       </div>
       {page === 'dashboard' && <Dashboard />}
       {page === 'campaign' && <PushCampaign />}
+      {page === 'admin' && <Admin />}
       {page === 'login' && <Login />}
     </Layout>
   );
