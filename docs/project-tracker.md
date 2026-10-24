@@ -191,7 +191,7 @@ Status: In progress
 - Acceptance: account data can be stored safely and loaded by the server
 
 #### 1.4 Meta client and error classifier
-- Status: Planned
+- Status: Done
 - Owner: backend
 - Scope: Meta wrapper, request shaping, safe failure handling
 - Acceptance: backend can call Meta endpoints and classify errors correctly
