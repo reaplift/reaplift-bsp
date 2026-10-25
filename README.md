@@ -7,6 +7,13 @@ ReapLift's own WhatsApp platform, working directly with Meta: template campaigns
 
 Current state: **milestone 0 skeleton**. The server answers `/healthz` and runs database migrations; the panel is a placeholder page.
 
+## Milestone evidence docs
+
+Every active milestone should have a small evidence pack under [docs/milestones](docs/milestones). Each milestone folder contains the demo summary, page actions, backend API checks, DB notes, end-to-end verification, and test evidence.
+
+- [docs/milestones/README.md](docs/milestones/README.md)
+- [docs/milestones/m2-admin-onboarding/README.md](docs/milestones/m2-admin-onboarding/README.md)
+
 ## Setup
 
 Follow the guide for your computer. Each one covers installing the tools, opening the repo in VS Code, the first run and common problems.

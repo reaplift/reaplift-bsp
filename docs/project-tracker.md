@@ -74,9 +74,65 @@ The same rule should be applied to every milestone in the tracker:
 - future milestones remain planning references, not active execution items
 - once a milestone is active, only its subtask tree is in motion
 
+## Do / Do not / Hard checks
+
+### Do
+- Keep one task to one real end-to-end flow.
+- Include the business outcome, UI slice, backend behavior, and validation in the task definition.
+- Verify the flow with real request/response evidence before calling it complete.
+- Treat the tracker as the source of truth, and update it when the implementation actually changes.
+- Keep the working scope narrow and current; move future work to a later milestone.
+
+### Do not
+- Do not call a task done because a page renders or a component exists.
+- Do not call a task done because state changed locally in React.
+- Do not call a task done because a mock route exists in memory.
+- Do not mix future milestone work into the active milestone.
+- Do not rely on app behavior that accepts any input without validation.
+- Do not claim success without checking the real network, server logs, and test evidence.
+
+### Hard checks before marking a task complete
+- Can a user execute the flow with the real UI and see the expected outcome?
+- Does the frontend call the backend route and receive a real response code?
+- Does the backend validate input and reject invalid requests?
+- Does the app persist or update the correct state, not just local component state?
+- Are role and tenant restrictions actually enforced?
+- Does the tracker status match the real implementation, not the intended one?
+
+If any hard check fails, the task stays in progress, prototype, or blocked. It is not complete.
+
 ## Standard milestone template
 
 Every milestone in this tracker must follow the same format so the delivery plan is reviewable by both engineering and client stakeholders.
+
+### Definition of a finished task
+
+A task is not considered complete just because code exists. A task is only finished when all of the following are true:
+
+- the business flow is clearly named and scoped
+- the UI flow exists and can be exercised by a user
+- the backend route or service supports the same flow
+- role and tenant validation are enforced
+- validation or acceptance checks are written and passing
+- the flow can be demonstrated without hidden mock state or fake logic
+- the milestone evidence pack exists and is attached to the task
+
+If any of the above is missing, the task remains prototype or in progress, not done.
+
+This matters because the tracker should prevent false confidence. A page that changes React state locally is not the same as a working user flow. A route that exists in memory is not the same as a real persisted system. A login flow that accepts any input is not a working login.
+
+### Milestone evidence pack requirement
+
+Every milestone must include a dedicated evidence folder and documents:
+
+- README.md for scope and flow summary
+- test-evidence.md for commands and proof output
+- frontend.md for page-level actions and validation
+- backend-api.md for routes and payload checks
+- database.md for the data assumptions and schema notes for the milestone
+- e2e.md for the end-to-end path from page to server to data response
+
+The evidence pack is part of the milestone completion standard; it is not optional.
 
 ### Template
 
@@ -481,28 +537,76 @@ This flow is business-critical because the platform cannot operate without a tru
 #### 2.1 Users and sessions
 - Status: In progress
 - Scope: create users, password hashing, session creation, secure cookie behavior
+- Current reality: auth and role gating are implemented in the shared layer and login flow; session persistence and revocation remain follow-on work for the full M2 auth slice.
 - Acceptance: valid login works; invalid login fails; session can be revoked
 
 #### 2.2 Request scope and authorization
-- Status: Planned
+- Status: In progress
 - Scope: every request gets role and client context; enforce client isolation and staff access rules
+- Current reality: shared access helpers and page visibility are in place; backend route enforcement is still being hardened as the active admin flow matures.
 - Acceptance: client A cannot read or modify client B data
 
 #### 2.3 Client and staff admin flows
 - Status: In progress
 - Scope: add and manage clients, users, staff-client assignments, audit logs
+- Current reality: active work is focused on client creation, activation/suspension, and staff assignment in the admin panel and matching server API routes.
 - Acceptance: super user can create and manage the entity graph
 
 #### 2.4 Panel shell and menu by role
 - Status: In progress
 - Scope: login page, dashboard shell, sidebar, role-based menu
+- Current reality: login and role-aware page access are implemented; navigation is in the active admin flow, but the full shell is not yet treated as a separate milestone expansion.
 - Acceptance: different roles see only their allowed screens
 
 #### 2.5 Admin onboarding and client activation
-- Status: Planned
+- Status: In progress (prototype)
 - Scope: register client, assign initial staff, verify business metadata, activate or suspend client
-- Acceptance: a newly created client can be activated with the correct role access and constraints
+- Current reality: this is the current live implementation slice, but it is not complete. The flow is being built as a demo/prototype: UI state changes, in-memory API routes, and shared role logic exist, but real auth, persistence, and end-to-end validation are still missing.
+- Acceptance: a newly created client can be activated with the correct role access and constraints once the full login + session + backend validation path is complete
 
+### Current active execution note
+
+The active milestone is M2.1 / 2.5 admin onboarding and client activation. The current implementation scope is intentionally narrow and limited to a prototype slice:
+
+- admin creates a client in the UI
+- admin sees the client list in local React state
+- admin toggles active/suspended state in local React state
+- admin reassigns the client owner / staff in local React state
+- role gating prevents non-admin access in the shared access model
+
+This is the only in-flight flow, but it is not complete. It is a prototype in current work, not a finished milestone. Future milestone items such as wallet ledger, reports, Meta account linkage, and message send flows remain planned and are not active work until this slice is complete.
+
+#### Current active UI slice
+- Page: Admin panel
+- User flow: super admin opens admin, creates a client, reviews the list, toggles activation, and reassigns staff.
+- UI states:
+  - client list visible
+  - add-client form visible when triggered
+  - status badges showing active / suspended
+  - staff change action next to assigned staff
+  - role-based hiding of admin controls for non-admin roles
+- Frontend behavior: the current slice is local state driven and not yet connected to real auth or persisted backend data.
+- Validation gap: login and admin actions still accept local mock state and do not prove a real validated session.
+
+#### Current active backend technical details
+- Route scope: admin-only client management endpoints only
+- API surface in current slice:
+  - `GET /api/admin/clients`
+  - `POST /api/admin/clients`
+  - `PATCH /api/admin/clients/:id/status`
+  - `PATCH /api/admin/clients/:id/staff`
+- Data contract: shared AdminClient schema in the shared package defines id, name, contactEmail, assignedStaff, status, walletBalance.
+- Validation: payloads are checked with Zod before create/update operations; invalid or missing values are rejected with 400 responses.
+- Auth model: role checks are enforced in the shared access logic, but login itself is still not backed by a real backend auth flow or persisted user session.
+- Persistence model: current implementation is in-memory for the active flow and is intentionally minimal; it does not yet represent the final production contract.
+- Tenant rule: this slice stays scoped to the admin flow and does not expand into unrelated tables or cross-client data access logic until the client management milestone is complete.
+
+#### Current milestone status summary
+- Frontend status: prototype/in progress; UI flow exists for create/list/status/staff change but is not yet authenticated or persisted
+- Backend status: prototype/in progress; admin route support exists for list, create, status update, and staff update, but it is in-memory and not final persistence
+- Verification status: build, web typecheck, and focused onboarding tests pass for the prototype slice, but they do not yet prove a real end-to-end authenticated flow
+- Completion status: not complete; task remains in progress until real login, session, backend validation, and persistence exist
+- Scope lock: no future milestone work is opened while this flow remains active
 #### 2.6 Meta account and wallet linkage for admin
 - Status: Planned
 - Scope: admin links client to Meta account, checks phone numbers, configures paying account, and links wallet state to the client

@@ -37,3 +37,7 @@ pnpm workspaces, TypeScript, Node 22. `apps/server`: Fastify, Zod, Kysely, pg, p
 - Work on a branch per task (`m1-1.2-migration-0002`), open a pull request into `main`, never push to `main` directly. CI must be green.
 - Never commit secrets. Settings go in `.env` (ignored); add every new setting name to `.env.example` with a blank value.
 - Meta error codes, limits and rates in the design are from memory: check Meta's current docs before relying on them.
+- Do not mark a task complete from a mock UI or in-memory route alone; require the full flow to be validated end to end.
+- Do not mix future milestones into the active task. Keep scope narrow and current.
+- Before calling a task done, check: real UI behavior, real backend request/response, role enforcement, and test evidence.
+- If any hard check fails, the task remains in progress or prototype, not done.
