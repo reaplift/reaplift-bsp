@@ -18,6 +18,10 @@ export function canAccessPage(role: UserRole | null | undefined, page: AppPageId
   return page === 'dashboard' || page === 'campaign';
 }
 
+export function canManageClients(role: UserRole | null | undefined): boolean {
+  return role === 'super_admin';
+}
+
 /** Response of GET /healthz, shared by the server and the panel. */
 export const HealthResponse = z.object({
   status: z.enum(['ok', 'error']),

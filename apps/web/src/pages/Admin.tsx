@@ -11,18 +11,22 @@ const emptyForm = {
   walletBalance: '0',
 };
 
-export function Admin() {
+type AdminProps = {
+  authHeader: Record<string, string>;
+};
+
+export function Admin({ authHeader }: AdminProps) {
   const [clients, setClients] = useState<AdminClient[]>([]);
   const [showForm, setShowForm] = useState(false);
 
   const activeClientCount = clients.filter((client) => client.status === 'active').length;
 
   useEffect(() => {
-    fetch('/api/admin/clients')
+    fetch('/api/admin/clients', { headers: authHeader })
       .then((res) => res.json())
       .then((data) => setClients(data as AdminClient[]))
       .catch(() => setClients([]));
-  }, []);
+  }, [authHeader]);
 
   const handleAddClient = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -39,7 +43,7 @@ export function Admin() {
 
     const res = await fetch('/api/admin/clients', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeader },
       body: JSON.stringify(nextClient),
     });
 
@@ -58,7 +62,7 @@ export function Admin() {
     const nextStatus = client.status === 'active' ? 'suspended' : 'active';
     const res = await fetch(`/api/admin/clients/${clientId}/status`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeader },
       body: JSON.stringify({ status: nextStatus }),
     });
 
@@ -74,7 +78,7 @@ export function Admin() {
 
     const res = await fetch(`/api/admin/clients/${clientId}/staff`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeader },
       body: JSON.stringify({ assignedStaff: nextStaff.trim() }),
     });
 

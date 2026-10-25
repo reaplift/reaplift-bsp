@@ -21,11 +21,11 @@ This milestone intentionally excludes broader future work like wallet charging, 
 
 ### Login
 - Purpose: sign in as a chosen role
-- Current status: prototype only; validation is local UI state and not a real authenticated session yet
+- Current status: live demo flow with valid credentials, session creation, and role-based access enforcement
 
 ### Admin
 - Purpose: create clients, review the client list, toggle status, and assign staff
-- Current status: prototype/in progress; UI is functional in state but not final auth-backed persistence
+- Current status: authenticated admin flow is working locally through real bearer-token-protected routes
 
 ## Backend in scope
 

@@ -1,7 +1,8 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import Fastify from 'fastify';
 import { z } from 'zod';
-import { AdminClient, type HealthResponse, type PingResponse } from '@reaplift/shared';
+import { AdminClient, type HealthResponse, type PingResponse, type UserRole } from '@reaplift/shared';
+import { createSessionToken } from './lib/auth.js';
 
 export interface AppDeps {
   version: string;
@@ -39,10 +40,26 @@ export function buildApp({
     },
   ];
   const demoUsers = {
-    'admin@reaplift.ai': { password: 'password123', role: 'super_admin' },
-    'client@reaplift.ai': { password: 'password123', role: 'client_admin' },
-    'staff@reaplift.ai': { password: 'password123', role: 'staff' },
+    'admin@reaplift.ai': { password: 'password123', role: 'super_admin' as const },
+    'client@reaplift.ai': { password: 'password123', role: 'client_admin' as const },
+    'staff@reaplift.ai': { password: 'password123', role: 'staff' as const },
   } as const;
+  const sessionStore = new Map<string, { email: string; role: UserRole; expiresAt: Date }>();
+
+  const requireSession = (authorizationHeader: string | undefined) => {
+    if (!authorizationHeader?.startsWith('Bearer ')) {
+      return null;
+    }
+
+    const token = authorizationHeader.slice('Bearer '.length).trim();
+    const session = sessionStore.get(token);
+
+    if (!session || session.expiresAt.getTime() <= Date.now()) {
+      return null;
+    }
+
+    return session;
+  };
 
   app.get('/healthz', async (_req, reply) => {
     const dbOk = await checkDb();
@@ -66,7 +83,7 @@ export function buildApp({
     const payload = req.body as { email?: string; password?: string; role?: string };
     const email = payload.email?.trim().toLowerCase();
     const password = payload.password;
-    const role = payload.role as z.infer<typeof AdminClient>['status'] | undefined;
+    const role = payload.role as UserRole | undefined;
 
     if (!email || !password || !role) {
       return reply.code(400).send({ error: 'email, password and role are required' });
@@ -77,18 +94,42 @@ export function buildApp({
       return reply.code(401).send({ error: 'invalid credentials' });
     }
 
+    const token = createSessionToken();
+    sessionStore.set(token, {
+      email,
+      role,
+      expiresAt: new Date(Date.now() + 8 * 60 * 60 * 1000),
+    });
+
     return reply.code(200).send({
       ok: true,
       user: { email, role },
-      token: `demo-session-${email}-${Date.now()}`,
+      token,
     });
   });
 
-  app.get('/api/admin/clients', async (_req, reply) => {
+  const requireAdminSession = (req: Parameters<typeof app.get>[0] extends never ? never : any) => {
+    const session = requireSession(req.headers.authorization as string | undefined);
+    if (!session) {
+      return null;
+    }
+    return session.role === 'super_admin' ? session : null;
+  };
+
+  app.get('/api/admin/clients', async (req, reply) => {
+    const session = requireAdminSession(req);
+    if (!session) {
+      return reply.code(401).send({ error: 'unauthorized' });
+    }
     return reply.code(200).send(adminClients);
   });
 
   app.post('/api/admin/clients', async (req, reply) => {
+    const session = requireAdminSession(req);
+    if (!session) {
+      return reply.code(401).send({ error: 'unauthorized' });
+    }
+
     const payload = req.body as unknown;
     const parsed = AdminClient.omit({ id: true }).safeParse(payload);
 
@@ -109,6 +150,11 @@ export function buildApp({
   });
 
   app.patch('/api/admin/clients/:id/status', async (req, reply) => {
+    const session = requireAdminSession(req);
+    if (!session) {
+      return reply.code(401).send({ error: 'unauthorized' });
+    }
+
     const { id } = req.params as { id: string };
     const payload = req.body as { status?: string };
     const status = payload.status;
@@ -128,6 +174,11 @@ export function buildApp({
   });
 
   app.patch('/api/admin/clients/:id/staff', async (req, reply) => {
+    const session = requireAdminSession(req);
+    if (!session) {
+      return reply.code(401).send({ error: 'unauthorized' });
+    }
+
     const { id } = req.params as { id: string };
     const payload = req.body as { assignedStaff?: string };
     const assignedStaff = payload.assignedStaff?.trim();

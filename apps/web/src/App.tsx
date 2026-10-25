@@ -78,6 +78,18 @@ export function App() {
     setPage(data.user.role === 'super_admin' ? 'admin' : 'dashboard');
   };
 
+  const getAuthHeader = (): Record<string, string> => {
+    const saved = localStorage.getItem('reaplift-session');
+    if (!saved) return {};
+
+    try {
+      const session = JSON.parse(saved) as SessionState;
+      return { Authorization: `Bearer ${session.token}` };
+    } catch {
+      return {};
+    }
+  };
+
   return (
     <Layout currentPage={page} visiblePages={visiblePagesForRole(role)} onNavigate={handleNavigate}>
       <div className="panel" style={{ marginBottom: 18 }}>
@@ -91,7 +103,7 @@ export function App() {
       )}
       {page === 'dashboard' && <Dashboard />}
       {page === 'campaign' && <PushCampaign />}
-      {page === 'admin' && role === 'super_admin' && <Admin />}
+      {page === 'admin' && role === 'super_admin' && <Admin authHeader={getAuthHeader()} />}
       {page === 'login' && <Login onLogin={handleLogin} />}
     </Layout>
   );

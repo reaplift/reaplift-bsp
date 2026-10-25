@@ -17,10 +17,25 @@ describe('client admin capability', () => {
 });
 
 describe('admin client API', () => {
+  const buildAdminHeaders = async (app: ReturnType<typeof buildApp>) => {
+    const login = await app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      payload: {
+        email: 'admin@reaplift.ai',
+        password: 'password123',
+        role: 'super_admin',
+      },
+    });
+
+    return { authorization: `Bearer ${login.json().token as string}` };
+  };
+
   it('lists current clients', async () => {
     const app = buildApp({ version: 'abc123', checkDb: async () => true });
+    const headers = await buildAdminHeaders(app);
 
-    const res = await app.inject({ method: 'GET', url: '/api/admin/clients' });
+    const res = await app.inject({ method: 'GET', url: '/api/admin/clients', headers });
 
     expect(res.statusCode).toBe(200);
     expect(Array.isArray(res.json())).toBe(true);
@@ -29,10 +44,12 @@ describe('admin client API', () => {
 
   it('creates a client through the API', async () => {
     const app = buildApp({ version: 'abc123', checkDb: async () => true });
+    const headers = await buildAdminHeaders(app);
 
     const res = await app.inject({
       method: 'POST',
       url: '/api/admin/clients',
+      headers,
       payload: {
         name: 'Northwind Labs',
         contactEmail: 'ops@northwind.com',
@@ -54,10 +71,12 @@ describe('admin client API', () => {
 
   it('updates a client status through the API', async () => {
     const app = buildApp({ version: 'abc123', checkDb: async () => true });
+    const headers = await buildAdminHeaders(app);
 
     const created = await app.inject({
       method: 'POST',
       url: '/api/admin/clients',
+      headers,
       payload: {
         name: 'Orbit Commerce',
         contactEmail: 'ops@orbit.in',
@@ -71,6 +90,7 @@ describe('admin client API', () => {
     const res = await app.inject({
       method: 'PATCH',
       url: `/api/admin/clients/${id}/status`,
+      headers,
       payload: { status: 'suspended' },
     });
 
@@ -84,10 +104,12 @@ describe('admin client API', () => {
 
   it('updates client staff assignment through the API', async () => {
     const app = buildApp({ version: 'abc123', checkDb: async () => true });
+    const headers = await buildAdminHeaders(app);
 
     const created = await app.inject({
       method: 'POST',
       url: '/api/admin/clients',
+      headers,
       payload: {
         name: 'Facet Studio',
         contactEmail: 'ops@facet.studio',
@@ -101,6 +123,7 @@ describe('admin client API', () => {
     const res = await app.inject({
       method: 'PATCH',
       url: `/api/admin/clients/${id}/staff`,
+      headers,
       payload: { assignedStaff: 'Rahul S' },
     });
 
@@ -147,5 +170,41 @@ describe('admin client API', () => {
       ok: true,
       user: { email: 'admin@reaplift.ai', role: 'super_admin' },
     });
+  });
+
+  it('rejects admin client requests without a valid session token', async () => {
+    const app = buildApp({ version: 'abc123', checkDb: async () => true });
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/admin/clients',
+    });
+
+    expect(res.statusCode).toBe(401);
+    expect(res.json()).toMatchObject({ error: 'unauthorized' });
+  });
+
+  it('allows admin client requests with a valid session token', async () => {
+    const app = buildApp({ version: 'abc123', checkDb: async () => true });
+
+    const login = await app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      payload: {
+        email: 'admin@reaplift.ai',
+        password: 'password123',
+        role: 'super_admin',
+      },
+    });
+
+    const token = login.json().token as string;
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/admin/clients',
+      headers: { authorization: `Bearer ${token}` },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(Array.isArray(res.json())).toBe(true);
   });
 });
