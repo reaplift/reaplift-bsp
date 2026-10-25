@@ -6,8 +6,22 @@ This tracker is organized like a company execution plan:
 - Task: a major delivery unit
 - Subtask: a unit of work that can be assigned independently
 - Acceptance criteria: definition of done for that unit
+- Design note: future context or architectural guidance that is not active scope
 
 This file is the source of truth for what is active, what is blocked, and what is next. It is not a local-machine notes file.
+
+### Detail stays nested, not scattered
+
+The tracker is intentionally detailed, but the detail must remain under the correct milestone. A future table, page, task, or API can appear in the tracker for context, but it is not active work until its milestone is open.
+
+This keeps the plan readable and prevents drift:
+
+- current milestone = the client-visible flow being built now
+- task = the major workstream inside that flow
+- subtask = the implementation details for that task
+- future milestone = not active, not in flight, and not mixed into current execution
+
+Example: a wallet table or report table can be listed as a future milestone item for M6 or M7, but it should not be opened as active work while we are still building M2 access and admin control.
 
 ## Platform design note
 
@@ -42,6 +56,23 @@ Example execution model:
   - Validation: spend, refund, and summary data are trusted by the client
 
 This means each milestone should end with a product demo, not only a backend implementation. The UI pages are not separate execution threads; they are the proof points for the underlying business slices.
+
+### Principle for active scope
+
+We keep the tracker rich and specific, but only the active milestone should be treated as in-flight execution. Every item below that milestone is either:
+
+- part of the current flow and being built now,
+- a dependency that must exist before this milestone is valid, or
+- a future milestone note kept for planning only.
+
+This is the rule that prevents us from creating tables or features for M4, M5, M6, or M7 while still in M2. The plan is detailed, but it is still intentionally narrowed to the current business flow.
+
+The same rule should be applied to every milestone in the tracker:
+
+- each milestone should list only the tasks that belong to that flow
+- every task should be clearly tied to the milestone's business outcome
+- future milestones remain planning references, not active execution items
+- once a milestone is active, only its subtask tree is in motion
 
 ## Standard milestone template
 
@@ -417,9 +448,23 @@ Status: In progress
 
 Status: In progress
 
+This milestone owns the access-control and operational foundation of the BSP. Any table, screen, or API that is not required to complete login, role enforcement, staff/client access, or tenant isolation remains outside active execution until the relevant milestone is opened.
+
 #### M2 Admin control plane (explicit client flow)
 
 This is a major operational flow and should be treated as a separate milestone even though it sits inside M2. It is not a minor setting screen.
+
+##### M2 task structure
+
+- Task 2.1: user auth and session model
+- Task 2.2: request scope and authorization enforcement
+- Task 2.3: client and staff admin operations
+- Task 2.4: role-based panel shell and menu visibility
+- Task 2.5: client onboarding and activation
+- Task 2.6: Meta account and wallet linkage for admin
+- Task 2.7: admin audit and operational tracking
+
+Each of these tasks stays scoped to the M2 flow. Anything related to campaign creation, list handling, reporting, or wallet automation later in M4-M7 is kept as a future milestone reference, not active M2 scope.
 
 The admin flow covers the full operations layer for the platform:
 
@@ -472,6 +517,16 @@ This flow is business-critical because the platform cannot operate without a tru
 
 Status: Planned
 
+This milestone is specifically about Meta account linkage and template readiness. It does not include campaign creation, wallet charging, or reporting. Those belong to M4-M7 and remain future scope until M3 is complete.
+
+##### M3 task structure
+
+- Task 3.1: Meta number linkage and business account validation
+- Task 3.2: token exchange and onboarding flow for connected accounts
+- Task 3.3: template authoring and submission workflow
+- Task 3.4: template sync and state visibility
+- Task 3.5: number quality and limit monitoring
+
 #### 3.1 Manual number connection
 - Scope: connect a WhatsApp number under ReapLift's business
 - Acceptance: a second test number can be connected from the panel
@@ -496,6 +551,16 @@ Status: Planned
 
 Status: Planned
 
+This milestone handles the campaign pre-flight layer: upload, list hygiene, mapping, and dry-run summary. It does not include the actual queueing or sending step; that belongs to M5.
+
+##### M4 task structure
+
+- Task 4.1: list upload and storage
+- Task 4.2: contact cleanup and validation
+- Task 4.3: campaign draft and template mapping
+- Task 4.4: summary and dry-run checks
+- Task 4.5: campaign creation API contract
+
 #### 4.1 File upload and list storage
 - Scope: upload CSV/Excel, store in Object Storage, read Google Sheet exports
 - Acceptance: list records load correctly even with blank rows and invalid values
@@ -519,6 +584,17 @@ Status: Planned
 ### M5. Sending, rules, and status processing
 
 Status: Planned
+
+This milestone owns the execution layer: confirm, queue, send, rules, and status transitions. It remains strictly separate from M6 wallet accounting and M7 reporting; those are downstream concerns, not active scope for this milestone.
+
+##### M5 task structure
+
+- Task 5.1: confirm and queue valid messages
+- Task 5.2: campaign lifecycle totals and state tracking
+- Task 5.3: pause, resume, cancel, and scheduling rules
+- Task 5.4: rules engine and suppression controls
+- Task 5.5: opt-out processing and data isolation
+- Task 5.6: load and scale validation
 
 #### 5.1 Confirm and queue messages
 - Scope: run rules and queue valid messages as `queued` while blocked items remain blocked with a reason
@@ -548,6 +624,17 @@ Status: Planned
 
 Status: Planned
 
+This milestone covers the financial correctness layer around campaign execution. It is not a separate delivery stream from M5; it is the billing and safeguarding layer that validates the send flow after the campaign is confirmed and queued.
+
+##### M6 task structure
+
+- Task 6.1: price list and charge policy
+- Task 6.2: wallet ledger and balance safety
+- Task 6.3: charge at confirm
+- Task 6.4: refund processing and deduplication
+- Task 6.5: Meta cost recording and visibility
+- Task 6.6: ledger reconciliation checks
+
 #### 6.1 Price list and charge policy
 - Scope: client and global price config, decision switches by outcome
 - Acceptance: price and charging rules are configurable without a code change
@@ -576,6 +663,16 @@ Status: Planned
 
 Status: Planned
 
+This milestone is the reporting and operational visibility layer. It depends on M5 and M6 data being valid, and it does not reopen earlier delivery decisions. Its scope is limited to reporting, exports, and super-user operational visibility.
+
+##### M7 task structure
+
+- Task 7.1: daily stats and scheduler refresh
+- Task 7.2: dashboard tiles and graphing
+- Task 7.3: month-wise report exports
+- Task 7.4: per-number campaign report generation
+- Task 7.5: super-user Meta cost and margin view
+
 #### 7.1 Daily stats table and scheduler refresh
 - Scope: maintain date-based counts and charges for dashboard data
 - Acceptance: charts are rebuilt from consistent daily stats
@@ -599,6 +696,16 @@ Status: Planned
 ### M8. Pilot go-live and client migration
 
 Status: Planned
+
+This is the launch milestone. It is not a new product design layer; it is the rollout and validation stage that proves M1-M7 are ready for a live client, with migration and go/no-go gates.
+
+##### M8 task structure
+
+- Task 8.1: alerts and operational readiness
+- Task 8.2: number migration from Dovesoft
+- Task 8.3: pilot client setup
+- Task 8.4: first pilot campaign and comparison
+- Task 8.5: go or no-go sign-off
 
 #### 8.1 Alerts and operational readiness
 - Scope: health, backup, stuck send, disk, callback warnings, and operations thresholds
