@@ -4,6 +4,24 @@ import { z } from 'zod';
 export const MODES = ['api', 'worker', 'receiver', 'scheduler', 'migrate'] as const;
 export type Mode = (typeof MODES)[number];
 
+export const USER_ROLES = ['super_admin', 'client_admin', 'staff'] as const;
+export type UserRole = (typeof USER_ROLES)[number];
+export type AppPageId = 'dashboard' | 'campaign' | 'admin' | 'login';
+
+export function canAccessPage(role: UserRole | null | undefined, page: AppPageId): boolean {
+  if (page === 'login') return true;
+  if (!role) return false;
+
+  if (role === 'super_admin') return true;
+  if (role === 'staff') return page === 'dashboard' || page === 'campaign';
+
+  return page === 'dashboard' || page === 'campaign';
+}
+
+export function canManageClients(role: UserRole | null | undefined): boolean {
+  return role === 'super_admin';
+}
+
 /** Response of GET /healthz, shared by the server and the panel. */
 export const HealthResponse = z.object({
   status: z.enum(['ok', 'error']),
@@ -34,6 +52,25 @@ export const CampaignDraft = z.object({
   template: z.string(),
 });
 export type CampaignDraft = z.infer<typeof CampaignDraft>;
+
+export const AdminClient = z.object({
+  id: z.string(),
+  name: z.string(),
+  status: z.enum(['active', 'suspended']),
+  contactEmail: z.string().nullable(),
+  walletBalance: z.number(),
+  assignedStaff: z.string(),
+});
+export type AdminClient = z.infer<typeof AdminClient>;
+
+export const TeamMember = z.object({
+  id: z.string(),
+  name: z.string(),
+  role: z.enum(['super_admin', 'staff', 'client']),
+  email: z.string(),
+  clientCount: z.number(),
+});
+export type TeamMember = z.infer<typeof TeamMember>;
 
 export const PingResponse = z.object({
   message: z.string(),
