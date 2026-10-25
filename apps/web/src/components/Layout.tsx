@@ -5,6 +5,7 @@ export type PageId = 'dashboard' | 'campaign' | 'admin' | 'login';
 type LayoutProps = {
   children: ReactNode;
   currentPage: PageId;
+  visiblePages: PageId[];
   onNavigate: (page: PageId) => void;
 };
 
@@ -15,7 +16,9 @@ const navItems: Array<{ id: PageId; label: string }> = [
   { id: 'login', label: 'Login' },
 ];
 
-export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
+export function Layout({ children, currentPage, visiblePages, onNavigate }: LayoutProps) {
+  const visibleNavItems = navItems.filter((item) => visiblePages.includes(item.id));
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -28,7 +31,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
         </div>
 
         <nav className="nav-list">
-          {navItems.map((item) => (
+          {visibleNavItems.map((item) => (
             <button
               key={item.id}
               type="button"

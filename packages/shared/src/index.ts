@@ -4,6 +4,20 @@ import { z } from 'zod';
 export const MODES = ['api', 'worker', 'receiver', 'scheduler', 'migrate'] as const;
 export type Mode = (typeof MODES)[number];
 
+export const USER_ROLES = ['super_admin', 'client_admin', 'staff'] as const;
+export type UserRole = (typeof USER_ROLES)[number];
+export type AppPageId = 'dashboard' | 'campaign' | 'admin' | 'login';
+
+export function canAccessPage(role: UserRole | null | undefined, page: AppPageId): boolean {
+  if (page === 'login') return true;
+  if (!role) return false;
+
+  if (role === 'super_admin') return true;
+  if (role === 'staff') return page === 'dashboard' || page === 'campaign';
+
+  return page === 'dashboard' || page === 'campaign';
+}
+
 /** Response of GET /healthz, shared by the server and the panel. */
 export const HealthResponse = z.object({
   status: z.enum(['ok', 'error']),
