@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import Fastify from 'fastify';
-import type { HealthResponse, PingResponse } from '@reaplift/shared';
+import { z } from 'zod';
+import { AdminClient, type HealthResponse, type PingResponse } from '@reaplift/shared';
 
 export interface AppDeps {
   version: string;
@@ -19,6 +20,29 @@ export function buildApp({
   metaAppSecret = '',
 }: AppDeps) {
   const app = Fastify({ logger, rawBody: true });
+  const adminClients: Array<z.infer<typeof AdminClient>> = [
+    {
+      id: 'cli-seed-001',
+      name: 'Northwind Labs',
+      contactEmail: 'ops@northwind.com',
+      assignedStaff: 'Aisha Shah',
+      status: 'active',
+      walletBalance: 120000,
+    },
+    {
+      id: 'cli-seed-002',
+      name: 'Bluebird Retail',
+      contactEmail: 'sales@bluebird.in',
+      assignedStaff: 'Rahul S',
+      status: 'suspended',
+      walletBalance: 25000,
+    },
+  ];
+  const demoUsers = {
+    'admin@reaplift.ai': { password: 'password123', role: 'super_admin' },
+    'client@reaplift.ai': { password: 'password123', role: 'client_admin' },
+    'staff@reaplift.ai': { password: 'password123', role: 'staff' },
+  } as const;
 
   app.get('/healthz', async (_req, reply) => {
     const dbOk = await checkDb();
@@ -36,6 +60,90 @@ export function buildApp({
       source: 'backend',
     };
     return reply.code(200).send(body);
+  });
+
+  app.post('/api/auth/login', async (req, reply) => {
+    const payload = req.body as { email?: string; password?: string; role?: string };
+    const email = payload.email?.trim().toLowerCase();
+    const password = payload.password;
+    const role = payload.role as z.infer<typeof AdminClient>['status'] | undefined;
+
+    if (!email || !password || !role) {
+      return reply.code(400).send({ error: 'email, password and role are required' });
+    }
+
+    const user = demoUsers[email as keyof typeof demoUsers];
+    if (!user || user.password !== password || user.role !== role) {
+      return reply.code(401).send({ error: 'invalid credentials' });
+    }
+
+    return reply.code(200).send({
+      ok: true,
+      user: { email, role },
+      token: `demo-session-${email}-${Date.now()}`,
+    });
+  });
+
+  app.get('/api/admin/clients', async (_req, reply) => {
+    return reply.code(200).send(adminClients);
+  });
+
+  app.post('/api/admin/clients', async (req, reply) => {
+    const payload = req.body as unknown;
+    const parsed = AdminClient.omit({ id: true }).safeParse(payload);
+
+    if (!parsed.success) {
+      return reply.code(400).send({
+        error: 'invalid client payload',
+        details: parsed.error.flatten(),
+      });
+    }
+
+    const nextClient = {
+      ...parsed.data,
+      id: `cli-${Date.now()}`,
+    } satisfies z.infer<typeof AdminClient>;
+
+    adminClients.unshift(nextClient);
+    return reply.code(201).send(nextClient);
+  });
+
+  app.patch('/api/admin/clients/:id/status', async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const payload = req.body as { status?: string };
+    const status = payload.status;
+
+    if (status !== 'active' && status !== 'suspended') {
+      return reply.code(400).send({ error: 'status must be active or suspended' });
+    }
+
+    const client = adminClients.find((entry) => entry.id === id);
+
+    if (!client) {
+      return reply.code(404).send({ error: 'client not found' });
+    }
+
+    client.status = status;
+    return reply.code(200).send(client);
+  });
+
+  app.patch('/api/admin/clients/:id/staff', async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const payload = req.body as { assignedStaff?: string };
+    const assignedStaff = payload.assignedStaff?.trim();
+
+    if (!assignedStaff) {
+      return reply.code(400).send({ error: 'assignedStaff is required' });
+    }
+
+    const client = adminClients.find((entry) => entry.id === id);
+
+    if (!client) {
+      return reply.code(404).send({ error: 'client not found' });
+    }
+
+    client.assignedStaff = assignedStaff;
+    return reply.code(200).send(client);
   });
 
   app.get('/webhooks/meta', async (req, reply) => {
