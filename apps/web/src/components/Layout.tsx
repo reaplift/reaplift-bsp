@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-export type PageId = 'dashboard' | 'campaign' | 'admin' | 'login';
+export type PageId = 'dashboard' | 'campaign' | 'lists' | 'admin' | 'login';
 
 type LayoutProps = {
   children: ReactNode;
@@ -12,6 +12,7 @@ type LayoutProps = {
 const navItems: Array<{ id: PageId; label: string }> = [
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'campaign', label: 'Push campaign' },
+  { id: 'lists', label: 'Audience lists' },
   { id: 'admin', label: 'Admin' },
   { id: 'login', label: 'Login' },
 ];

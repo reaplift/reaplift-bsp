@@ -653,7 +653,9 @@ This milestone is specifically about Meta account linkage and template readiness
 
 ### M4. Upload, list handling, campaign draft, and summary
 
-Status: Planned
+Status: In progress (started 28 October 2026, owner's request, while M2 and M3 remain open; built task by task, each accepted by the owner before the next starts)
+
+Evidence pack: [milestones/m4-lists-and-campaign-draft/README.md](milestones/m4-lists-and-campaign-draft/README.md)
 
 This milestone handles the campaign pre-flight layer: upload, list hygiene, mapping, and dry-run summary. It does not include the actual queueing or sending step; that belongs to M5.
 
@@ -666,8 +668,11 @@ This milestone handles the campaign pre-flight layer: upload, list hygiene, mapp
 - Task 4.5: campaign creation API contract
 
 #### 4.1 File upload and list storage
+- Status: In review, waiting for owner acceptance
 - Scope: upload CSV/Excel, store in Object Storage, read Google Sheet exports
 - Acceptance: list records load correctly even with blank rows and invalid values
+- Built: signed-link upload of .xlsx/.csv, Google Sheet CSV export, migration 0004 (`lists`, `list_contacts`), Audience lists page; 200,000 rows load in about 5 s locally
+- Limits until earlier milestones land: super user only, choosing the client (M2.2 gives client logins their own client); files on local disk under `UPLOAD_DIR` (OCI Object Storage later, same interface)
 
 #### 4.2 Number cleaning and validation
 - Scope: normalize numbers, remove duplicates, detect invalid contacts, store reasons

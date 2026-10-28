@@ -8,21 +8,28 @@
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
     "migrate": "tsx --env-file-if-exists=../../.env src/main.ts --mode=migrate",
+    "seed:dev-clients": "tsx --env-file-if-exists=../../.env scripts/seed-dev-clients.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --exclude \"test/**/*.int.test.ts\"",
     "test:int": "node --env-file-if-exists=../../.env ./node_modules/vitest/vitest.mjs run --no-file-parallelism .int.test.ts"
   },
   "dependencies": {
     "@reaplift/shared": "workspace:*",
+    "csv-parse": "^5.6.0",
     "fastify": "^5.2.0",
     "kysely": "^0.27.5",
     "pg": "^8.13.1",
     "pino": "^9.5.0",
+    "saxes": "^5.0.1",
+    "unzipper": "^0.10.14",
     "zod": "^3.24.1"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
     "@types/pg": "^8.11.10",
+    "@types/unzipper": "^0.10.11",
+    "exceljs": "^4.4.0",
+    "jszip": "^3.10.2",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"

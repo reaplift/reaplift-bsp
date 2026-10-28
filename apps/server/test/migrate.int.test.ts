@@ -77,4 +77,37 @@ describe.sequential('migrate', () => {
     expect(columns.rows.map((row) => row.column_name)).toContain('created_at');
     expect(columns.rows.map((row) => row.column_name)).toContain('role');
   });
+
+  it('adds the milestone 4 list tables, each scoped to a client', async () => {
+    await resetDb(pool);
+    const result = await migrate(pool, migrationsDir());
+    expect(result.applied).toContain('0004_lists.sql');
+
+    const clientColumns = await pool.query<{ table_name: string; is_nullable: string }>(`
+      select table_name, is_nullable
+      from information_schema.columns
+      where table_schema = 'public' and column_name = 'client_id' and table_name in ('lists', 'list_contacts')
+      order by table_name
+    `);
+    expect(clientColumns.rows).toEqual([
+      { table_name: 'list_contacts', is_nullable: 'NO' },
+      { table_name: 'lists', is_nullable: 'NO' },
+    ]);
+
+    // Deleting a list takes its rows with it; a client with lists cannot be deleted.
+    const client = await pool.query<{ id: string }>(`insert into clients (name) values ('M4') returning id`);
+    const clientId = client.rows[0]!.id;
+    const list = await pool.query<{ id: string }>(
+      `insert into lists (client_id, name, source, file_name, storage_key, size_bytes, columns, total_rows, created_by)
+       values ($1, 'l', 'upload', 'a.csv', 'k', 1, '[]', 1, 'test') returning id`,
+      [clientId],
+    );
+    await pool.query(`insert into list_contacts (list_id, client_id, row_number, cells) values ($1, $2, 2, '["1"]')`, [
+      list.rows[0]!.id,
+      clientId,
+    ]);
+    await expect(pool.query('delete from clients where id = $1', [clientId])).rejects.toThrow();
+    await pool.query('delete from lists where id = $1', [list.rows[0]!.id]);
+    expect((await pool.query('select count(*) from list_contacts')).rows[0].count).toBe('0');
+  });
 });

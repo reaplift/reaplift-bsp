@@ -3,6 +3,7 @@ import { canAccessPage, type UserRole } from '@reaplift/shared';
 import { Layout, type PageId } from './components/Layout';
 import { Admin } from './pages/Admin';
 import { Dashboard } from './pages/Dashboard';
+import { Lists } from './pages/Lists';
 import { Login } from './pages/Login';
 import { PushCampaign } from './pages/PushCampaign';
 import './styles.css';
@@ -19,7 +20,7 @@ type SessionState = {
 };
 
 const visiblePagesForRole = (role: UserRole | null): PageId[] => {
-  const allPages: PageId[] = ['dashboard', 'campaign', 'admin', 'login'];
+  const allPages: PageId[] = ['dashboard', 'campaign', 'lists', 'admin', 'login'];
   return allPages.filter((page) => canAccessPage(role, page));
 };
 
@@ -103,6 +104,7 @@ export function App() {
       )}
       {page === 'dashboard' && <Dashboard />}
       {page === 'campaign' && <PushCampaign />}
+      {page === 'lists' && role === 'super_admin' && <Lists authHeader={getAuthHeader()} />}
       {page === 'admin' && role === 'super_admin' && <Admin authHeader={getAuthHeader()} />}
       {page === 'login' && <Login onLogin={handleLogin} />}
     </Layout>

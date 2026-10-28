@@ -6,7 +6,7 @@ export type Mode = (typeof MODES)[number];
 
 export const USER_ROLES = ['super_admin', 'client_admin', 'staff'] as const;
 export type UserRole = (typeof USER_ROLES)[number];
-export type AppPageId = 'dashboard' | 'campaign' | 'admin' | 'login';
+export type AppPageId = 'dashboard' | 'campaign' | 'lists' | 'admin' | 'login';
 
 export function canAccessPage(role: UserRole | null | undefined, page: AppPageId): boolean {
   if (page === 'login') return true;
@@ -77,3 +77,67 @@ export const PingResponse = z.object({
   source: z.enum(['backend']),
 });
 export type PingResponse = z.infer<typeof PingResponse>;
+
+/** Error body of the milestone 4 routes onward. */
+export const ApiError = z.object({ error: z.string(), message: z.string() });
+export type ApiError = z.infer<typeof ApiError>;
+
+/** File types a list can be uploaded as. Old binary .xls is not read: save as .xlsx. */
+export const LIST_FILE_EXTENSIONS = ['csv', 'xlsx'] as const;
+
+export const CreateListUploadRequest = z.object({
+  clientId: z.string().uuid(),
+  fileName: z.string().trim().min(1).max(255),
+  sizeBytes: z.number().int().positive(),
+});
+export type CreateListUploadRequest = z.infer<typeof CreateListUploadRequest>;
+
+export const CreateListUploadResponse = z.object({
+  uploadId: z.string(),
+  uploadUrl: z.string(),
+  expiresAt: z.string(),
+  maxBytes: z.number(),
+});
+export type CreateListUploadResponse = z.infer<typeof CreateListUploadResponse>;
+
+export const ImportListRequest = z.object({
+  clientId: z.string().uuid(),
+  name: z.string().trim().min(1).max(120),
+  /** Leave out to detect the header row; 0 means the sheet has no header row. */
+  headerRow: z.number().int().min(0).optional(),
+  source: z.discriminatedUnion('type', [
+    z.object({ type: z.literal('upload'), uploadId: z.string().min(1) }),
+    z.object({ type: z.literal('google_sheet'), url: z.string().trim().min(1).max(2000) }),
+  ]),
+});
+export type ImportListRequest = z.infer<typeof ImportListRequest>;
+
+export const ListSummary = z.object({
+  id: z.string(),
+  clientId: z.string(),
+  name: z.string(),
+  source: z.enum(['upload', 'google_sheet']),
+  fileName: z.string(),
+  sourceUrl: z.string().nullable(),
+  columns: z.array(z.string()),
+  headerRow: z.number().nullable(),
+  totalRows: z.number(),
+  blankRowsSkipped: z.number(),
+  sizeBytes: z.number(),
+  createdBy: z.string(),
+  createdAt: z.string(),
+});
+export type ListSummary = z.infer<typeof ListSummary>;
+
+export const ListContactRow = z.object({ rowNumber: z.number(), cells: z.array(z.string()) });
+export type ListContactRow = z.infer<typeof ListContactRow>;
+
+export const ListDetail = ListSummary.extend({ preview: z.array(ListContactRow) });
+export type ListDetail = z.infer<typeof ListDetail>;
+
+export const ClientOption = z.object({
+  id: z.string(),
+  name: z.string(),
+  status: z.enum(['active', 'suspended']),
+});
+export type ClientOption = z.infer<typeof ClientOption>;

@@ -3,6 +3,7 @@ import Fastify, { type FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { AdminClient, type HealthResponse, type PingResponse, type UserRole } from '@reaplift/shared';
 import { createSessionToken } from './lib/auth.js';
+import { listRoutes, type ListRoutesDeps } from './modules/lists/routes.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -17,6 +18,8 @@ export interface AppDeps {
   logger?: boolean;
   metaVerifyToken?: string;
   metaAppSecret?: string;
+  /** Lists and uploads (M4.1). Left out by tests that do not need a database. */
+  lists?: Omit<ListRoutesDeps, 'getSession'>;
 }
 
 /** Builds the HTTP app. Dependencies are passed in so tests can replace them. */
@@ -26,6 +29,7 @@ export function buildApp({
   logger = false,
   metaVerifyToken = '',
   metaAppSecret = '',
+  lists,
 }: AppDeps) {
   const app = Fastify({ logger });
   const parseJson = app.getDefaultJsonParser('error', 'error');
@@ -242,6 +246,13 @@ export function buildApp({
 
     return reply.code(200).send({ ok: true });
   });
+
+  if (lists) {
+    app.register(listRoutes, {
+      ...lists,
+      getSession: (req: FastifyRequest) => requireSession(req.headers.authorization),
+    });
+  }
 
   return app;
 }

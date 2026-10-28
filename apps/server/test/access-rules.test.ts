@@ -18,6 +18,13 @@ describe('role-based page access', () => {
     expect(canAccessPage(role, 'campaign')).toBe(true);
   });
 
+  it('shows audience lists only to the super admin until sessions carry a client (M2.2)', () => {
+    expect(canAccessPage('super_admin', 'lists')).toBe(true);
+    expect(canAccessPage('client_admin', 'lists')).toBe(false);
+    expect(canAccessPage('staff', 'lists')).toBe(false);
+    expect(canAccessPage(null, 'lists')).toBe(false);
+  });
+
   it('keeps the login route available to unauthenticated users', () => {
     expect(canAccessPage(null, 'login')).toBe(true);
     expect(canAccessPage(undefined, 'login')).toBe(true);
