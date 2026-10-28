@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { canAccessPage, type AppPageId, type UserRole } from '@reaplift/shared';
+import { canAccessPage, type UserRole } from '@reaplift/shared';
 import { Layout, type PageId } from './components/Layout';
 import { Admin } from './pages/Admin';
 import { Dashboard } from './pages/Dashboard';

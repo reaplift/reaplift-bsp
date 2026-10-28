@@ -9,8 +9,8 @@
     "start": "node dist/main.js",
     "migrate": "tsx --env-file-if-exists=../../.env src/main.ts --mode=migrate",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run --exclude 'test/**/*.int.test.ts'",
-    "test:int": "node --env-file-if-exists=../../.env ./node_modules/vitest/vitest.mjs run --no-file-parallelism test/*.int.test.ts"
+    "test": "vitest run --exclude \"test/**/*.int.test.ts\"",
+    "test:int": "node --env-file-if-exists=../../.env ./node_modules/vitest/vitest.mjs run --no-file-parallelism .int.test.ts"
   },
   "dependencies": {
     "@reaplift/shared": "workspace:*",

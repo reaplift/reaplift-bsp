@@ -2,6 +2,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { createPool } from '../src/lib/db.js';
 import { migrate } from '../src/migrate/runner.js';
 import { migrationsDir } from '../src/modes/migrate.js';
+import { resetDb } from './reset-db.js';
 
 const url = process.env.DATABASE_URL;
 if (!url) throw new Error('DATABASE_URL must be set for integration tests (run `pnpm db:up`).');
@@ -25,17 +26,7 @@ describe.sequential('migrate', () => {
   });
 
   it('adds the milestone 1 message and admin access schema', async () => {
-    await pool.query('drop table if exists audit_logs');
-    await pool.query('drop table if exists staff_clients');
-    await pool.query('drop table if exists sessions');
-    await pool.query('drop table if exists users');
-    await pool.query('drop table if exists message_status_events');
-    await pool.query('drop table if exists meta_events');
-    await pool.query('drop table if exists messages');
-    await pool.query('drop table if exists templates');
-    await pool.query('drop table if exists wa_accounts');
-    await pool.query('drop table if exists clients');
-    await pool.query('drop table if exists schema_migrations');
+    await resetDb(pool);
 
     const result = await migrate(pool, migrationsDir());
     expect(result.applied).toContain('0001_init.sql');

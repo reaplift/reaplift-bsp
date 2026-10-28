@@ -21,7 +21,7 @@ export function verifyPassword(password: string, storedHash: string): boolean {
     return false;
   }
 
-  const [, iterationRaw, saltHex, expectedHex] = parts;
+  const [, iterationRaw = '', saltHex, expectedHex] = parts;
   const iterations = Number.parseInt(iterationRaw, 10);
 
   if (!Number.isFinite(iterations) || !saltHex || !expectedHex) {

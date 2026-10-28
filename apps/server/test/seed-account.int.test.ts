@@ -4,6 +4,7 @@ import { decryptSecret } from '../src/lib/crypto.js';
 import { seedAccount } from '../src/lib/seed-account.js';
 import { migrate } from '../src/migrate/runner.js';
 import { migrationsDir } from '../src/modes/migrate.js';
+import { resetDb } from './reset-db.js';
 
 const url = process.env.DATABASE_URL;
 if (!url) throw new Error('DATABASE_URL must be set for integration tests (run `pnpm db:up`).');
@@ -15,13 +16,7 @@ afterAll(() => pool.end());
 
 describe.sequential('seedAccount', () => {
   it('creates a client and encrypted wa account row', async () => {
-    await pool.query('drop table if exists message_status_events');
-    await pool.query('drop table if exists meta_events');
-    await pool.query('drop table if exists messages');
-    await pool.query('drop table if exists templates');
-    await pool.query('drop table if exists wa_accounts');
-    await pool.query('drop table if exists clients');
-    await pool.query('drop table if exists schema_migrations');
+    await resetDb(pool);
 
     await migrate(pool, migrationsDir());
 
