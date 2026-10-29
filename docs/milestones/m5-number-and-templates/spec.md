@@ -4,7 +4,7 @@
 - Owner: Unassigned
 - Branch prefix: `m5-`
 - Starts after: M3 (clients and logins), M4 (send engine and Meta client)
-- External prerequisites: E3 (Business Verification and App Review) before Embedded Signup works for anyone outside ReapLift. E7 (Solution Partner status and credit line) before credit-line sharing can be accepted against real Meta; everything is built and tested against the fake Meta server first.
+- External prerequisites: E3 (Business Verification and App Review) before Embedded Signup works for anyone outside ReapLift. E7 (Solution Partner status and credit line) before credit-line sharing can be accepted against real Meta; everything is built and tested against the fake Meta server first. A real Embedded Signup run needs the panel on an HTTPS address registered in ReapLift's Meta app (an HTTPS tunnel during development, or M10's address).
 
 ## Outcome
 
@@ -110,7 +110,8 @@ Who can do what: client users and their assigned staff run Embedded Signup and c
 - 5.2.1 "Connect WhatsApp" button on Settings opens Meta's Embedded Signup. The server receives the WhatsApp account ID, phone number ID and a code; exchanges the code for a business token (stored encrypted); registers the number; subscribes ReapLift's app to the account's webhooks.
 - 5.2.2 Share ReapLift's credit line with the client's account, using the system user token as Meta's docs describe for Solution Partners. Save what Meta returns for the sharing on the account (nullable column) and set `meta_payer = 'reaplift_credit_line'`.
 - 5.2.3 If sharing fails, the account is saved as `paused` with reason "credit line not shared", so nothing can be sent at ReapLift's cost or the client's by mistake; the super admin sees it and retries.
-- 5.2.4 If Meta later reports a payment problem on the account (account-level error 131042 in M4), the account is paused and the super admin is told.
+- 5.2.4 If Meta later reports a payment problem on the account (account-level error 131042 in M4), the account is paused and the super admin is told; M4 also raises the platform-wide credit-line alert.
+- 5.2.5 A client that already has a WhatsApp account (for example on Dovesoft) may be able to bring that account through Embedded Signup instead of moving its number, keeping its templates and quality. Whether this works for Dovesoft's clients is D13 in the tracker; check Meta's docs when building.
 - Check every Meta call and permission (including the billing permission for credit sharing) against Meta's current Embedded Signup and Solution Partner docs while coding, and record the date.
 - Tests: the exchange, registration, subscription and credit-sharing calls against the fake Meta server, including a sharing failure.
 - Acceptance: on the fake server, a client connects its own number from Settings with no help from ReapLift and the account shows "Paid by ReapLift credit line". Against real Meta this needs E3, and credit-line sharing needs E7.

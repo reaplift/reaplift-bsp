@@ -41,7 +41,7 @@ flowchart TD
 
 ## Worked example
 
-Northwind's prices are 95 paise per marketing message; its wallet holds ₹2,000.00; its number is connected and template `diwali_offer_2026` ("Hi {{1}}, flat 20% off till Sunday. Use code {{2}}.") is approved.
+Northwind's marketing price is 95 paise (Meta's rate plus Northwind's markup, from M6; a round figure for easy sums); its wallet holds ₹2,000.00; its number is connected and template `diwali_offer_2026` ("Hi {{1}}, flat 20% off till Sunday. Use code {{2}}.") is approved.
 
 1. Meera (staff, in Northwind's workspace) opens Push Campaign, names the campaign "Diwali 2026 wave 1" and picks the template.
 2. She uploads `diwali_customers.xlsx` with 1,000 rows and columns `Name`, `Mobile`, `City`, and ticks "Every number in this file has opted in to receive messages from Northwind Labs". The page shows 1,000 rows and the first 10 as a preview.
@@ -123,6 +123,7 @@ Out:
 
 - A check interface: each check is one SQL query over the campaign's contacts returning `(row, reason)`. M8's rules plug into the same interface.
 - Checks in M7: invalid and duplicate (from 7.2), opted out (7.8), client suspended, WhatsApp account paused, template no longer approved.
+- Messaging limit warning: each client now has its own WhatsApp account, and a new account starts with a low daily limit on how many customers it can message. If will-send is above the account's `messaging_limit` (M5 5.5), the summary shows a warning with the limit, so the client can split the campaign. It does not block. Check what Meta does with messages above the limit while coding, and record it.
 - `GET /api/clients/:clientId/campaigns/:id/summary` computes on request; it is not stored, because confirm runs the checks again.
 - Charge = price at confirm time × the outcomes the charging switches say are charged (M6 6.1, D6).
 - Response:

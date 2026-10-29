@@ -61,6 +61,7 @@ Out: operational alerts (account paused, stuck sends, disk, backups missing, hea
 
 ### 10.3 Caddy HTTPS and routing
 
+- Add the address to ReapLift's Meta app: the webhook callback, and the allowed domain for Embedded Signup (M5 5.2).
 - Acceptance: the browser shows a valid certificate; Meta's dashboard verifies the webhook address.
 
 ### 10.4 Deploy pipeline with rollback

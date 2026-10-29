@@ -48,12 +48,12 @@ flowchart TD
 
 ### 11.1 Operational alerts and readiness drill
 
-- Alerts to super admins through M2 when: an account is paused; messages are stuck in `sending` for 5 minutes; `meta_events` are unprocessed for 5 minutes; disk is over 80%; last night's backup is missing; `/healthz` is down (checked from outside the server).
-- Acceptance: all six fire once in a drill.
+- Alerts to super admins through M2 when: an account is paused; messages are stuck in `sending` for 5 minutes; `meta_events` are unprocessed for 5 minutes; disk is over 80%; last night's backup is missing; `/healthz` is down (checked from outside the server); any account gets Meta's payment error 131042, which may mean ReapLift's credit line has a problem (M4 4.3.7).
+- Acceptance: all seven fire once in a drill.
 
 ### 11.2 Number-move runbook from Dovesoft
 
-- Written runbook: Dovesoft releases the number, two-step PIN, the client connects it through Embedded Signup with ReapLift's credit line shared (M5 5.2), templates re-submitted (assume templates do not carry over). Agree Dovesoft's notice period and handover terms first.
+- Written runbook: Dovesoft releases the number, two-step PIN, the client connects it through Embedded Signup with ReapLift's credit line shared (M5 5.2), templates re-submitted (assume templates do not carry over). Agree Dovesoft's notice period and handover terms first. If D13 shows that clients own their WhatsApp accounts on Dovesoft, the runbook may instead bring the whole account through Embedded Signup and move the credit line from Dovesoft's to ReapLift's, keeping templates and quality.
 - Acceptance: followed start to end on one low-risk number without surprises.
 
 ### 11.3 Pilot client setup

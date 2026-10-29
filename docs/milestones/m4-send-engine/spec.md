@@ -108,6 +108,8 @@ Out:
 - 4.3.1 A loop in `MODE=worker` that claims a batch, sends, and saves the outcome. `modes/worker.ts` runs a list of loops; M2's email loop joins the same list.
 - 4.3.2 A rate limiter per WhatsApp account from `wa_accounts.send_rate_per_sec`.
 - 4.3.3 Outcome handling: sent; temporary error back to `queued` with `next_attempt_at`; permanent `failed` with code and title; account error pauses the account (`status = 'paused'`, `paused_reason`) and puts the row back.
+- 4.3.6 The worker always sends with the token stored on the message's own account. ReapLift's test number (manual token) and client accounts (business token from Embedded Signup, M5) therefore work the same way.
+- 4.3.7 Client accounts are paid through ReapLift's shared credit line (decided 29 October 2026). A payment error (131042) on a client account may mean the credit line itself has a problem and every client is about to fail, so besides pausing that account it raises a platform alert to super admins (M11 task 11.1).
 - 4.3.4 Rows in `sending` for more than 5 minutes are logged as stuck and never sent again automatically (sending twice would charge the customer twice).
 - 4.3.5 A paused account's messages are not claimed.
 - Tests (integration, real PostgreSQL, fake Meta): two workers never send the same row; the rate stays within the setting; each outcome above.

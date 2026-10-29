@@ -70,6 +70,7 @@ Out:
 - `pricing`: the default markup percentage for all clients (starting at 25%, D10), and per client either a markup override or a fixed price per category for special deals.
 - `price_lists`: the resulting price per client, category and country in whole paise (`bigint`), with valid from. Recomputed when a Meta rate or a markup changes; a new price is a new row and the old row stays for history. Price = Meta rate × (1 + markup), **rounded up** to the whole paisa. Campaigns use the price valid at confirm.
 - The client's country calling code (M3) picks the Meta rate, which matches M7's rule that audience numbers must be from the client's country.
+- The client is charged at confirm, by the template's category, so the client knows the price before sending. Meta bills ReapLift by the category it decides when the message is delivered (its webhook's `pricing.category`), which can differ, for example a utility message inside a customer's 24-hour reply window, which Meta does not charge. The client's charge is not adjusted afterwards; the difference shows as margin in M9.
 - `charge_policy`: one switch per outcome from HLD section 5 (blocked, sent but not delivered, delivered or read, failed at Meta), each true or false, for all clients or one client. Defaults match HLD section 5. D6 (in the tracker) adds the invalid and duplicate outcomes.
 - Tests: the worked example's rounding (103.57 becomes 104); a client markup overrides the default; a fixed price overrides the markup; a new Meta rate changes prices only from its start date; a client-level switch overrides the global one; a price change does not change an already-confirmed campaign's price.
 - Acceptance: step 1 of the worked example with no code change.
@@ -141,10 +142,12 @@ Task 6.6.
 
 ## Open questions
 
-| Question                                                         | Default                                                                                         | Decides              |
-| ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | -------------------- |
-| D6 (in the tracker): are invalid numbers and duplicates charged? | Not charged                                                                                     | Owner, with ReapLift |
-| D10 (in the tracker): markup per client, per message type?       | A default markup (25%) for all clients, overridable per client; the same for every message type | Owner, with ReapLift |
+| Question                                                                     | Default                                                                                                                                           | Decides                           |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
+| D6 (in the tracker): are invalid numbers and duplicates charged?             | Not charged                                                                                                                                       | Owner, with ReapLift              |
+| D10 (in the tracker): markup per client, per message type?                   | A default markup (25%) for all clients, overridable per client; the same for every message type                                                   | Owner, with ReapLift              |
+| D11 (in the tracker): who issues GST invoices, per top-up or monthly?        | Issued outside the platform at launch; the Wallet page exports each client's monthly statement (top-ups, charges, refunds) as CSV                 | Owner, with ReapLift's accountant |
+| D12 (in the tracker): which currency Meta invoices ReapLift's credit line in | Rupees; if Meta invoices in dollars, `meta_rates` stores the rupee rate the super admin decides, and the markup must cover exchange-rate movement | ReapLift, from Meta during E7     |
 
 ## Current reality
 

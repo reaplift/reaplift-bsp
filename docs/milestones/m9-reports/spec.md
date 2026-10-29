@@ -54,6 +54,7 @@ Out: log cleanup and archiving after 180 days (phase 2 in the HLD; D8 sets the r
 | 9.5  | Meta cost per message                    | M6 rates   | 9.1 to 9.4               |
 | 9.6  | Super admin cost, margin and errors view | 9.5        | 9.7                      |
 | 9.7  | Monthly check against Meta's invoice     | 9.5, E7    | 9.6                      |
+| 9.8  | Credit line usage                        | 9.5, E7    | 9.6, 9.7                 |
 
 ### 9.1 Daily stats and refresh
 
@@ -98,15 +99,23 @@ Out: log cleanup and archiving after 180 days (phase 2 in the HLD; D8 sets the r
 - Tests: a planted wrong rate produces a mismatch.
 - Acceptance: step 6 of the worked example.
 
+### 9.8 Credit line usage
+
+- One credit line pays for every client, so if it runs out, every client stops at once. The super admin enters the credit limit Meta grants; the view shows this month's recorded Meta cost against it.
+- Event `billing.credit_line_usage` notifies super admins at 80% and again at 95%, once each per month.
+- Clients' prepaid balances protect ReapLift from unpaid bills, but not from hitting Meta's limit, which is why this alert exists.
+- Tests: crossing 80% notifies once.
+- Acceptance: a planted month-to-date cost at 81% of the limit sends the alert.
+
 ## Data and API
 
-Migration: `daily_stats`, `meta_invoices` (month, total, entered by, per-account figures if available). `meta_rates` belongs to M6.
+Migration: `daily_stats`, `meta_invoices` (month, total, entered by, per-account figures if available), and a setting for the credit limit. `meta_rates` belongs to M6.
 
 Routes: `GET /api/clients/:clientId/dashboard`, `GET /api/clients/:clientId/reports/monthly?month=`, `GET /api/clients/:clientId/campaigns/:id/report` (CSV or Excel), `GET /api/admin/meta-view?month=`, `GET`/`POST /api/admin/meta-invoices`.
 
 ## Notifications
 
-Only `billing.meta_invoice_mismatch` to super admins (task 9.7). Reports are made when someone asks for them, so they send nothing.
+Only `billing.meta_invoice_mismatch` (task 9.7) and `billing.credit_line_usage` (task 9.8), both to super admins. Reports are made when someone asks for them, so they send nothing.
 
 ## Open questions
 
