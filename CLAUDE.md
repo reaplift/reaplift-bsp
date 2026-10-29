@@ -35,7 +35,7 @@ pnpm workspaces, TypeScript, Node 22. `apps/server`: Fastify, Zod, Kysely, pg, p
 - One server program; `MODE` (`api | worker | receiver | scheduler | migrate`) picks what runs. Add new behaviour as a mode or a module under `apps/server/src/modules/`, not as a separate app.
 - Migrations: new numbered file only, never edit a merged one; only add things (tables, nullable columns, indexes).
 - Money is whole paise in `bigint`. Phone numbers are digits with country code, no plus (`9198xxxxxxxx`).
-- Every table carries `client_id` and every query filters by it.
+- Every table carries `client_id` and every query filters by it. The only exceptions are the platform tables listed under "Tables without a client" in `docs/data-model-and-api.md`.
 - Every task ships with its tests from the low-level design. Run lint, typecheck and tests before committing.
 - Work on a branch per task (`m1-1.2-sessions`), open a pull request into `main` (the release branch), never push to `main` directly. CI must be green.
 - Never commit secrets. Settings go in `.env` (ignored); add every new setting name to `.env.example` with a blank value.

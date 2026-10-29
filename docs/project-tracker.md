@@ -114,7 +114,6 @@ Each has a default, so work does not stop; the default is built unless the owner
 | D11 | Who issues GST invoices to clients, and per top-up or monthly? No milestone builds invoices today.                                                                                                                                                               | Outside the platform at launch; M6's Wallet page exports each client's monthly statement as CSV for ReapLift's accountant                                     | M6 task 6.4                | [M6](milestones/m6-wallet/spec.md)            |
 | D12 | In which currency does Meta invoice ReapLift's credit line? If dollars, the markup also has to cover exchange-rate changes. Ask Meta during E7.                                                                                                                  | Rupees                                                                                                                                                        | M6 task 6.1                | [M6](milestones/m6-wallet/spec.md)            |
 | D13 | Do ReapLift's clients own their WhatsApp accounts on Dovesoft, or does Dovesoft own them? If clients own them, they may bring the whole account to ReapLift through Embedded Signup (keeping templates and quality) instead of moving each number. Ask Dovesoft. | Assume numbers are moved and templates re-submitted                                                                                                           | M5 task 5.2, M11 task 11.2 | [M11](milestones/m11-pilot/spec.md)           |
-| D14 | CLAUDE.md says every table carries `client_id`, but a few platform tables cannot (for example Meta's rates and raw webhooks). Approve adding one sentence to CLAUDE.md pointing to the exception list in data-model-and-api.md.                                  | Approve                                                                                                                                                       | none (documentation)       | [Data model](data-model-and-api.md)           |
 
 ## Decision log
 
@@ -123,6 +122,7 @@ Answered questions move here with their date, and the spec is updated in the sam
 ### 29 October 2026
 
 - **Business model and Meta partner route (answers D1):** ReapLift becomes a white-label WhatsApp provider like Dovesoft. It becomes a Meta **Solution Partner** with its **own credit line** (E7): Meta bills ReapLift, and ReapLift bills clients from their prepaid wallets. Clients own their WhatsApp accounts, connect them through Embedded Signup, and ReapLift shares its credit line with each account (M5). Prices are Meta's rate plus a markup of about 20 to 25%, which covers staff, servers and margin (M6; details in D10). ReapLift's clients stay on Dovesoft until the platform is built and E7 is done, so no interim billing path is needed. This replaces the design's launch plan of holding client numbers under ReapLift's own Meta business and paying by card (HLD section 2 updated).
+- **Tenant-column exceptions (D14):** approved. CLAUDE.md now points to the list of platform tables without a client in data-model-and-api.md.
 - **Resellers (D9):** letting other agencies resell ReapLift under their own brand is a long-term future use case, not built now. Nothing is built for it; the design only avoids choices that would block a reseller level later.
 - **Plan shape:** one milestone per flow; one spec per milestone; this tracker holds rules and status only. Milestones renumbered (old to new below).
 - **Suraj's `m4-skeleton` branch is closed without merging.** Campaign work restarts from the M7 spec. Migration `0004_lists.sql` from that branch is not used, so 0004 is free. One finding from that branch is kept as a note in the M7 spec: exceljs's streaming reader returned incomplete data on large Excel files.
@@ -213,7 +213,7 @@ If any check fails, the task is In progress or Prototype, never Done.
 - One server program; `MODE` (`api`, `worker`, `receiver`, `scheduler`, `migrate`) picks what runs. New behaviour is a module under `apps/server/src/modules/`.
 - Migrations: a new numbered file only; never edit a merged one; only add tables, nullable columns and indexes. Claim the number in the registry below first.
 - Money is whole paise in `bigint`. Phone numbers are digits with country code, no plus (`919812345678`).
-- Every table carries `client_id` and every query filters by it.
+- Every table carries `client_id` and every query filters by it, except the platform tables listed in [data-model-and-api.md](data-model-and-api.md).
 - One branch per task, named `m<milestone>-<task>-<short-name>` (for example `m1-1.2-sessions`), merged by pull request into `main`. Never push to `main`. CI must be green.
 - No secrets in git. Every new setting goes in `.env.example` with a blank value.
 - Run lint, typecheck and tests before committing.

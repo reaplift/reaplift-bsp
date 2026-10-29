@@ -217,7 +217,7 @@ Routes in today's prototype that go away: `POST /api/auth/login` with a `role` f
 Checked against the credit-line model and the merged migrations. None of these stops work; each is resolved in a spec or noted here.
 
 1. **Templates are stored per phone number, but Meta keeps them per WhatsApp account.** `templates.wa_account_id` points to a number, and one WhatsApp account can hold several numbers. At launch each client has one number (decided), so this is harmless. If a client ever has two numbers in one account, add a nullable `templates.waba_id` and look templates up by it. Not needed now.
-2. **The tenant-column rule needs its exceptions written down.** CLAUDE.md says every table carries `client_id`; the platform tables above cannot. The list above is the agreed exception; the owner should approve adding one sentence to CLAUDE.md pointing here.
+2. **The tenant-column rule needs its exceptions written down.** CLAUDE.md says every table carries `client_id`; the platform tables above cannot. The list above is the agreed exception; approved on 29 October 2026 (D14), and CLAUDE.md points here.
 3. **`bigint` comes back as text** from `pg`. Without the type parser in the conventions, `balance_after_paise + amount_paise` would join two strings. Added to the conventions, assigned to M4 task 4.3.
 4. **`sessions` (0003) is unused** and stays that way; `auth_sessions` replaces it.
 5. **`wa_accounts` needs four nullable columns for Embedded Signup and credit sharing** (M5). Added above; the existing `meta_payer` check already has `reaplift_credit_line`.
