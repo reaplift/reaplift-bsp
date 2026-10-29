@@ -147,7 +147,7 @@ Out:
 
 ### 7.5 Confirm: charge and queue in one step
 
-- One transaction: lock the client's wallet (M6's `applyLedgerEntry`), run every check again, compute the charge, refuse with 402 `INSUFFICIENT_BALANCE` (amount short) if the balance is not enough, otherwise write one ledger charge row for the campaign, insert `queued` rows for will-send and `blocked` rows with `block_reason` for blocked numbers, set the campaign `running` with `confirmed_by` and `confirmed_at`.
+- One transaction: lock the client's wallet (M6's `applyLedgerEntry`), run every check again, compute the charge, refuse with 402 `INSUFFICIENT_BALANCE` (amount short) if the balance is not enough, otherwise write one ledger charge row for the campaign, insert `queued` rows for will-send and `blocked` rows with `block_reason` for blocked numbers, each with `client_price_paise` set to the price it was charged (so refunds and reconciliation never depend on a later price list), set the campaign `running` with `confirmed_by` and `confirmed_at`.
 - Confirming twice charges and queues once (the second call sees status `running` and answers 409 `ALREADY_CONFIRMED`).
 - A suspended client or a paused account refuses confirm with 409 and the reason.
 - Who: client users, assigned staff, super admin (decided).

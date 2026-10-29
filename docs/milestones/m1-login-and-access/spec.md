@@ -95,7 +95,7 @@ Out:
 
 ### 1.0 Restore green CI
 
-- Fix the three lint errors in existing code (`app.ts` line 111 `any`, line 223 unused `received`; `apps/web/src/App.tsx` line 2 unused `AppPageId`) and the typecheck error in `lib/auth.ts` line 25.
+- Fix the three lint errors in existing code (`app.ts` line 111 `any`, line 223 unused `received`; `apps/web/src/App.tsx` line 2 unused `AppPageId`) and the typecheck error in `lib/auth.ts` line 25. Remove the demo route `GET /api/ping` (or add it to the public list), so M1's route-walking test passes.
 - Acceptance: `pnpm lint`, `pnpm typecheck` and `pnpm test` pass on `main`.
 
 ### 1.1 Users, password hashing, `create-user`

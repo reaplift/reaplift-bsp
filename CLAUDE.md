@@ -7,6 +7,7 @@ Guidance for Claude Code working in this repository.
 ReapLift's own WhatsApp Business platform (BSP), talking directly to Meta's WhatsApp Cloud API: template campaigns, prepaid client wallets in rupees, delivery reports. Read these before starting any task:
 
 - `docs/project-tracker.md`: overall status, the roadmap, the dependency rule, owner decisions, and the rules every milestone follows. Source of truth for what is active.
+- `docs/data-model-and-api.md`: every table and route, existing and planned, and the conventions they follow.
 - `docs/milestones/<milestone>/spec.md`: the spec for the milestone you are working on (flow diagram, worked example, tasks, tests, demo).
 - `docs/requirements-and-hld.md`: requirements and high-level design. Section 12 lists open items, which are NOT decided. Where the tracker's decision log differs, the tracker wins.
 - `docs/low-level-design.md`: technical reference. Its milestone numbers are the old ones (before 29 October 2026); the tracker has the old-to-new table.

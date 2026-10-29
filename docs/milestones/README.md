@@ -1,6 +1,6 @@
 # Milestones
 
-Each milestone is one flow and has its own folder with a `spec.md`. Status, order and the rules every milestone follows are in [project-tracker.md](../project-tracker.md).
+Each milestone is one flow and has its own folder with a `spec.md`. Status, order and the rules every milestone follows are in [project-tracker.md](../project-tracker.md). Every table and route is listed in [data-model-and-api.md](../data-model-and-api.md).
 
 | Milestone | Spec                                                               |
 | --------- | ------------------------------------------------------------------ |

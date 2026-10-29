@@ -172,7 +172,7 @@ Local validation failures are shown on screen at once and are not notified.
 
 ## Data and API
 
-- Tables: `wa_accounts`, `templates` (0002); new nullable columns on `templates` (5.3); a `settings` row for the promotional word list (claim a migration number if a table is needed).
+- Tables: `wa_accounts`, `templates` (0002); new nullable columns on `wa_accounts` (5.1, 5.2): `onboarded_via`, `credit_share_ref`, `connected_by`, `connected_at`; new nullable columns on `templates` (5.3); a `settings` row for the promotional word list (claim a migration number if a table is needed).
 - Routes (write each request, response and error in `backend-api.md` before coding):
   - `POST /api/admin/clients/:id/wa-accounts` (5.1), `POST /api/admin/wa-accounts/:id/resume` (5.5)
   - `GET /api/clients/:clientId/wa-accounts`

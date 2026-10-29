@@ -1,6 +1,6 @@
 # Project tracker
 
-This is the one place for overall status, the order of work, the rules everyone follows, and the decisions the owner has made. Each milestone's full detail (flow diagram, worked example, tasks, tests, data, open questions) lives in its own spec under [docs/milestones/](milestones/README.md). Read this file first, then the spec for the milestone you are working on.
+This is the one place for overall status, the order of work, the rules everyone follows, and the decisions the owner has made. Each milestone's full detail (flow diagram, worked example, tasks, tests, data, open questions) lives in its own spec under [docs/milestones/](milestones/README.md). Every table and route, existing and planned, is listed in [data-model-and-api.md](data-model-and-api.md). Read this file first, then the spec for the milestone you are working on.
 
 Last updated: 29 October 2026.
 
@@ -114,6 +114,7 @@ Each has a default, so work does not stop; the default is built unless the owner
 | D11 | Who issues GST invoices to clients, and per top-up or monthly? No milestone builds invoices today.                                                                                                                                                               | Outside the platform at launch; M6's Wallet page exports each client's monthly statement as CSV for ReapLift's accountant                                     | M6 task 6.4                | [M6](milestones/m6-wallet/spec.md)            |
 | D12 | In which currency does Meta invoice ReapLift's credit line? If dollars, the markup also has to cover exchange-rate changes. Ask Meta during E7.                                                                                                                  | Rupees                                                                                                                                                        | M6 task 6.1                | [M6](milestones/m6-wallet/spec.md)            |
 | D13 | Do ReapLift's clients own their WhatsApp accounts on Dovesoft, or does Dovesoft own them? If clients own them, they may bring the whole account to ReapLift through Embedded Signup (keeping templates and quality) instead of moving each number. Ask Dovesoft. | Assume numbers are moved and templates re-submitted                                                                                                           | M5 task 5.2, M11 task 11.2 | [M11](milestones/m11-pilot/spec.md)           |
+| D14 | CLAUDE.md says every table carries `client_id`, but a few platform tables cannot (for example Meta's rates and raw webhooks). Approve adding one sentence to CLAUDE.md pointing to the exception list in data-model-and-api.md.                                  | Approve                                                                                                                                                       | none (documentation)       | [Data model](data-model-and-api.md)           |
 
 ## Decision log
 
