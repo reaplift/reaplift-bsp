@@ -4,23 +4,21 @@
 - Owner: Unassigned
 - Branch prefix: `m5-`
 - Starts after: M3 (clients and logins), M4 (send engine and Meta client)
-- External prerequisites: **D1** (Meta partner and billing model) must be answered before this milestone starts, because it decides how a client's number is connected. E3 (Business Verification and App Review) before any real client's number is connected.
+- External prerequisites: E3 (Business Verification and App Review) before Embedded Signup works for anyone outside ReapLift. E7 (Solution Partner status and credit line) before credit-line sharing can be accepted against real Meta; everything is built and tested against the fake Meta server first.
 
 ## Outcome
 
 A client's own WhatsApp number is connected to its workspace. The client (or its assigned staff) writes a template; ReapLift checks it against known rules at once, and only a template that passes goes to Meta, in the background. The template then shows Approved, or Rejected with Meta's reason and a plain explanation of how to fix it. The client fixes it and submits again. If the number's quality drops to Low, the number is paused and everyone concerned is told.
 
-## Why D1 must be answered first
+## How client numbers are connected and paid for (decided 29 October 2026)
 
-How a number gets connected depends on ReapLift's Meta partner type (see the tracker's "Meta rules checked"):
+ReapLift works as a white-label provider, as Dovesoft does today:
 
-| If ReapLift is...                                                          | The client's number is connected by...                                                                | Who pays Meta                         |
-| -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------- |
-| A Tech Provider                                                            | The client clicking Meta's Embedded Signup button in Settings (task 5.2); the client owns its account | The client, with its own card at Meta |
-| A Solution Partner                                                         | Embedded Signup, and ReapLift shares its credit line with the client's account                        | ReapLift, through the credit line     |
-| Holding client numbers in its own Meta business (the design's launch plan) | The super admin entering IDs and token (task 5.1)                                                     | ReapLift's card                       |
-
-The third row is what the design assumed. The Meta pages checked on 29 October 2026 do not confirm it is allowed. Task 5.1 is needed in every case (ReapLift's own test number, and support use); task 5.2 becomes the main path if the answer is row one or two.
+- Each client owns its WhatsApp account and connects it itself through Meta's **Embedded Signup** in Settings (task 5.2). Staff or the super admin can sit with the client and do it for them.
+- During that onboarding, ReapLift **shares its credit line** with the client's account. Meta then bills ReapLift for the client's messages, and ReapLift charges the client's prepaid wallet at Meta's rate plus markup (M6).
+- `wa_accounts.meta_payer` is `reaplift_credit_line` for client accounts. `reaplift_card` is used only for ReapLift's own test numbers.
+- Manual connection by IDs and token (task 5.1) is kept for ReapLift's own test numbers and for support; it is not how clients are onboarded.
+- Until E7 is done, only test businesses are onboarded (paying with their own card at Meta). Real clients stay on Dovesoft until then.
 
 ## Flow diagrams
 
@@ -28,12 +26,14 @@ Connecting a number:
 
 ```mermaid
 flowchart TD
-  A["Number connection"] --> B{"Path decided by D1"}
-  B -- "manual (5.1)" --> C["Super admin enters WhatsApp account ID,<br/>phone number ID, token"]
-  B -- "Embedded Signup (5.2)" --> D["Client clicks 'Connect WhatsApp' in Settings,<br/>completes Meta's pop-up"]
+  A["Number connection"] --> B{"Whose number?"}
+  B -- "ReapLift test number (5.1)" --> C["Super admin enters WhatsApp account ID,<br/>phone number ID, token"]
+  B -- "Client (5.2)" --> D["Client clicks 'Connect WhatsApp' in Settings,<br/>completes Meta's pop-up"]
   D --> E["Server exchanges the code for a token,<br/>registers the number, subscribes webhooks"]
+  E --> E2["Share ReapLift's credit line<br/>with the client's account"]
+  E2 -- "fails" --> G
   C --> F{"Test call to Meta succeeds?"}
-  E --> F
+  E2 -- "shared" --> F
   F -- "no" --> G["Error shown, nothing saved"]
   F -- "yes" --> H["wa_accounts row, token encrypted"]
   H --> I["Templates copied from Meta (M4 4.6)"]
@@ -66,7 +66,7 @@ Only `APPROVED` templates can be picked in Push Campaign (M7). An approved templ
 
 ## Worked example
 
-1. Northwind's number `91 98200 11223` is connected (by whichever path D1 decides). The account box shows display name "Northwind Labs", quality Green, limit 1K a day. Northwind's existing templates from Meta are copied in.
+1. Asha (Northwind) clicks Connect WhatsApp in Settings, logs in to Meta in the pop-up and picks number `91 98200 11223`. ReapLift's server registers the number and shares ReapLift's credit line with Northwind's account, so Meta will bill ReapLift. The account box shows display name "Northwind Labs", quality Green, limit 1K a day. Northwind's existing templates from Meta are copied in.
 2. Asha (client user) creates template `diwali_offer_2026`, category UTILITY, body "Hi {{1}}, flat 20% off on all orders till Sunday. Use code {{2}}." with samples "Rahul" and "DIWALI20".
 3. She clicks Submit. In under a second the page shows **Validation failed**: "Category: the body contains promotional words ('flat 20% off'). Utility templates cannot advertise. Fix: change the category to MARKETING." Nothing was sent to Meta.
 4. She changes the category to MARKETING and submits. The status shows **Submitting**, then **Pending at Meta** a few seconds later.
@@ -76,7 +76,7 @@ Only `APPROVED` templates can be picked in Push Campaign (M7). An approved templ
 
 ## Scope
 
-In: manual connection; Embedded Signup (if D1 needs it); Settings page with the account box; Templates page (list, editor, status, rejection detail); local rule checks; background submission; status by webhook and a 15-minute sync; resubmission; quality and limit tracking with pause on Low; M5's notifications.
+In: Embedded Signup with credit-line sharing; manual connection for ReapLift's own numbers; Settings page with the account box; Templates page (list, editor, status, rejection detail); local rule checks; background submission; status by webhook and a 15-minute sync; resubmission; quality and limit tracking with pause on Low; M5's notifications.
 
 Out:
 
@@ -84,14 +84,14 @@ Out:
 - the super admin's view of Meta cost and margin: [M9](../m9-reports/spec.md)
 - moving numbers from Dovesoft: [M11](../m11-pilot/spec.md)
 
-Who can do what: super admin connects numbers manually (5.1) and can do everything for any client; client users and their assigned staff create and submit templates, and run Embedded Signup if it is the path (staff can do everything the client can, decided 29 October 2026).
+Who can do what: client users and their assigned staff run Embedded Signup and create and submit templates (staff can do everything the client can, decided 29 October 2026); the super admin can do everything for any client and is the only one who connects numbers manually (5.1).
 
 ## Tasks
 
 | Task | Name                                             | Depends on                             | Can run in parallel with |
 | ---- | ------------------------------------------------ | -------------------------------------- | ------------------------ |
 | 5.1  | Manual number connection and account box         | none                                   | 5.3                      |
-| 5.2  | Embedded Signup (only if D1 needs it)            | 5.1, E3                                | 5.3, 5.4                 |
+| 5.2  | Embedded Signup and credit-line sharing          | 5.1                                    | 5.3, 5.4                 |
 | 5.3  | Template editor and local rules                  | 5.1 (a template belongs to an account) | 5.2, 5.5                 |
 | 5.4  | Background submission, status sync, resubmission | 5.3                                    | 5.5                      |
 | 5.5  | Quality and limit tracking, pause on Low         | 5.1                                    | 5.3, 5.4                 |
@@ -100,17 +100,20 @@ Who can do what: super admin connects numbers manually (5.1) and can do everythi
 ### 5.1 Manual number connection and account box
 
 - Super admin form on the Admin client view: WhatsApp account ID, phone number ID, token. The server calls Meta once to check them and reads the display number and name.
-- Token stored encrypted (M4's `encryptSecret`). `wa_accounts.meta_payer` is set per D1's answer.
+- Token stored encrypted (M4's `encryptSecret`). `wa_accounts.meta_payer` is `reaplift_card` (ReapLift's own numbers only).
 - The account box (number, display name, quality, limit, status) appears in Admin and on the client's Settings page and Dashboard.
 - Tests: bad IDs or token are refused after the fake Meta server rejects them; the token is never returned by any route.
 - Acceptance: a second test number is connected from the panel.
 
-### 5.2 Embedded Signup (only if D1 needs it)
+### 5.2 Embedded Signup and credit-line sharing
 
-- "Connect WhatsApp" button on Settings opens Meta's Embedded Signup. The server receives the WhatsApp account ID, phone number ID and a code; exchanges the code for a business token; registers the number; subscribes ReapLift's app to the account's webhooks.
-- If ReapLift is a Solution Partner, share the credit line with the new account as part of onboarding.
-- Tests: the exchange, registration and subscription calls against the fake Meta server.
-- Acceptance: a client connects its own number from Settings with no help from ReapLift.
+- 5.2.1 "Connect WhatsApp" button on Settings opens Meta's Embedded Signup. The server receives the WhatsApp account ID, phone number ID and a code; exchanges the code for a business token (stored encrypted); registers the number; subscribes ReapLift's app to the account's webhooks.
+- 5.2.2 Share ReapLift's credit line with the client's account, using the system user token as Meta's docs describe for Solution Partners. Save what Meta returns for the sharing on the account (nullable column) and set `meta_payer = 'reaplift_credit_line'`.
+- 5.2.3 If sharing fails, the account is saved as `paused` with reason "credit line not shared", so nothing can be sent at ReapLift's cost or the client's by mistake; the super admin sees it and retries.
+- 5.2.4 If Meta later reports a payment problem on the account (account-level error 131042 in M4), the account is paused and the super admin is told.
+- Check every Meta call and permission (including the billing permission for credit sharing) against Meta's current Embedded Signup and Solution Partner docs while coding, and record the date.
+- Tests: the exchange, registration, subscription and credit-sharing calls against the fake Meta server, including a sharing failure.
+- Acceptance: on the fake server, a client connects its own number from Settings with no help from ReapLift and the account shows "Paid by ReapLift credit line". Against real Meta this needs E3, and credit-line sharing needs E7.
 
 ### 5.3 Template editor and local rules
 
@@ -183,9 +186,7 @@ Task 5.6.
 
 ## Open questions
 
-| Question            | Default | Decides          |
-| ------------------- | ------- | ---------------- |
-| D1 (in the tracker) | none    | Owner, with Meta |
+None. The connection and billing model was decided on 29 October 2026.
 
 ## Current reality
 
@@ -193,7 +194,7 @@ Tables `wa_accounts` and `templates` exist from 0002. Nothing else.
 
 ## Demo (milestone acceptance)
 
-1. Connect a second test number from the panel (5.1, and 5.2 if D1 needs it).
+1. Connect a second ReapLift test number manually (5.1), and onboard a test business through Embedded Signup (5.2); with E7, show the credit line shared with it.
 2. Run the worked example's steps 2 to 6 with ReapLift's real test number: one local failure, one real Meta submission, and the approval shown in the panel.
 3. On the fake server, run step 7 (quality drop pauses the account) and the super admin's resume.
 4. Record screens, rows and notifications in `e2e.md`.

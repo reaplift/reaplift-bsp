@@ -44,7 +44,7 @@ In: the `notifications` table, `notify()`, recipient rules, the event catalogue,
 
 Out:
 
-- which events exist and who gets them: each milestone's notification task (M3 3.6, M5 5.6, M6 6.6, M7 7.9, M8 8.5, M11 11.1)
+- which events exist and who gets them: each milestone's notification task (M3 3.6, M5 5.6, M6 6.6, M7 7.9, M8 8.5, M9 9.7, M11 11.1)
 - the panel's notification list and the super admin's delivery log screen: M3 task 3.7, because they need logins (M1)
 - WhatsApp notifications from ReapLift's own number: later (decided 29 October 2026)
 - letting users switch off notifications: not at launch

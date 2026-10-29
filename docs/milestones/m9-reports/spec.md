@@ -4,7 +4,7 @@
 - Owner: Unassigned
 - Branch prefix: `m9-`
 - Starts after: M7
-- External prerequisites: D1 for the super admin's margin view (what Meta's cost is depends on who pays Meta)
+- External prerequisites: E7 for task 9.7 (there is no Meta credit-line invoice to check against until ReapLift has its credit line)
 
 ## Outcome
 
@@ -22,7 +22,8 @@ flowchart TD
   G --> I["Per-number report for a campaign<br/>(Dovesoft Reaplift_record1 columns)"]
   H --> J["Download CSV or Excel"]
   I --> J
-  K["Super admin enters Meta rates"] --> L["Meta cost saved on each<br/>delivered, billable message"]
+  K["Meta rates (entered in M6)"] --> L["Meta cost saved on each<br/>delivered, billable message"]
+  L --> R["Monthly: our Meta cost vs<br/>Meta's credit-line invoice"]
   L --> M["Super admin view: Meta cost, billed,<br/>margin per client, errors by code"]
   N{"Viewer is client or staff?"} -- "yes" --> O["Meta cost and margin never returned"]
 ```
@@ -32,12 +33,13 @@ flowchart TD
 1. On 1 November, Asha opens Northwind's Dashboard. "This month" shows 0; "Last month" shows 11,214 messages and ₹10,653.30 spent; "Yesterday" (31 October) shows the Diwali wave 3 numbers. The chart shows one bar per day for the last 15 days.
 2. She opens Reports, chooses October, and downloads the month-wise summary. Row 1: Sr No. 1, Month October, Year 2026, Campaign Name "Diwali 2026 wave 1", Total Count 1,000, Failed 12, Blocked 20, Delivered 902, Read 610, and so on. The file opens in Excel with exactly Dovesoft's headings.
 3. She downloads the per-number report for "Diwali 2026 wave 1": 1,000 rows with `mobile_no`, `status`, `reason`, and times as `dd/mm/yyyy hh:mm:ss`.
-4. Ravi enters Meta's marketing rate for India (from Meta's rate card, as the super admin reads it). The super admin view shows, for Northwind in October: billed ₹10,653.30, Meta cost (delivered billable messages × rate), and the margin. Asha calling the same route gets 403.
+4. Using the Meta rates Ravi entered in M6, the super admin view shows, for Northwind in October: billed ₹10,653.30, Meta cost (delivered billable messages × rate), and the margin. Asha calling the same route gets 403.
 5. A count of `messages` rows for October equals every figure on the dashboard and in the downloads.
+6. Meta's invoice for ReapLift's credit line arrives for October. Ravi enters its total; the check shows our recorded Meta cost for October is within 0.5% of it, and lists the accounts that differ most.
 
 ## Scope
 
-In: `daily_stats` and its refresh, dashboard tiles and chart, account box, month-wise and per-number reports with downloads, Meta rates and cost per message, the super admin's cost, margin and Meta error view.
+In: `daily_stats` and its refresh, dashboard tiles and chart, account box, month-wise and per-number reports with downloads, Meta cost per message, the super admin's cost, margin and Meta error view, and the monthly check against Meta's credit-line invoice.
 
 Out: log cleanup and archiving after 180 days (phase 2 in the HLD; D8 sets the retention); emailed month-end reports (not planned).
 
@@ -49,8 +51,9 @@ Out: log cleanup and archiving after 180 days (phase 2 in the HLD; D8 sets the r
 | 9.2  | Dashboard tiles, chart, account box      | 9.1        | 9.3, 9.4                 |
 | 9.3  | Month-wise campaign report               | none       | all                      |
 | 9.4  | Per-number campaign report               | none       | all                      |
-| 9.5  | Meta rates and cost per message          | D1         | 9.1 to 9.4               |
-| 9.6  | Super admin cost, margin and errors view | 9.5        | none                     |
+| 9.5  | Meta cost per message                    | M6 rates   | 9.1 to 9.4               |
+| 9.6  | Super admin cost, margin and errors view | 9.5        | 9.7                      |
+| 9.7  | Monthly check against Meta's invoice     | 9.5, E7    | 9.6                      |
 
 ### 9.1 Daily stats and refresh
 
@@ -76,11 +79,9 @@ Out: log cleanup and archiving after 180 days (phase 2 in the HLD; D8 sets the r
 - Tests: a 200,000-row export within memory limits.
 - Acceptance: step 3.
 
-### 9.5 Meta rates and cost per message
+### 9.5 Meta cost per message
 
-- `meta_rates` (category, country calling code, rate in paise, valid from), entered by the super admin from Meta's published rate card.
-- Meta cost saved on each delivered, billable message (`messages.meta_cost_paise`, from 0002) using the rate valid when it was delivered and the `pricing.category` from Meta's webhook.
-- If D1 means clients pay Meta directly, this records an estimate for information only.
+- Meta cost saved on each delivered, billable message (`messages.meta_cost_paise`, from 0002), using M6's `meta_rates` valid when it was delivered and the `pricing.category` from Meta's webhook. Meta bills ReapLift through its credit line, so this is ReapLift's real cost.
 - Tests: cost by category and date.
 - Acceptance: step 4's Meta cost equals a hand calculation.
 
@@ -90,15 +91,22 @@ Out: log cleanup and archiving after 180 days (phase 2 in the HLD; D8 sets the r
 - Tests: client and staff get 403 on every route here.
 - Acceptance: step 4.
 
+### 9.7 Monthly check against Meta's invoice
+
+- The super admin enters the total of Meta's monthly credit-line invoice (and, if Meta provides per-account figures, those too). The check compares it with the Meta cost recorded in 9.5 and lists the largest differences.
+- A difference above 0.5% notifies super admins (event `billing.meta_invoice_mismatch`, through M2), because it means a rate in `meta_rates` is wrong or messages are being billed in a category we did not expect.
+- Tests: a planted wrong rate produces a mismatch.
+- Acceptance: step 6 of the worked example.
+
 ## Data and API
 
-Migration: `daily_stats`, `meta_rates`.
+Migration: `daily_stats`, `meta_invoices` (month, total, entered by, per-account figures if available). `meta_rates` belongs to M6.
 
-Routes: `GET /api/clients/:clientId/dashboard`, `GET /api/clients/:clientId/reports/monthly?month=`, `GET /api/clients/:clientId/campaigns/:id/report` (CSV or Excel), `GET`/`PUT /api/admin/meta-rates`, `GET /api/admin/meta-view?month=`.
+Routes: `GET /api/clients/:clientId/dashboard`, `GET /api/clients/:clientId/reports/monthly?month=`, `GET /api/clients/:clientId/campaigns/:id/report` (CSV or Excel), `GET /api/admin/meta-view?month=`, `GET`/`POST /api/admin/meta-invoices`.
 
 ## Notifications
 
-None. Reports are made when someone asks for them.
+Only `billing.meta_invoice_mismatch` to super admins (task 9.7). Reports are made when someone asks for them, so they send nothing.
 
 ## Open questions
 

@@ -4,7 +4,7 @@
 - Owner: ReapLift leads; engineering supports
 - Branch prefix: `m11-`
 - Starts after: M8, M9, M10
-- External prerequisites: D1 answered, E1 to E6 done
+- External prerequisites: E1 to E7 done (E7: ReapLift is a Solution Partner with its credit line)
 
 ## Outcome
 
@@ -31,7 +31,7 @@ flowchart TD
 ## Worked example
 
 1. In a drill, the team stops the worker, fills a test disk to 85%, and revokes a test token. Within 5 minutes Ravi gets the "sends stuck", "disk over 80%" and "account paused" alerts.
-2. Northwind is chosen as the pilot. Dovesoft releases its number; ReapLift registers it following the runbook (two-step PIN, registration under ReapLift's setup as D1 decided). Northwind's 6 templates are re-submitted and approved.
+2. Northwind is chosen as the pilot. Dovesoft releases its number; Northwind connects it through Embedded Signup following the runbook (two-step PIN, ReapLift's credit line shared with Northwind's account). Northwind's 6 templates are re-submitted and approved.
 3. Ravi sets Northwind's prices, tops up ₹20,000, and creates Asha's login and Meera's assignment.
 4. Northwind's first campaign of 5,000 messages delivers 94% and is read by 61%, against 93% and 60% for a similar Dovesoft campaign last month.
 5. After two weeks with no fallback and clean nightly checks, the owner signs off.
@@ -41,7 +41,7 @@ flowchart TD
 | Task | Name                                   | Depends on |
 | ---- | -------------------------------------- | ---------- |
 | 11.1 | Operational alerts and readiness drill | none       |
-| 11.2 | Number-move runbook from Dovesoft      | D1         |
+| 11.2 | Number-move runbook from Dovesoft      | E7         |
 | 11.3 | Pilot client setup                     | 11.2       |
 | 11.4 | First campaign and comparison          | 11.3       |
 | 11.5 | Two weeks of use and go or no-go       | 11.4       |
@@ -53,7 +53,7 @@ flowchart TD
 
 ### 11.2 Number-move runbook from Dovesoft
 
-- Written runbook: Dovesoft releases the number, two-step PIN, registration under ReapLift's setup, templates re-submitted (assume templates do not carry over).
+- Written runbook: Dovesoft releases the number, two-step PIN, the client connects it through Embedded Signup with ReapLift's credit line shared (M5 5.2), templates re-submitted (assume templates do not carry over). Agree Dovesoft's notice period and handover terms first.
 - Acceptance: followed start to end on one low-risk number without surprises.
 
 ### 11.3 Pilot client setup

@@ -4,18 +4,18 @@
 - Owner: Unassigned
 - Branch prefix: `m6-`
 - Starts after: M3 (clients and logins)
-- External prerequisites: none. D1 changes what the price covers (Meta's cost plus margin, or ReapLift's fee only if clients pay Meta themselves), not how the wallet works.
+- External prerequisites: none. D10 (markup rules) has a default, so work can start.
 
 ## Outcome
 
-The super admin sets each client's price per message type and tops up its prepaid wallet in rupees. The client, its staff and the super admin see the balance and every movement as an unchangeable ledger row. When the balance falls below the client's alert level, the right people are told. A nightly check proves the ledger and balances agree. Charging campaigns and refunding failures use this wallet in [M7](../m7-campaigns/spec.md).
+ReapLift pays Meta through its own credit line and charges clients Meta's rate plus a markup (decided 29 October 2026). The super admin enters Meta's rates, sets the markup (a default for everyone, overridable per client), and tops up each client's prepaid wallet in rupees. Because Meta bills ReapLift whether or not a client pays, the prepaid wallet is what protects ReapLift's credit line. The client, its staff and the super admin see the balance and every movement as an unchangeable ledger row. When the balance falls below the client's alert level, the right people are told. A nightly check proves the ledger and balances agree. Charging campaigns and refunding failures use this wallet in [M7](../m7-campaigns/spec.md).
 
 ## Flow diagram
 
 ```mermaid
 flowchart TD
-  A["Super admin opens a client's Wallet"] --> B["Sets prices in paise:<br/>marketing, utility, authentication"]
-  B --> C["price_lists row (history kept)<br/>+ audit"]
+  A["Super admin opens a client's Wallet"] --> B["Enters Meta rates; sets markup %<br/>(default, or per client)"]
+  B --> C["Price = Meta rate + markup,<br/>rounded up to whole paise (history kept) + audit"]
   A --> D["Top-up: amount + note<br/>(e.g. bank reference)"]
   D --> E["Lock the client's wallet,<br/>insert ledger row with balance after"]
   E --> F["notify wallet.topped_up"]
@@ -32,7 +32,8 @@ flowchart TD
 
 ## Worked example
 
-1. Ravi opens Northwind's wallet and sets prices: marketing 95 paise (₹0.95), utility 20 paise, authentication 20 paise. He sets the low-balance alert to ₹500.
+1. Ravi enters Meta's India rates from Meta's rate card (example figures, not real ones): marketing 86.31 paise, utility 11.50 paise, authentication 11.50 paise. The default markup is 25%; Northwind has negotiated 20%. Northwind's prices become: marketing 86.31 × 1.20 = 103.57, rounded up to **104 paise**; utility and authentication 11.50 × 1.20 = 13.80, rounded up to **14 paise**. Asha sees these prices; she never sees Meta's rate or the markup. Ravi sets the low-balance alert to ₹500.
+   - When Meta changes a rate, Ravi adds the new rate with its start date, and prices for campaigns confirmed after that date follow automatically.
 2. Ravi tops up ₹10,000 with note "NEFT UTR 4471". The ledger shows one row: +₹10,000.00, balance after ₹10,000.00, by Ravi, with the note. Asha (Northwind) gets an email and sees the same row on her Wallet page.
 3. Ravi mistakenly tops up ₹1,000 twice. He cannot edit or delete the second row. He adds an adjustment of −₹1,000 with note "duplicate top-up 29 Oct". The ledger now has four rows and the balance is ₹11,000.00.
 4. To test the alert, Ravi adds an adjustment of −₹10,600 (note "alert test"). The balance is ₹400, below ₹500, so Asha, Meera and Ravi are told once. A further −₹50 adjustment does not alert again. A top-up back above ₹500 re-arms the alert.
@@ -43,12 +44,13 @@ M7 then charges a campaign at confirm and refunds Meta failures. With a ₹100 b
 
 ## Scope
 
-In: price lists per client, charging switches (HLD section 5), the append-only ledger, top-ups and adjustments by the super admin, the Wallet page, the Admin balance box, the low-balance alert, the nightly ledger check, M6's notifications.
+In: Meta rates, markup (default and per client), fixed prices for special deals, price lists per client, charging switches (HLD section 5), the append-only ledger, top-ups and adjustments by the super admin, the Wallet page, the Admin balance box, the low-balance alert, the nightly ledger check, M6's notifications.
 
 Out:
 
 - charging at confirm and refunding failures: M7 (it uses this ledger)
-- Meta's cost per message and the margin view: [M9](../m9-reports/spec.md)
+- recording Meta's cost on each message and the margin view: [M9](../m9-reports/spec.md) (it reads M6's `meta_rates`)
+- resellers (other agencies selling ReapLift under their own brand): a long-term future use case, not built now (decided 29 October 2026)
 - online payment by the client: later; top-ups are manual at launch
 
 ## Tasks
@@ -64,9 +66,12 @@ Out:
 
 ### 6.1 Price lists and charging switches
 
-- `price_lists`: client, message category, price in paise (`bigint`), valid from. A new price is a new row; the old row stays for history. Campaigns use the price valid at confirm.
+- `meta_rates`: message category, recipient country calling code, Meta's rate, valid from. Entered by the super admin from Meta's published rate card. Meta's rates have fractions of a paisa, so the rate is stored as a whole number of hundredths of a paisa (`bigint`, for example 8631 for 86.31 paise); it is a rate, not money held, so the whole-paise rule applies to every price and ledger amount computed from it.
+- `pricing`: the default markup percentage for all clients (starting at 25%, D10), and per client either a markup override or a fixed price per category for special deals.
+- `price_lists`: the resulting price per client, category and country in whole paise (`bigint`), with valid from. Recomputed when a Meta rate or a markup changes; a new price is a new row and the old row stays for history. Price = Meta rate × (1 + markup), **rounded up** to the whole paisa. Campaigns use the price valid at confirm.
+- The client's country calling code (M3) picks the Meta rate, which matches M7's rule that audience numbers must be from the client's country.
 - `charge_policy`: one switch per outcome from HLD section 5 (blocked, sent but not delivered, delivered or read, failed at Meta), each true or false, for all clients or one client. Defaults match HLD section 5. D6 (in the tracker) adds the invalid and duplicate outcomes.
-- Tests: a client-level switch overrides the global one; a price change does not change an already-confirmed campaign's price.
+- Tests: the worked example's rounding (103.57 becomes 104); a client markup overrides the default; a fixed price overrides the markup; a new Meta rate changes prices only from its start date; a client-level switch overrides the global one; a price change does not change an already-confirmed campaign's price.
 - Acceptance: step 1 of the worked example with no code change.
 
 ### 6.2 Ledger and balance safety
@@ -113,18 +118,20 @@ Out:
 
 ## Data and API
 
-Migration (claim one number): `price_lists`, `charge_policy`, `wallet_ledger` with its trigger.
+Migration (claim one number): `meta_rates`, `pricing`, `price_lists`, `charge_policy`, `wallet_ledger` with its trigger.
 
-| Method | Route                                       | Who                                 |
-| ------ | ------------------------------------------- | ----------------------------------- |
-| GET    | `/api/clients/:clientId/wallet`             | client, assigned staff, super admin |
-| GET    | `/api/clients/:clientId/wallet/ledger`      | client, assigned staff, super admin |
-| GET    | `/api/clients/:clientId/prices`             | client, assigned staff, super admin |
-| PUT    | `/api/admin/clients/:id/prices`             | super admin                         |
-| PATCH  | `/api/admin/clients/:id/low-balance-alert`  | super admin                         |
-| POST   | `/api/admin/clients/:id/wallet/topups`      | super admin                         |
-| POST   | `/api/admin/clients/:id/wallet/adjustments` | super admin                         |
-| GET    | `/api/admin/charge-policy`, PUT same        | super admin                         |
+| Method    | Route                                                                                                 | Who                                 |
+| --------- | ----------------------------------------------------------------------------------------------------- | ----------------------------------- |
+| GET       | `/api/clients/:clientId/wallet`                                                                       | client, assigned staff, super admin |
+| GET       | `/api/clients/:clientId/wallet/ledger`                                                                | client, assigned staff, super admin |
+| GET       | `/api/clients/:clientId/prices`                                                                       | client, assigned staff, super admin |
+| PUT       | `/api/admin/clients/:id/prices`                                                                       | super admin                         |
+| PATCH     | `/api/admin/clients/:id/low-balance-alert`                                                            | super admin                         |
+| POST      | `/api/admin/clients/:id/wallet/topups`                                                                | super admin                         |
+| POST      | `/api/admin/clients/:id/wallet/adjustments`                                                           | super admin                         |
+| GET       | `/api/admin/charge-policy`, PUT same                                                                  | super admin                         |
+| GET, POST | `/api/admin/meta-rates`                                                                               | super admin                         |
+| GET, PUT  | `/api/admin/pricing` (default markup) and `/api/admin/clients/:id/pricing` (override or fixed prices) | super admin                         |
 
 Money is whole paise in `bigint` everywhere, in the database, the API and the shared types; the panel converts to rupees only for display.
 
@@ -134,9 +141,10 @@ Task 6.6.
 
 ## Open questions
 
-| Question                                                         | Default     | Decides              |
-| ---------------------------------------------------------------- | ----------- | -------------------- |
-| D6 (in the tracker): are invalid numbers and duplicates charged? | Not charged | Owner, with ReapLift |
+| Question                                                         | Default                                                                                         | Decides              |
+| ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | -------------------- |
+| D6 (in the tracker): are invalid numbers and duplicates charged? | Not charged                                                                                     | Owner, with ReapLift |
+| D10 (in the tracker): markup per client, per message type?       | A default markup (25%) for all clients, overridable per client; the same for every message type | Owner, with ReapLift |
 
 ## Current reality
 
