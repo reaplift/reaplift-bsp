@@ -1,4 +1,6 @@
-# M2 admin onboarding and client activation
+# M3 client onboarding: prototype evidence (28 October 2026)
+
+> This folder held the old "M2 admin onboarding" evidence. Milestones were renumbered on 29 October 2026; the current plan for this milestone is [spec.md](spec.md). The files below describe the in-memory prototype and will be rewritten as evidence when M3 is done.
 
 ## Business outcome
 
@@ -20,10 +22,12 @@ This milestone intentionally excludes broader future work like wallet charging, 
 ## Pages in scope
 
 ### Login
+
 - Purpose: sign in as a chosen role
 - Current status: live demo flow with valid credentials, session creation, and role-based access enforcement
 
 ### Admin
+
 - Purpose: create clients, review the client list, toggle status, and assign staff
 - Current status: authenticated admin flow is working locally through real bearer-token-protected routes
 

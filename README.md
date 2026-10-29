@@ -12,7 +12,6 @@ Current state: **milestone 0 skeleton**. The server answers `/healthz` and runs 
 Every active milestone should have a small evidence pack under [docs/milestones](docs/milestones). Each milestone folder contains the demo summary, page actions, backend API checks, DB notes, end-to-end verification, and test evidence.
 
 - [docs/milestones/README.md](docs/milestones/README.md)
-- [docs/milestones/m2-admin-onboarding/README.md](docs/milestones/m2-admin-onboarding/README.md)
 
 ## Setup
 
@@ -29,7 +28,7 @@ Run all of these from the repo root.
 
 | Command                                                            | What it does                                                          |
 | ------------------------------------------------------------------ | --------------------------------------------------------------------- |
-| `pnpm install`                                                     | Installs the monorepo dependencies                                     |
+| `pnpm install`                                                     | Installs the monorepo dependencies                                    |
 | `pnpm dev`                                                         | Runs the API and the panel with live reload                           |
 | `pnpm db:up` / `pnpm db:down`                                      | Starts / stops the local PostgreSQL container (data is kept)          |
 | `pnpm migrate`                                                     | Applies new files in `db/migrations` to the database                  |
