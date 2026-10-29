@@ -330,6 +330,42 @@ button {
   background: white;
 }
 
+.password-field {
+  position: relative;
+  display: flex;
+}
+
+.password-field input {
+  flex: 1;
+  padding-right: 48px;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.password-toggle:hover {
+  color: #1f2937;
+  background: #f1f5f9;
+}
+
+.password-toggle:focus-visible {
+  outline: 2px solid #7c3aed;
+  outline-offset: 1px;
+}
+
 .primary-button,
 .link-button {
   border: 0;
