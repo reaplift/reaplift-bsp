@@ -1,6 +1,6 @@
 # M1. Login and access
 
-- Status: In progress. Backend tasks 1.0 to 1.5 done and verified against the live server on 29 October 2026 (see `backend-api.md`, `test-evidence.md`); the panel (1.6) is on the screens track.
+- Status: In progress. Anirudh's part (1.0 to 1.5, the backend) is finished and verified against the live server on 29 October 2026 (see `backend-api.md`, `test-evidence.md`). **Everything left is Suraj's: 1.6.1, 1.6.2, then 1.7.** M1 is Done when 1.7 is.
 - Owner: Anirudh (backend, 1.0 to 1.5), Suraj (screens, 1.6)
 - Branch prefix: `m1-`
 - Starts after: M0
@@ -99,7 +99,7 @@ Out:
 
 - Fix the three lint errors in existing code (`app.ts` line 111 `any`, line 223 unused `received`; `apps/web/src/App.tsx` line 2 unused `AppPageId`) and the typecheck error in `lib/auth.ts` line 25. Remove the demo route `GET /api/ping` (or add it to the public list), so M1's route-walking test passes.
 - Acceptance: `pnpm lint`, `pnpm typecheck` and `pnpm test` pass on `main`.
-- Status: Done on 29 October 2026 (PR #7, commit `0fac2b8`), except removing `GET /api/ping`, which goes with 1.6.2 (the panel stops calling it) and 1.5.
+- Status: Done on 29 October 2026 (PR #7, commit `0fac2b8`). `GET /api/ping` was removed from the server in 1.5; the panel's call to it is removed in 1.7.
 
 ### 1.1 Users, password hashing, `create-user`
 
@@ -125,6 +125,7 @@ Out:
 ### 1.3 Lockout
 
 - 10 failed logins for one email within 15 minutes lock that login for 15 minutes, even with the right password. A successful login resets the count.
+- As built: the 15 minutes are counted from the first failure in the window, not as a rolling window, so up to 18 failures can fall close together across two windows. Accepted on 29 October 2026; a rolling window would need a table of failed attempts.
 - The response for an unknown email, a wrong password and a disabled user is the same 401 `INVALID_CREDENTIALS`, so nobody can test which emails exist. A locked account gets 423 `LOGIN_LOCKED` with the unlock time.
 - Data: nullable columns on `users`: `failed_login_count int`, `first_failed_login_at timestamptz` (when the current 15-minute window started), `locked_until timestamptz` (migration 0004).
 - Tests: the 11th attempt is locked; the lock ends after 15 minutes (fake clock); success resets the count.
@@ -175,7 +176,7 @@ The backend (1.1 to 1.5) is finished, so this can start as soon as 1.6.2 is Scre
 - Run the panel with `VITE_API_MODE=real`. The real responses are recorded in `backend-api.md`; where they differ from the contracts in `packages/shared/src/contracts/auth.ts`, change the contract and the mock to match the server.
 - Remove the panel's call to `GET /api/ping` (the route is gone) and the old prototype login code (`role` field, bearer token).
 - Evidence: `frontend.md` (a screenshot per user in the worked example) and `e2e.md` (the demo below, run in the panel).
-- Acceptance: the milestone demo passes in the real panel; M1 is Done.
+- Acceptance: the milestone demo passes in the real panel, and CI on the pull request into `main` shows the route-walking test passing (demo step 7); M1 is Done.
 
 ## Who builds what
 
