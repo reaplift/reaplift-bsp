@@ -80,7 +80,7 @@ Replaced by `auth_sessions`, because its `client_id` is `not null` and a super a
 
 ### Notifications (M2)
 
-**`notifications`** (Planned, M2)
+**`notifications`** (Exists, 0005)
 `id`, `client_id` (null for platform events), `user_id`, `email`, `event`, `entity_id`, `payload jsonb`, `channel` (`email` | `panel`), `status` (`pending` | `sent` | `failed` | `read`), `attempts`, `next_attempt_at`, `last_error`, `read_at`, `created_at`, `sent_at`; unique (`event`, `entity_id`, `email`, `channel`).
 
 ### WhatsApp accounts and templates (M4, M5)

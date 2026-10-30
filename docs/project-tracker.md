@@ -20,7 +20,7 @@ Arrows mean "must be Done before the next one starts". Milestones with no arrow 
 flowchart LR
   M0["M0 Foundation"]:::done
   M1["M1 Login and access"]:::wip
-  M2["M2 Notifications"]:::todo
+  M2["M2 Notifications"]:::wip
   M3["M3 Client onboarding"]:::wip
   M4["M4 Send engine:<br/>one message end to end"]:::wip
   M5["M5 Number connection<br/>and templates"]:::todo
@@ -61,20 +61,20 @@ Lanes that can run in parallel today: **M1** (login), **M2** (notifications), **
 
 Update your row in the same pull request that changes a task's status.
 
-| Milestone                                                                     | Flow it delivers                                                                                    | Status                                                          | Owner                              | Starts after | External prerequisites         |
-| ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- | ---------------------------------- | ------------ | ------------------------------ |
-| [M0](milestones/m0-foundation/spec.md) Foundation                             | Developer clones the repo, runs it locally, CI checks every pull request                            | Done                                                            | repo setup                         | none         | none                           |
-| [M1](milestones/m1-login-and-access/spec.md) Login and access                 | Super admin, staff and client each log in and see only what their role and clients allow            | In progress (backend finished; left: Suraj's 1.6.1, 1.6.2, 1.7) | Anirudh (backend), Suraj (screens) | M0           | none                           |
-| [M2](milestones/m2-notifications/spec.md) Notifications                       | A state change sends an email from `info@reaplift.com` and shows in the panel's notification list   | Not started                                                     | Unassigned                         | M0           | E5                             |
-| [M3](milestones/m3-client-onboarding/spec.md) Client onboarding               | Super admin creates a client, its login and its staff; they get welcome emails and can log in       | In progress (prototype: admin page on in-memory data)           | Anirudh (backend), Suraj (screens) | M1, M2       | none                           |
-| [M4](milestones/m4-send-engine/spec.md) Send engine                           | Operator queues one template message; it reaches a phone; sent, delivered and read are recorded     | In progress (helper functions written; nothing sends yet)       | Anirudh                            | M0           | E1, E2 for the real-phone demo |
-| [M5](milestones/m5-number-and-templates/spec.md) Number connection, templates | A client's number is connected; a template passes our checks, goes to Meta, shows approved/rejected | Not started                                                     | Unassigned                         | M3, M4       | E3; E7 for credit-line sharing |
-| [M6](milestones/m6-wallet/spec.md) Wallet and prices                          | Super admin sets prices and tops up; client sees balance and every ledger row                       | Not started                                                     | Anirudh (backend), Suraj (screens) | M3           | none                           |
-| [M7](milestones/m7-campaigns/spec.md) Campaigns                               | Client uploads an audience, sees the summary, confirms, is charged, and watches messages deliver    | Not started                                                     | Unassigned                         | M5, M6       | none                           |
-| [M8](milestones/m8-campaign-controls/spec.md) Campaign controls and rules     | Client pauses, resumes, cancels or schedules a campaign with exact money handling; rules apply      | Not started                                                     | Unassigned                         | M7           | none                           |
-| [M9](milestones/m9-reports/spec.md) Reports and dashboard                     | Dashboard and downloads match a hand count; super admin sees Meta cost and margin                   | Not started                                                     | Unassigned                         | M7           | none                           |
-| [M10](milestones/m10-cloud-deploy/spec.md) Cloud deploy                       | A merge to `main` deploys to the cloud server with HTTPS, health check, rollback and backups        | Not started                                                     | Unassigned                         | M0           | E4                             |
-| [M11](milestones/m11-pilot/spec.md) Pilot go-live                             | One client runs its campaigns on ReapLift for two weeks with no fallback to Dovesoft                | Not started                                                     | ReapLift                           | M8, M9, M10  | E1 to E7                       |
+| Milestone                                                                     | Flow it delivers                                                                                    | Status                                                              | Owner                              | Starts after | External prerequisites         |
+| ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | ---------------------------------- | ------------ | ------------------------------ |
+| [M0](milestones/m0-foundation/spec.md) Foundation                             | Developer clones the repo, runs it locally, CI checks every pull request                            | Done                                                                | repo setup                         | none         | none                           |
+| [M1](milestones/m1-login-and-access/spec.md) Login and access                 | Super admin, staff and client each log in and see only what their role and clients allow            | In progress (backend finished; left: Suraj's 1.6.1, 1.6.2, 1.7)     | Anirudh (backend), Suraj (screens) | M0           | none                           |
+| [M2](milestones/m2-notifications/spec.md) Notifications                       | A state change sends an email from `info@reaplift.com` and shows in the panel's notification list   | Built (backend 2.1 to 2.4); Done when E5 allows the real-email demo | Anirudh                            | M0           | E5                             |
+| [M3](milestones/m3-client-onboarding/spec.md) Client onboarding               | Super admin creates a client, its login and its staff; they get welcome emails and can log in       | In progress (prototype: admin page on in-memory data)               | Anirudh (backend), Suraj (screens) | M1, M2       | none                           |
+| [M4](milestones/m4-send-engine/spec.md) Send engine                           | Operator queues one template message; it reaches a phone; sent, delivered and read are recorded     | In progress (helper functions written; nothing sends yet)           | Anirudh                            | M0           | E1, E2 for the real-phone demo |
+| [M5](milestones/m5-number-and-templates/spec.md) Number connection, templates | A client's number is connected; a template passes our checks, goes to Meta, shows approved/rejected | Not started                                                         | Unassigned                         | M3, M4       | E3; E7 for credit-line sharing |
+| [M6](milestones/m6-wallet/spec.md) Wallet and prices                          | Super admin sets prices and tops up; client sees balance and every ledger row                       | Not started                                                         | Anirudh (backend), Suraj (screens) | M3           | none                           |
+| [M7](milestones/m7-campaigns/spec.md) Campaigns                               | Client uploads an audience, sees the summary, confirms, is charged, and watches messages deliver    | Not started                                                         | Unassigned                         | M5, M6       | none                           |
+| [M8](milestones/m8-campaign-controls/spec.md) Campaign controls and rules     | Client pauses, resumes, cancels or schedules a campaign with exact money handling; rules apply      | Not started                                                         | Unassigned                         | M7           | none                           |
+| [M9](milestones/m9-reports/spec.md) Reports and dashboard                     | Dashboard and downloads match a hand count; super admin sees Meta cost and margin                   | Not started                                                         | Unassigned                         | M7           | none                           |
+| [M10](milestones/m10-cloud-deploy/spec.md) Cloud deploy                       | A merge to `main` deploys to the cloud server with HTTPS, health check, rollback and backups        | Not started                                                         | Unassigned                         | M0           | E4                             |
+| [M11](milestones/m11-pilot/spec.md) Pilot go-live                             | One client runs its campaigns on ReapLift for two weeks with no fallback to Dovesoft                | Not started                                                         | ReapLift                           | M8, M9, M10  | E1 to E7                       |
 
 ## Dependency rule
 
@@ -234,7 +234,8 @@ Claim a number in the pull request that opens the task, before writing the file.
 | 0002   | `0002_message_platform.sql` | M4 (old M1 1.2)    | Merged                                                                    |
 | 0003   | `0003_admin_access.sql`     | M1, M3             | Merged                                                                    |
 | 0004   | `0004_auth_sessions.sql`    | M1 1.2, 1.3        | On `anirudh-e2e-setup` (`0004_lists.sql` from `m4-skeleton` is abandoned) |
-| 0005   | next free                   |                    | Free                                                                      |
+| 0005   | `0005_notifications.sql`    | M2 2.1             | On `anirudh-e2e-setup`                                                    |
+| 0006   | next free                   |                    | Free                                                                      |
 
 ## Suraj's task list (screens track)
 
@@ -268,9 +269,8 @@ Do them in order; each one builds on the last. A connect task goes right after t
 
 ## Next task for each person
 
-| Person     | Milestone     | Next task                                                                                         | Waiting on                |
-| ---------- | ------------- | ------------------------------------------------------------------------------------------------- | ------------------------- |
-| Anirudh    | M4            | 4.1 seed-account command, then 4.2 real Meta call with the fake Meta server (M1 backend finished) | nothing                   |
-| Suraj      | Screens track | S1 web foundations, then S2 panel shell, then C1 connect it to the real server                    | nothing                   |
-| Unassigned | M2            | 2.1 outbox table and `notify()`                                                                   | an owner; can start today |
-| ReapLift   | none          | E3 (Business Verification, App Review); continue E7 with Meta; E1, E2, E5; answer D10 to D13      | none                      |
+| Person   | Milestone     | Next task                                                                                         | Waiting on |
+| -------- | ------------- | ------------------------------------------------------------------------------------------------- | ---------- |
+| Anirudh  | M4            | 4.1 seed-account command, then 4.2 real Meta call with the fake Meta server (M1 backend finished) | nothing    |
+| Suraj    | Screens track | S1 web foundations, then S2 panel shell, then C1 connect it to the real server                    | nothing    |
+| ReapLift | none          | E3 (Business Verification, App Review); continue E7 with Meta; E1, E2, E5; answer D10 to D13      | none       |

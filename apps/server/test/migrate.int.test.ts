@@ -33,6 +33,7 @@ describe.sequential('migrate', () => {
     expect(result.applied).toContain('0002_message_platform.sql');
     expect(result.applied).toContain('0003_admin_access.sql');
     expect(result.applied).toContain('0004_auth_sessions.sql');
+    expect(result.applied).toContain('0005_notifications.sql');
 
     const tables = await pool.query<{ table_name: string }>(`
       select table_name

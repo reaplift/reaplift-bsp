@@ -5,7 +5,12 @@
  *       Prompts for the password (not echoed). Reads it from stdin when not run in a terminal.
  *   seed-dev
  *       Local development only: the clients and four users of M1's worked example, password `reaplift-dev-1`.
+ *   notify-test --email <address>
+ *       Writes one test notification; the worker's delivery loop sends it.
+ *   show-notifications [--status pending|sent|failed|read] [--limit <n>]
+ *       Lists recent notifications, newest first.
  */
+import { randomUUID } from 'node:crypto';
 import { createInterface } from 'node:readline';
 import { Writable } from 'node:stream';
 import { sql, type Kysely } from 'kysely';
@@ -13,6 +18,7 @@ import { USER_ROLES, type UserRole } from '@reaplift/shared';
 import { loadConfig } from './config.js';
 import { createDb, createPool, type Database } from './lib/db.js';
 import { createUser, UserInputError } from './modules/auth/users.js';
+import { notify } from './modules/notifications/notify.js';
 
 const DEV_PASSWORD = 'reaplift-dev-1';
 
@@ -144,8 +150,38 @@ async function main() {
       console.log(`Created ${role} ${f.email} (${id})`);
     } else if (command === 'seed-dev') {
       await seedDev(db, config.DATABASE_URL);
+    } else if (command === 'notify-test') {
+      const { email } = flags(rest);
+      if (!email?.includes('@')) throw new UserInputError('--email <address> is required');
+      const entityId = randomUUID(); // a new test each time, so a repeat is not swallowed as a replay
+      await db
+        .transaction()
+        .execute((trx) =>
+          notify(
+            trx,
+            'system.test',
+            { email, entityId },
+            { requestedAt: new Date().toISOString() },
+          ),
+        );
+      console.log(
+        `Queued test email to ${email} (entity ${entityId}); the worker sends it within seconds.`,
+      );
+    } else if (command === 'show-notifications') {
+      const f = flags(rest);
+      const limit = Number(f.limit ?? 20);
+      const rows = (
+        await sql<Record<string, unknown>>`
+          select created_at, event, channel, email, status, attempts, next_attempt_at, sent_at, last_error
+          from notifications
+          where ${f.status ? sql`status = ${f.status}` : sql`true`}
+          order by created_at desc
+          limit ${Number.isInteger(limit) && limit > 0 ? limit : 20}
+        `.execute(db)
+      ).rows;
+      console.table(rows);
     } else {
-      throw new UserInputError('commands: create-user, seed-dev');
+      throw new UserInputError('commands: create-user, seed-dev, notify-test, show-notifications');
     }
   } catch (err) {
     if (!(err instanceof UserInputError)) throw err;

@@ -1,7 +1,7 @@
 # M2. Notifications
 
-- Status: Not started
-- Owner: Unassigned
+- Status: Built on 29 October 2026 (2.1 to 2.4, see `test-evidence.md` and `e2e.md`). Done when E5 is met and demo step 4 sends a real email.
+- Owner: Anirudh
 - Branch prefix: `m2-`
 - Starts after: M0
 - External prerequisites: E5 (`info@reaplift.com` verified as a sender in OCI Email Delivery) for the real-email demo; everything else uses a fake provider
@@ -61,7 +61,7 @@ Out:
 ### 2.1 `notifications` table and `notify()`
 
 - 2.1.1 Migration (claim the next number in the registry): `notifications` with `id uuid`, `client_id uuid null` (null for platform events such as backup alerts, as in `audit_logs`), `user_id uuid null`, `email text not null`, `event text not null`, `entity_id text not null`, `payload jsonb not null`, `channel text not null check (channel in ('email','panel'))`, `status text not null check (status in ('pending','sent','failed','read'))`, `attempts int not null default 0`, `next_attempt_at timestamptz`, `last_error text`, `read_at timestamptz`, `created_at`, `sent_at`.
-- 2.1.2 Unique key on `(event, entity_id, email, channel)` so a replayed change notifies once.
+- 2.1.2 Unique key on `(event, entity_id, email, channel)` so a replayed change notifies once. `entity_id` defaults to the scope's user, then client. An event that can happen again to the same thing (suspend, reactivate, suspend) must pass an `entityId` unique to that occurrence, such as its audit row's ID, or the second one is swallowed.
 - 2.1.3 `notify(trx, event, scope, payload)` in `apps/server/src/modules/notifications/`. It must receive the caller's Kysely transaction; calling it without one is a type error.
 - Tests: rolled-back transaction leaves no row; the same event twice writes one row per recipient; an unknown event name fails.
 - Acceptance: a test inside a transaction writes the expected rows.
@@ -83,6 +83,7 @@ Out:
   - `super_admins`: all active super admins
   - `actor`: the user who caused the event
   - `user`: a named user (for example the user who was just created)
+  - `address`: one address given by the caller; used only by the operator test event (`system.test`), never by real events
 - Tests: each rule against seeded users of two clients; an event for client A never reaches client B's users; a disabled user gets nothing.
 - Acceptance: the test event resolves to the right recipients for each rule.
 
@@ -91,7 +92,7 @@ Out:
 - 2.4.1 `cli notify-test --email <address>` writes one test notification and lets the loop send it.
 - 2.4.2 `cli show-notifications [--status failed]` lists recent rows.
 - 2.4.3 OCI Email Delivery provider over SMTP, sender `info@reaplift.com`.
-- Settings (blank in `.env.example`): `EMAIL_PROVIDER` (`fake` or `smtp`), `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `EMAIL_FROM` (`info@reaplift.com`).
+- Settings (blank in `.env.example`): `EMAIL_PROVIDER` (`fake` or `smtp`; blank means `fake`), `SMTP_HOST`, `SMTP_PORT` (blank means 587, STARTTLS), `SMTP_USER`, `SMTP_PASSWORD`, `EMAIL_FROM` (blank means `info@reaplift.com`), `EMAIL_FAKE_FAIL` (fake provider only: every send fails with this text, for demo step 2).
 - Acceptance: with E5 done, `notify-test` delivers a real email from `info@reaplift.com`.
 
 ## Data and API
@@ -110,7 +111,13 @@ None. Provider (OCI Email Delivery), sender (`info@reaplift.com`) and recipients
 
 ## Current reality
 
-Nothing exists. `MODE=worker` only logs a line and exits today.
+As of 29 October 2026, on `anirudh-e2e-setup`:
+
+- `notifications` table (migration 0005); `notify(trx, event, scope, payload)`, `resolveRecipients` and the catalogue in `apps/server/src/modules/notifications/`. Only a Kysely `Transaction` is accepted, so calling `notify()` outside one does not compile.
+- `MODE=worker` runs a list of loops; the first is email delivery every 2 seconds. A claim pushes the row's next attempt 2 minutes ahead in one `for update skip locked` statement, so two workers never take the same row and a crashed worker's rows come back. Retries after 30 s, 1, 2, 4 minutes; `failed` after 5 attempts.
+- Providers: fake (log plus in-memory list) and SMTP through nodemailer (OCI Email Delivery). The catalogue holds only `system.test`; each milestone adds its own events.
+- Commands: `cli notify-test --email <address>`, `cli show-notifications [--status <s>] [--limit <n>]`.
+- Not yet: the real-email demo (needs E5: `info@reaplift.com` approved as a sender and SMTP credentials from OCI).
 
 ## Demo (milestone acceptance)
 
