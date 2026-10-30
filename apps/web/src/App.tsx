@@ -1,12 +1,14 @@
-import { useEffect, useState, type ReactElement } from 'react';
-import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
-import { canAccessPage, type UserRole } from '@reaplift/shared';
+import type { MeResponse, Workspace } from '@reaplift/shared';
+import { useEffect, useState, type ReactNode } from 'react';
+import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from './auth/AuthProvider';
-import { Layout, PAGE_PATHS, type PageId } from './components/Layout';
+import { Layout, type NavItem } from './components/Layout';
 import { Admin } from './pages/Admin';
 import { Dashboard } from './pages/Dashboard';
 import { Login } from './pages/Login';
 import { PushCampaign } from './pages/PushCampaign';
+import { WorkspacePicker } from './pages/WorkspacePicker';
+import { homePath, workspacePath } from './paths';
 import './styles.css';
 
 type PingState = {
@@ -14,23 +16,13 @@ type PingState = {
   source: 'backend';
 } | null;
 
-const visiblePagesForRole = (role: UserRole | null): PageId[] => {
-  const allPages: PageId[] = ['dashboard', 'campaign', 'admin', 'login'];
-  return allPages.filter((page) => canAccessPage(role, page));
-};
-
 // The prototype Admin page reloads whenever this object changes, so it must be one constant;
 // the session cookie now travels on its own. Admin.tsx is replaced in S2's last piece.
 const NO_AUTH_HEADER: Record<string, string> = {};
 
-const homePath = (role: UserRole | null) =>
-  !role ? PAGE_PATHS.login : role === 'super_admin' ? PAGE_PATHS.admin : PAGE_PATHS.dashboard;
-
-export function App() {
-  const navigate = useNavigate();
-  const { state, reload } = useAuth();
+/** The sidebar and the prototype's backend message box around a logged-in page. */
+function Shell({ nav, children }: { nav: NavItem[]; children: ReactNode }) {
   const [ping, setPing] = useState<PingState>(null);
-  const role = state.status === 'logged-in' ? state.user.role : null;
 
   useEffect(() => {
     fetch('/api/ping')
@@ -38,6 +30,47 @@ export function App() {
       .then((data) => setPing(data as PingState))
       .catch(() => setPing({ message: 'Backend unreachable', source: 'backend' }));
   }, []);
+
+  return (
+    <Layout nav={nav}>
+      <div className="panel" style={{ marginBottom: 18 }}>
+        <h2>Backend message</h2>
+        <p>{ping ? ping.message : 'Loading backend message...'}</p>
+      </div>
+      {children}
+    </Layout>
+  );
+}
+
+const adminNav = (me: MeResponse): NavItem[] => (me.user.role === 'super_admin' ? [{ to: '/admin', label: 'Admin' }] : []);
+
+/** `/clients/:clientId/...`: only a client in the user's own list opens; any other goes to the picker. */
+function WorkspaceRoutes({ me }: { me: MeResponse }) {
+  const { clientId } = useParams();
+  const workspace: Workspace | undefined = me.workspaces.find((w) => w.clientId === clientId);
+  if (!workspace || workspace.status !== 'active') return <Navigate to="/workspaces" replace />;
+
+  const nav: NavItem[] = [
+    { to: workspacePath(workspace.clientId, 'dashboard'), label: 'Dashboard' },
+    { to: workspacePath(workspace.clientId, 'campaign'), label: 'Push campaign' },
+    ...adminNav(me),
+  ];
+  return (
+    <Shell nav={nav}>
+      <Routes>
+        <Route path="dashboard" element={<Dashboard />} />
+        <Route path="campaign" element={<PushCampaign />} />
+        {/* A full path: inside a "*" route, a relative "dashboard" would resolve from the unknown
+            page itself (React Router's v7_relativeSplatPath) and loop forever. */}
+        <Route path="*" element={<Navigate to={workspacePath(workspace.clientId, 'dashboard')} replace />} />
+      </Routes>
+    </Shell>
+  );
+}
+
+export function App() {
+  const navigate = useNavigate();
+  const { state, reload } = useAuth();
 
   // Until /me answers, the panel does not know who is logged in; routing now would send a
   // logged-in user who reloads the page to /login.
@@ -57,32 +90,47 @@ export function App() {
     );
   }
 
-  /** A page the role may not open sends the user to the dashboard, or to login when logged out. */
-  const guard = (page: PageId, element: ReactElement) =>
-    canAccessPage(role, page) ? element : <Navigate to={role ? PAGE_PATHS.dashboard : PAGE_PATHS.login} replace />;
-
-  return (
-    <Layout visiblePages={visiblePagesForRole(role)}>
-      <div className="panel" style={{ marginBottom: 18 }}>
-        <h2>Backend message</h2>
-        <p>{ping ? ping.message : 'Loading backend message...'}</p>
-      </div>
+  if (state.status === 'logged-out') {
+    return (
       <Routes>
-        <Route path="/" element={<Navigate to={homePath(role)} replace />} />
-        <Route path={PAGE_PATHS.dashboard} element={guard('dashboard', <Dashboard />)} />
-        <Route path={PAGE_PATHS.campaign} element={guard('campaign', <PushCampaign />)} />
-        <Route
-          path={PAGE_PATHS.admin}
-          element={guard('admin', role === 'super_admin' ? <Admin authHeader={NO_AUTH_HEADER} /> : <></>)}
-        />
-        <Route
-          path={PAGE_PATHS.login}
-          element={
-            role ? <Navigate to={homePath(role)} replace /> : <Login onLoggedIn={() => navigate('/', { replace: true })} />
-          }
-        />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="/login" element={<Login onLoggedIn={(me) => navigate(homePath(me), { replace: true })} />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
-    </Layout>
+    );
+  }
+
+  const me: MeResponse = { user: state.user, workspaces: state.workspaces };
+  const home = homePath(me);
+  return (
+    <Routes>
+      <Route path="/" element={<Navigate to={home} replace />} />
+      <Route path="/login" element={<Navigate to={home} replace />} />
+      <Route
+        path="/workspaces"
+        element={
+          home === '/workspaces' ? (
+            <Shell nav={adminNav(me)}>
+              <WorkspacePicker workspaces={me.workspaces} showAdmin={me.user.role === 'super_admin'} />
+            </Shell>
+          ) : (
+            <Navigate to={home} replace />
+          )
+        }
+      />
+      <Route
+        path="/admin"
+        element={
+          me.user.role === 'super_admin' ? (
+            <Shell nav={adminNav(me)}>
+              <Admin authHeader={NO_AUTH_HEADER} />
+            </Shell>
+          ) : (
+            <Navigate to={home} replace />
+          )
+        }
+      />
+      <Route path="/clients/:clientId/*" element={<WorkspaceRoutes me={me} />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }

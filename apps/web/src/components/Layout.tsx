@@ -1,34 +1,18 @@
 import type { ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
 
-export type PageId = 'dashboard' | 'campaign' | 'admin' | 'login';
-
-/** The address of each menu page. */
-export const PAGE_PATHS: Record<PageId, string> = {
-  dashboard: '/dashboard',
-  campaign: '/campaign',
-  admin: '/admin',
-  login: '/login',
-};
-
 /** React Router v7 behaviour, switched on now; without it v6 warns on every page load. */
 export const ROUTER_FUTURE = { v7_startTransition: true, v7_relativeSplatPath: true } as const;
 
+export type NavItem = { to: string; label: string };
+
 type LayoutProps = {
   children: ReactNode;
-  visiblePages: PageId[];
+  /** The menu for where the user is: a workspace's pages, Admin for a super admin. */
+  nav: NavItem[];
 };
 
-const navItems: Array<{ id: PageId; label: string }> = [
-  { id: 'dashboard', label: 'Dashboard' },
-  { id: 'campaign', label: 'Push campaign' },
-  { id: 'admin', label: 'Admin' },
-  { id: 'login', label: 'Login' },
-];
-
-export function Layout({ children, visiblePages }: LayoutProps) {
-  const visibleNavItems = navItems.filter((item) => visiblePages.includes(item.id));
-
+export function Layout({ children, nav }: LayoutProps) {
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -41,10 +25,10 @@ export function Layout({ children, visiblePages }: LayoutProps) {
         </div>
 
         <nav className="nav-list">
-          {visibleNavItems.map((item) => (
+          {nav.map((item) => (
             <NavLink
-              key={item.id}
-              to={PAGE_PATHS[item.id]}
+              key={item.to}
+              to={item.to}
               className={({ isActive }) => (isActive ? 'nav-item active' : 'nav-item')}
             >
               {item.label}
