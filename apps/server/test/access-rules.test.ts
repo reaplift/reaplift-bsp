@@ -10,8 +10,8 @@ describe('role-based page access', () => {
     expect(canAccessPage(role, 'campaign')).toBe(true);
   });
 
-  it('blocks a client admin from the admin console', () => {
-    const role: UserRole = 'client_admin';
+  it('blocks a client user from the admin console', () => {
+    const role: UserRole = 'client';
 
     expect(canAccessPage(role, 'admin')).toBe(false);
     expect(canAccessPage(role, 'dashboard')).toBe(true);

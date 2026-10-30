@@ -54,7 +54,7 @@ erDiagram
 
 ## Tables
 
-State: **Exists** means merged in a migration (0001 to 0003); **Planned** means a milestone adds it. Planned columns on existing tables are always nullable.
+State: **Exists** means merged in a migration (0001 to 0004); **Planned** means a milestone adds it. Planned columns on existing tables are always nullable.
 
 ### Access (M1, M3)
 
@@ -64,9 +64,9 @@ Planned: `country_calling_code text` (M3; picks Meta's rate in M6 and the valid 
 
 **`users`** (Exists, 0003)
 `id`, `client_id` (null for super admin and staff), `name`, `email` (unique), `password_hash`, `role` (`super_admin` | `staff` | `client`), `status` (`active` | `disabled`), `created_at`, `last_login_at`.
-Planned: `failed_login_count int`, `locked_until timestamptz` (M1); `must_change_password boolean` (M3).
+Added in 0004 (M1): `failed_login_count int`, `first_failed_login_at timestamptz` (start of the 15-minute lockout window), `locked_until timestamptz`. Planned: `must_change_password boolean` (M3).
 
-**`auth_sessions`** (Planned, M1)
+**`auth_sessions`** (Exists, 0004)
 `id`, `user_id`, `client_id` (null except for client users), `token_hash` (unique), `created_at`, `last_seen_at`, `expires_at`, `revoked_at`, `user_agent`, `ip_address`.
 
 **`sessions`** (Exists, 0003, **not used**)
@@ -166,6 +166,7 @@ Who: **SA** super admin; **C** client user of that client; **S** staff assigned 
 | POST       | `/api/auth/login`                                                  | P                           | M1        |
 | POST       | `/api/auth/logout`                                                 | U                           | M1        |
 | GET        | `/api/auth/me`                                                     | U                           | M1        |
+| GET        | `/api/clients/:clientId`                                           | C, S, SA                    | M1        |
 | POST       | `/api/me/password`                                                 | U                           | M3        |
 | GET        | `/api/me/notifications`                                            | U                           | M3        |
 | PATCH      | `/api/me/notifications/:id/read`                                   | U                           | M3        |

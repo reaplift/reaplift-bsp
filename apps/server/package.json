@@ -8,12 +8,15 @@
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
     "migrate": "tsx --env-file-if-exists=../../.env src/main.ts --mode=migrate",
+    "cli": "tsx --env-file-if-exists=../../.env src/cli.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --exclude 'test/**/*.int.test.ts'",
     "test:int": "node --env-file-if-exists=../../.env ./node_modules/vitest/vitest.mjs run --no-file-parallelism test/*.int.test.ts"
   },
   "dependencies": {
+    "@node-rs/argon2": "^2.2.2",
     "@reaplift/shared": "workspace:*",
+    "cookie": "^1.1.1",
     "fastify": "^5.2.0",
     "kysely": "^0.27.5",
     "pg": "^8.13.1",

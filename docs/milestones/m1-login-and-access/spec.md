@@ -1,6 +1,6 @@
 # M1. Login and access
 
-- Status: In progress (prototype: three demo users and sessions held in memory)
+- Status: In progress. Backend tasks 1.0 to 1.5 done and verified against the live server on 29 October 2026 (see `backend-api.md`, `test-evidence.md`); the panel (1.6) is on the screens track.
 - Owner: Anirudh (backend, 1.0 to 1.5), Suraj (screens, 1.6)
 - Branch prefix: `m1-`
 - Starts after: M0
@@ -125,7 +125,7 @@ Out:
 
 - 10 failed logins for one email within 15 minutes lock that login for 15 minutes, even with the right password. A successful login resets the count.
 - The response for an unknown email, a wrong password and a disabled user is the same 401 `INVALID_CREDENTIALS`, so nobody can test which emails exist. A locked account gets 423 `LOGIN_LOCKED` with the unlock time.
-- Data: nullable columns on `users`: `failed_login_count int`, `locked_until timestamptz` (migration 0004).
+- Data: nullable columns on `users`: `failed_login_count int`, `first_failed_login_at timestamptz` (when the current 15-minute window started), `locked_until timestamptz` (migration 0004).
 - Tests: the 11th attempt is locked; the lock ends after 15 minutes (fake clock); success resets the count.
 - Acceptance: the worked example's step 5 behaves as written.
 
@@ -176,13 +176,14 @@ Everything later screens need, so no screen task has to invent it.
 Migration 0004 (claim it in the tracker's registry first):
 
 - `auth_sessions`: `id uuid`, `user_id uuid not null`, `client_id uuid null` (the user's client for client users; kept so the table carries `client_id` like every table), `token_hash text not null unique`, `created_at`, `last_seen_at`, `expires_at`, `revoked_at null`, `user_agent text null`, `ip_address text null`
-- `users`: add nullable `failed_login_count int`, `locked_until timestamptz`
+- `users`: add nullable `failed_login_count int`, `first_failed_login_at timestamptz`, `locked_until timestamptz`
 
-| Method | Route              | Who       | Success                 | Errors                                                               |
-| ------ | ------------------ | --------- | ----------------------- | -------------------------------------------------------------------- |
-| POST   | `/api/auth/login`  | anyone    | 200 user; sets cookie   | 400 `INVALID_REQUEST`, 401 `INVALID_CREDENTIALS`, 423 `LOGIN_LOCKED` |
-| POST   | `/api/auth/logout` | logged in | 204; clears cookie      | 401 `UNAUTHENTICATED`                                                |
-| GET    | `/api/auth/me`     | logged in | 200 user and workspaces | 401 `UNAUTHENTICATED`                                                |
+| Method | Route                    | Who                                 | Success                                                 | Errors                                                               |
+| ------ | ------------------------ | ----------------------------------- | ------------------------------------------------------- | -------------------------------------------------------------------- |
+| POST   | `/api/auth/login`        | anyone                              | 200 user; sets cookie                                   | 400 `INVALID_REQUEST`, 401 `INVALID_CREDENTIALS`, 423 `LOGIN_LOCKED` |
+| POST   | `/api/auth/logout`       | logged in                           | 204; clears cookie                                      | 401 `UNAUTHENTICATED`                                                |
+| GET    | `/api/auth/me`           | logged in                           | 200 user and workspaces                                 | 401 `UNAUTHENTICATED`                                                |
+| GET    | `/api/clients/:clientId` | client, assigned staff, super admin | 200 `{ clientId, name, status }` (the workspace header) | 401 `UNAUTHENTICATED`, 403 `CLIENT_SUSPENDED`, 404 `NOT_FOUND`       |
 
 All errors use `{ "error": "<CODE>", "message": "<text>" }`.
 
@@ -198,10 +199,13 @@ None. The role name, session table and cookie were decided on 29 October 2026 (s
 
 ## Current reality
 
-- `POST /api/auth/login` in `apps/server/src/app.ts` checks three hardcoded users (`admin@`, `client@`, `staff@reaplift.ai`, password `password123`) and a `role` field, and keeps sessions in a `Map` with an 8-hour expiry, sent as a bearer token. A restart logs everyone out.
-- `/api/admin/*` routes check for a `super_admin` session; the panel hides pages with `canAccessPage` from `packages/shared`.
-- Tables `users`, `sessions`, `staff_clients`, `audit_logs` exist (0003); nothing reads them.
-- No hashing, logout, lockout, scope hook or isolation test.
+As of 29 October 2026, on `anirudh-e2e-setup`:
+
+- Done: users with argon2id hashes and `cli create-user` / `cli seed-dev` (1.1); `auth_sessions` with the `rl_session` cookie, logout, 12-hour idle and 7-day limits, Origin check (1.2); lockout (1.3); scope hook, `/api/auth/me` and `GET /api/clients/:clientId` (1.4); route-walking test (1.5). Demo users, in-memory sessions and `GET /api/ping` are gone.
+- Code: `apps/server/src/modules/auth/` (`users.ts`, `sessions.ts`, `scope.ts`, `routes.ts`), `apps/server/src/cli.ts`, `db/migrations/0004_auth_sessions.sql`.
+- Tests: `test/auth.test.ts` (unit), `test/login.int.test.ts`, `test/scope.int.test.ts`.
+- The old prototype panel's login (sends `role`, expects a bearer token) no longer works against the server. The panel shell (1.6.2) replaces it; until then use mock mode (1.6.1) or curl.
+- M3's prototype admin routes (`/api/admin/clients`, in-memory) are now behind the scope hook: super admin only.
 
 ## Demo (milestone acceptance)
 

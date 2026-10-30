@@ -3,6 +3,9 @@ import { MODES } from '@reaplift/shared';
 
 const DEV_ENCRYPTION_KEY = '12345678901234567890123456789012';
 
+const blankToUndefined = (value: unknown) =>
+  typeof value === 'string' && value.trim() === '' ? undefined : value;
+
 const Env = z.object({
   MODE: z.enum(MODES).default('api'),
   PORT: z.coerce.number().int().positive().default(3000),
@@ -10,6 +13,12 @@ const Env = z.object({
   DATABASE_URL: z.string().url(),
   META_VERIFY_TOKEN: z.string().default(''),
   META_APP_SECRET: z.string().default(''),
+  /** The panel's address; state-changing requests must come from it. */
+  PANEL_ORIGIN: z.preprocess(blankToUndefined, z.string().url().default('http://localhost:5173')),
+  /** Secure flag on the session cookie. Blank means on; set `false` only for plain-http local development. */
+  SESSION_COOKIE_SECURE: z
+    .preprocess(blankToUndefined, z.enum(['true', 'false']).default('true'))
+    .transform((v) => v === 'true'),
   APP_VERSION: z
     .string()
     .optional()

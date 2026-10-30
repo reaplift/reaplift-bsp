@@ -6,7 +6,15 @@ import type { Logger } from '../lib/logger.js';
 export async function runApi(config: Config, log: Logger) {
   const pool = createPool(config.DATABASE_URL);
   const db = createDb(pool);
-  const app = buildApp({ version: config.APP_VERSION, checkDb: () => pingDb(db) });
+  const app = buildApp({
+    version: config.APP_VERSION,
+    checkDb: () => pingDb(db),
+    db,
+    panelOrigin: config.PANEL_ORIGIN,
+    cookieSecure: config.SESSION_COOKIE_SECURE,
+    metaVerifyToken: config.META_VERIFY_TOKEN,
+    metaAppSecret: config.META_APP_SECRET,
+  });
 
   const shutdown = async () => {
     log.info('shutting down');

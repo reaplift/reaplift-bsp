@@ -11,7 +11,7 @@ export function Login({ onLogin }: LoginProps) {
     const formData = new FormData(event.currentTarget);
     const email = String(formData.get('email') ?? '').trim();
     const password = String(formData.get('password') ?? '').trim();
-    const selectedRole = String(formData.get('role') ?? 'client_admin') as UserRole;
+    const selectedRole = String(formData.get('role') ?? 'client') as UserRole;
 
     await onLogin({ email, password, role: selectedRole });
   };
@@ -37,7 +37,7 @@ export function Login({ onLogin }: LoginProps) {
           <span>Role</span>
           <select name="role" defaultValue="super_admin">
             <option value="super_admin">Super admin</option>
-            <option value="client_admin">Client admin</option>
+            <option value="client">Client</option>
             <option value="staff">Staff</option>
           </select>
         </label>
