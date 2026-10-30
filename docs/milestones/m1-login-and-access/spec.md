@@ -168,6 +168,7 @@ Everything later screens need, so no screen task has to invent it.
 - Contract details the spec leaves open, decided here: the 423 body is `{ "error": "LOGIN_LOCKED", "message", "lockedUntil": "<ISO time>" }`; the login response is `{ user: { id, name, email, role } }`.
 - Tests: component tests for the menu by role, the picker, and each login error message.
 - Acceptance (Screen ready): in mock mode, each user in the worked example sees exactly the menu and picker described. Done after 1.7.
+- Status: Screen ready on 30 October 2026 (branch `m1-1.6.2-panel-shell`); evidence in `frontend.md`. Done after 1.7. As built: the session comes from `/api/auth/me` on load (no `localStorage`); the panel's `GET /api/ping` call, the prototype login (`role` field, bearer token) and the prototype Admin page and `mockData.ts` are removed here rather than in 1.7, because the new login replaces them. Choices the spec left open are under "Open questions".
 
 ### 1.7 Connect the panel to the real server (Suraj)
 
@@ -210,6 +211,16 @@ None in M1. The "login locked" email is sent from M3 task 3.6.
 
 None. The role name, session table and cookie were decided on 29 October 2026 (see the tracker's decision log).
 
+Chosen by Suraj in 1.6.2 (tracker rule 5; say if any should change):
+
+- The open client is in the panel's address, `/clients/<clientId>/<page>`, like the server's routes, so a reload keeps the workspace. The picker is `/workspaces`, Admin is `/admin`.
+- A client or staff user with exactly one workspace opens it directly; the super admin always starts at the picker, which also offers Open Admin.
+- "Switch client" shows only for users who start at the picker (staff with several clients, super admin).
+- A suspended client is listed in the picker, greyed out with "Suspended", and cannot be opened (the server would answer `CLIENT_SUSPENDED`).
+- An address for a client not in the user's list sends staff and super admin to the picker and a client user to their own workspace; nothing about the other client is shown.
+- Menu labels follow the Dovesoft sidebar (HLD section 4): Dashboard, Push Campaign, Templates, Reports, Wallet, Settings, and Admin for the super admin. Templates, Reports, Wallet, Settings and Admin show "This page is coming soon."; Dashboard and Push Campaign show an empty state.
+- A failed logout (server unreachable) shows the message and keeps the user where they were.
+
 ## Current reality
 
 As of 29 October 2026, on `anirudh-e2e-setup`:
@@ -217,7 +228,7 @@ As of 29 October 2026, on `anirudh-e2e-setup`:
 - Done: users with argon2id hashes and `cli create-user` / `cli seed-dev` (1.1); `auth_sessions` with the `rl_session` cookie, logout, 12-hour idle and 7-day limits, Origin check (1.2); lockout (1.3); scope hook, `/api/auth/me` and `GET /api/clients/:clientId` (1.4); route-walking test (1.5). Demo users, in-memory sessions and `GET /api/ping` are gone.
 - Code: `apps/server/src/modules/auth/` (`users.ts`, `sessions.ts`, `scope.ts`, `routes.ts`), `apps/server/src/cli.ts`, `db/migrations/0004_auth_sessions.sql`.
 - Tests: `test/auth.test.ts` (unit), `test/login.int.test.ts`, `test/scope.int.test.ts`.
-- The old prototype panel's login (sends `role`, expects a bearer token) no longer works against the server. The panel shell (1.6.2) replaces it; until then use mock mode (1.6.1) or curl.
+- The old prototype panel's login (sends `role`, expects a bearer token) no longer works against the server. The panel shell (1.6.2, Screen ready on 30 October 2026) replaces it and logs in with the cookie.
 - M3's prototype admin routes (`/api/admin/clients`, in-memory) are now behind the scope hook: super admin only.
 
 ## Demo (milestone acceptance)
