@@ -157,6 +157,7 @@ Everything later screens need, so no screen task has to invent it.
 - One map from error code to the message shown (for example `INVALID_CREDENTIALS` gives "Wrong email or password"), used by every form.
 - Tests: `formatPaise` for 0, 1, 99, 100, 123450, 10000000 and a negative; the API layer rejects a response that does not match its schema; mock mode is off in a production build.
 - Acceptance (Screen ready): `VITE_API_MODE=mock pnpm dev` runs the panel; tests pass in CI.
+- Status: Screen ready on 30 October 2026 (PR #12). Done after 1.7. As built: `VITE_API_MODE` is read from the repo-root `.env` (`envDir`); the panel uses Vitest 3 (Vitest 2 bundles Vite 5, whose types clash with the panel's Vite 6); `packages/shared` gained a `test/` folder, a `vitest run` test script and `tsconfig.check.json` so the `formatPaise` and contract tests run and are type-checked.
 
 ### 1.6.2 Panel shell (Suraj)
 
