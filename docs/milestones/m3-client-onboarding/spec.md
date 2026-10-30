@@ -1,7 +1,7 @@
 # M3. Client onboarding
 
 - Status: In progress (prototype: the Admin page calls real routes, but clients live in an in-memory array)
-- Owner: Anirudh (to confirm)
+- Owner: Anirudh (backend), Suraj (screens S3 to S6)
 - Branch prefix: `m3-`
 - Starts after: M1 (logins and scope), M2 (notifications)
 - External prerequisites: none (E5 only for real emails; the fake provider is enough for the demo)
@@ -128,6 +128,24 @@ Sent through M2's `notify()` in the same transaction as the change.
 - Super admin "Delivery log" page: every notification with status, attempts and last error; filter by status.
 - Tests: a user sees only their own notifications; client and staff get 403 on the delivery log.
 - Acceptance: Meera sees "You were assigned to Northwind Labs" in her bell after step 4.
+
+## Screens (Suraj)
+
+Built on the screens track against the mock API, so they can start before M1 and M2 are Done (tracker, "Screens track exception"). Contracts go in `packages/shared/src/contracts/admin.ts` and `me.ts`, from the route table below. Each ends as Screen ready; the backend task's owner wires it to the real route and records the evidence.
+
+| #   | Screens                                                                                                                                                                                                                                                                                              | Backend task it pairs with |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------- |
+| S3  | "My account" (change own password); the forced change-password screen whenever any route answers 403 `PASSWORD_CHANGE_REQUIRED`                                                                                                                                                                      | 3.2                        |
+| S4  | Clients list; create and edit client (name, country calling code fixed to `91`, contact email); client detail with its users and staff; create user; staff assignment (pick clients, save replaces the list); suspend and reactivate with a required note; disable and enable a user; reset password | 3.1, 3.3, 3.4              |
+| S5  | Audit page with filters by client, user, action and date                                                                                                                                                                                                                                             | 3.5                        |
+| S6  | Notification bell (unread count, list, click marks read); super admin delivery log with a status filter                                                                                                                                                                                              | 3.7                        |
+
+- Super admin only for S4, S5 and the delivery log; the menu hides them for other roles (the server enforces it).
+- S4 replaces today's prototype Admin page; the free-text "assigned staff" and `walletBalance` fields go (balance arrives with S8 in M6).
+- Tests: component tests for each form's validation and error messages (`CLIENT_NAME_TAKEN`, `EMAIL_TAKEN`, missing note), and the forced password change redirect.
+- Screen ready: the worked example's steps run in mock mode; screenshots in `frontend.md`.
+
+Anirudh builds 3.1 to 3.7's routes, tables and notifications.
 
 ## Data and API
 

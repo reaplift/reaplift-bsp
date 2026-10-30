@@ -1,7 +1,7 @@
 # M1. Login and access
 
 - Status: In progress (prototype: three demo users and sessions held in memory)
-- Owner: Anirudh (to confirm)
+- Owner: Anirudh (backend, 1.0 to 1.5), Suraj (screens, 1.6)
 - Branch prefix: `m1-`
 - Starts after: M0
 - External prerequisites: none
@@ -83,20 +83,22 @@ Out:
 
 ## Tasks
 
-| Task | Name                                   | Depends on                                 | Can run in parallel with |
-| ---- | -------------------------------------- | ------------------------------------------ | ------------------------ |
-| 1.0  | Restore green CI                       | none                                       | all                      |
-| 1.1  | Users, password hashing, `create-user` | none                                       | 1.6                      |
-| 1.2  | Cookie sessions, logout, expiry        | 1.1                                        | 1.6                      |
-| 1.3  | Lockout                                | 1.2                                        | 1.4                      |
-| 1.4  | Request scope and client workspaces    | 1.2                                        | 1.3                      |
-| 1.5  | Route-walking isolation test           | 1.4                                        | 1.6                      |
-| 1.6  | Panel shell: login, picker, menu       | none (calls 1.2 and 1.4 routes when ready) | 1.1 to 1.5               |
+| Task  | Name                                   | Depends on                                                  | Can run in parallel with |
+| ----- | -------------------------------------- | ----------------------------------------------------------- | ------------------------ |
+| 1.0   | Restore green CI                       | none                                                        | all                      |
+| 1.1   | Users, password hashing, `create-user` | none                                                        | 1.6                      |
+| 1.2   | Cookie sessions, logout, expiry        | 1.1                                                         | 1.6                      |
+| 1.3   | Lockout                                | 1.2                                                         | 1.4                      |
+| 1.4   | Request scope and client workspaces    | 1.2                                                         | 1.3                      |
+| 1.5   | Route-walking isolation test           | 1.4                                                         | 1.6                      |
+| 1.6.1 | Web foundations (Suraj)                | none                                                        | all                      |
+| 1.6.2 | Panel shell (Suraj)                    | 1.6.1 (mock API; real routes 1.2, 1.4 wired by their owner) | 1.1 to 1.5               |
 
 ### 1.0 Restore green CI
 
 - Fix the three lint errors in existing code (`app.ts` line 111 `any`, line 223 unused `received`; `apps/web/src/App.tsx` line 2 unused `AppPageId`) and the typecheck error in `lib/auth.ts` line 25. Remove the demo route `GET /api/ping` (or add it to the public list), so M1's route-walking test passes.
 - Acceptance: `pnpm lint`, `pnpm typecheck` and `pnpm test` pass on `main`.
+- Status: Done on 29 October 2026 (PR #7, commit `0fac2b8`), except removing `GET /api/ping`, which goes with 1.6.2 (the panel stops calling it) and 1.5.
 
 ### 1.1 Users, password hashing, `create-user`
 
@@ -141,14 +143,33 @@ Out:
 - This test runs in CI forever, so every later milestone's routes are checked automatically.
 - Acceptance: adding a route without scope makes CI red.
 
-### 1.6 Panel shell: login, picker, menu
+### 1.6.1 Web foundations (Suraj)
+
+Everything later screens need, so no screen task has to invent it.
+
+- Component tests in `apps/web`: Vitest with `jsdom`, `@testing-library/react` and `@testing-library/user-event`; `pnpm test` runs them in CI.
+- Routing with `react-router-dom`; one route per page in the menu.
+- The API layer `apps/web/src/api/`: one typed function per route, which validates the response with the shared Zod schema. `VITE_API_MODE=mock` answers from `apps/web/src/api/mock/` (in-memory fake data seeded with the worked example's users and clients); `real` (default) calls the server through Vite's `/api` proxy with `credentials: 'include'`, so the session cookie from 1.2 works without changes. Production builds ignore `mock`. Add `VITE_API_MODE` to `.env.example` blank.
+- Contracts folder `packages/shared/src/contracts/` with `auth.ts` for the three routes below, re-exported from the package index.
+- `formatPaise(paise: number): string` in `packages/shared/src/format/money.ts`: whole paise to rupees with two decimals and Indian grouping (`123450` gives `₹1,234.50`). The panel never does money arithmetic; it only formats.
+- One map from error code to the message shown (for example `INVALID_CREDENTIALS` gives "Wrong email or password"), used by every form.
+- Tests: `formatPaise` for 0, 1, 99, 100, 123450, 10000000 and a negative; the API layer rejects a response that does not match its schema; mock mode is off in a production build.
+- Acceptance (Screen ready): `VITE_API_MODE=mock pnpm dev` runs the panel; tests pass in CI.
+
+### 1.6.2 Panel shell (Suraj)
 
 - Login page posts `{ email, password }`; shows "wrong email or password" or "locked until hh:mm".
 - After login the panel calls `/api/auth/me`. One workspace: open it. Several: show the picker; the chosen client appears in the header with a switch button.
 - Menu by role, following the Dovesoft sidebar (HLD section 4): Dashboard, Push Campaign, Templates, Reports, Wallet, Settings for a workspace; Admin for super admin only. Pages not built yet show "coming soon".
 - Dashboard and Push Campaign stop showing `apps/web/src/data/mockData.ts` figures; they show an empty state until their milestones.
-- Tests: component tests for the menu by role and the picker.
-- Acceptance: each user in the worked example sees exactly the menu and picker described.
+- Contract details the spec leaves open, decided here: the 423 body is `{ "error": "LOGIN_LOCKED", "message", "lockedUntil": "<ISO time>" }`; the login response is `{ user: { id, name, email, role } }`.
+- Tests: component tests for the menu by role, the picker, and each login error message.
+- Acceptance (Screen ready): in mock mode, each user in the worked example sees exactly the menu and picker described. Done when the owner of 1.2 and 1.4 has run it against the real routes.
+
+## Who builds what
+
+- **Suraj (screens track):** 1.6.1 and 1.6.2, against the mock API. Never waits for the backend; see "Suraj's task list" in the [tracker](../../project-tracker.md).
+- **Anirudh (backend):** 1.0 to 1.5. When 1.2 and 1.4 merge, Anirudh runs the panel with `VITE_API_MODE=real`, fixes any mismatch with Suraj's contracts in `packages/shared/src/contracts/auth.ts`, and records the evidence; 1.6 is Done then.
 
 ## Data and API
 
