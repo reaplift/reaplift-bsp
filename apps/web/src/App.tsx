@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { canAccessPage, type AppPageId, type UserRole } from '@reaplift/shared';
+import { canAccessPage, type UserRole } from '@reaplift/shared';
 import { Layout, type PageId } from './components/Layout';
 import { Admin } from './pages/Admin';
 import { Dashboard } from './pages/Dashboard';
@@ -59,7 +59,12 @@ export function App() {
       body: JSON.stringify(payload),
     });
 
-    const data = (await res.json()) as { ok?: boolean; error?: string; user?: { email: string; role: UserRole }; token?: string };
+    const data = (await res.json()) as {
+      ok?: boolean;
+      error?: string;
+      user?: { email: string; role: UserRole };
+      token?: string;
+    };
 
     if (!res.ok || !data.ok || !data.user || !data.token) {
       setLoginError(data.error ?? 'invalid credentials');

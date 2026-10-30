@@ -1,8 +1,20 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import Fastify from 'fastify';
+import Fastify, { type FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { AdminClient, type HealthResponse, type PingResponse, type UserRole } from '@reaplift/shared';
+import {
+  AdminClient,
+  type HealthResponse,
+  type PingResponse,
+  type UserRole,
+} from '@reaplift/shared';
 import { createSessionToken } from './lib/auth.js';
+
+declare module 'fastify' {
+  interface FastifyRequest {
+    /** Exact JSON body as received; Meta signs these bytes. */
+    rawBody?: string;
+  }
+}
 
 export interface AppDeps {
   version: string;
@@ -20,7 +32,16 @@ export function buildApp({
   metaVerifyToken = '',
   metaAppSecret = '',
 }: AppDeps) {
-  const app = Fastify({ logger, rawBody: true });
+  const app = Fastify({ logger });
+  app.addContentTypeParser('application/json', { parseAs: 'string' }, (req, body, done) => {
+    req.rawBody = body as string;
+    try {
+      done(null, body === '' ? {} : JSON.parse(body as string));
+    } catch (err) {
+      (err as { statusCode?: number }).statusCode = 400;
+      done(err as Error, undefined);
+    }
+  });
   const adminClients: Array<z.infer<typeof AdminClient>> = [
     {
       id: 'cli-seed-001',
@@ -108,7 +129,7 @@ export function buildApp({
     });
   });
 
-  const requireAdminSession = (req: Parameters<typeof app.get>[0] extends never ? never : any) => {
+  const requireAdminSession = (req: FastifyRequest) => {
     const session = requireSession(req.headers.authorization as string | undefined);
     if (!session) {
       return null;
@@ -211,7 +232,7 @@ export function buildApp({
   });
 
   app.post('/webhooks/meta', async (req, reply) => {
-    const rawBody = req.rawBody ? req.rawBody.toString('utf8') : JSON.stringify(req.body ?? {});
+    const rawBody = req.rawBody ?? JSON.stringify(req.body ?? {});
     const signatureHeader = req.headers['x-hub-signature-256'];
     const signature = Array.isArray(signatureHeader) ? signatureHeader[0] : signatureHeader;
 
@@ -220,7 +241,6 @@ export function buildApp({
     }
 
     const expected = createHmac('sha256', metaAppSecret).update(rawBody, 'utf8').digest('hex');
-    const received = signature.slice('sha256='.length);
     const expectedBuf = Buffer.from(`sha256=${expected}`);
     const receivedBuf = Buffer.from(signature);
 
