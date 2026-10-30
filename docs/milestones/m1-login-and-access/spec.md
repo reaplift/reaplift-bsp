@@ -1,6 +1,6 @@
 # M1. Login and access
 
-- Status: In progress. Anirudh's part (1.0 to 1.5, the backend) is finished and verified against the live server on 29 October 2026 (see `backend-api.md`, `test-evidence.md`). **Everything left is Suraj's: 1.6.1, 1.6.2, then 1.7.** M1 is Done when 1.7 is.
+- Status: In progress. Anirudh's part (1.0 to 1.5, the backend) is finished and verified against the live server on 29 October 2026 (see `backend-api.md`, `test-evidence.md`). **Everything left is Suraj's: 1.6.1, 1.6.2, then 1.7.** M1 is Done when 1.7 is. On 30 October 2026 1.6.1 and 1.6.2 are Screen ready and the 1.7 demo passed against the real server (`e2e.md`); M1 is Done once the route-walking test passes on the pull request into `main`.
 - Owner: Anirudh (backend, 1.0 to 1.5), Suraj (screens, 1.6)
 - Branch prefix: `m1-`
 - Starts after: M0
@@ -179,6 +179,7 @@ The backend (1.1 to 1.5) is finished, so this can start as soon as 1.6.2 is Scre
 - Remove the panel's call to `GET /api/ping` (the route is gone) and the old prototype login code (`role` field, bearer token).
 - Evidence: `frontend.md` (a screenshot per user in the worked example) and `e2e.md` (the demo below, run in the panel).
 - Acceptance: the milestone demo passes in the real panel, and CI on the pull request into `main` shows the route-walking test passing (demo step 7); M1 is Done.
+- Status: demo passed on 30 October 2026 against the real server (branch `m1-1.7-connect-real-server`); evidence in `e2e.md` and `frontend.md`. Every auth response matched the contracts, so no contract or mock changed. The `GET /api/ping` call and the prototype login were already removed in 1.6.2. Left: the route-walking test on the pull request into `main` (it passes in CI on PR #13), which happens when `anirudh-e2e-setup` is merged into `main`; M1 is Done then.
 
 ## Who builds what
 
