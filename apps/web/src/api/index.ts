@@ -27,21 +27,23 @@ function getTransport(): Promise<Transport> {
   return transport;
 }
 
-async function send<T>(request: ApiRequest, schema: ResponseSchema<T> | null): Promise<T> {
-  return call(await getTransport(), request, schema);
+/** One typed function per route, over any transport. Screens use the default `api` below. */
+export function createApi(transport: () => Transport | Promise<Transport>) {
+  async function send<T>(request: ApiRequest, schema: ResponseSchema<T> | null): Promise<T> {
+    return call(await transport(), request, schema);
+  }
+  return {
+    /** POST /api/auth/login. On success the server sets the session cookie. */
+    login: (body: LoginRequest) => send({ method: 'POST', path: '/api/auth/login', body }, LoginResponse),
+    /** POST /api/auth/logout. Ends the session; answers 204 with no body. */
+    logout: () => send({ method: 'POST', path: '/api/auth/logout' }, null),
+    /** GET /api/auth/me. The logged-in user and the client workspaces they can open. */
+    me: () => send({ method: 'GET', path: '/api/auth/me' }, MeResponse),
+  };
 }
 
-/** POST /api/auth/login. On success the server sets the session cookie. */
-export function login(body: LoginRequest) {
-  return send({ method: 'POST', path: '/api/auth/login', body }, LoginResponse);
-}
+export type Api = ReturnType<typeof createApi>;
 
-/** POST /api/auth/logout. Ends the session; answers 204 with no body. */
-export function logout() {
-  return send({ method: 'POST', path: '/api/auth/logout' }, null);
-}
-
-/** GET /api/auth/me. The logged-in user and the client workspaces they can open. */
-export function me() {
-  return send({ method: 'GET', path: '/api/auth/me' }, MeResponse);
-}
+/** The panel's API: the real server, or the mock when VITE_API_MODE=mock in development. */
+export const api: Api = createApi(getTransport);
+export const { login, logout, me } = api;
