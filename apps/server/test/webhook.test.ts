@@ -1,12 +1,14 @@
 import { createHmac } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app.js';
+import { unusedDb } from './support/unused-db.js';
 
 describe('Meta webhook flow', () => {
   it('verifies the callback challenge for a valid token', async () => {
     const app = buildApp({
       version: 'abc123',
       checkDb: async () => true,
+      db: unusedDb(),
       metaVerifyToken: 'reaplift-verify',
       metaAppSecret: 'super-secret',
     });
@@ -24,6 +26,7 @@ describe('Meta webhook flow', () => {
     const app = buildApp({
       version: 'abc123',
       checkDb: async () => true,
+      db: unusedDb(),
       metaVerifyToken: 'reaplift-verify',
       metaAppSecret: 'super-secret',
     });
@@ -46,6 +49,7 @@ describe('Meta webhook flow', () => {
     const app = buildApp({
       version: 'abc123',
       checkDb: async () => true,
+      db: unusedDb(),
       metaVerifyToken: 'reaplift-verify',
       metaAppSecret: 'super-secret',
     });
@@ -71,6 +75,7 @@ describe('Meta webhook flow', () => {
     const app = buildApp({
       version: 'abc123',
       checkDb: async () => true,
+      db: unusedDb(),
       metaVerifyToken: 'reaplift-verify',
       metaAppSecret: 'super-secret',
     });

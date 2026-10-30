@@ -1,7 +1,7 @@
 # M1. Login and access
 
-- Status: In progress (prototype: three demo users and sessions held in memory)
-- Owner: Anirudh (to confirm)
+- Status: In progress. Anirudh's part (1.0 to 1.5, the backend) is finished and verified against the live server on 29 October 2026 (see `backend-api.md`, `test-evidence.md`). **Everything left is Suraj's: 1.6.1, 1.6.2, then 1.7.** M1 is Done when 1.7 is.
+- Owner: Anirudh (backend, 1.0 to 1.5), Suraj (screens, 1.6)
 - Branch prefix: `m1-`
 - Starts after: M0
 - External prerequisites: none
@@ -83,20 +83,23 @@ Out:
 
 ## Tasks
 
-| Task | Name                                   | Depends on                                 | Can run in parallel with |
-| ---- | -------------------------------------- | ------------------------------------------ | ------------------------ |
-| 1.0  | Restore green CI                       | none                                       | all                      |
-| 1.1  | Users, password hashing, `create-user` | none                                       | 1.6                      |
-| 1.2  | Cookie sessions, logout, expiry        | 1.1                                        | 1.6                      |
-| 1.3  | Lockout                                | 1.2                                        | 1.4                      |
-| 1.4  | Request scope and client workspaces    | 1.2                                        | 1.3                      |
-| 1.5  | Route-walking isolation test           | 1.4                                        | 1.6                      |
-| 1.6  | Panel shell: login, picker, menu       | none (calls 1.2 and 1.4 routes when ready) | 1.1 to 1.5               |
+| Task  | Name                                         | Depends on                                                  | Can run in parallel with |
+| ----- | -------------------------------------------- | ----------------------------------------------------------- | ------------------------ |
+| 1.0   | Restore green CI                             | none                                                        | all                      |
+| 1.1   | Users, password hashing, `create-user`       | none                                                        | 1.6                      |
+| 1.2   | Cookie sessions, logout, expiry              | 1.1                                                         | 1.6                      |
+| 1.3   | Lockout                                      | 1.2                                                         | 1.4                      |
+| 1.4   | Request scope and client workspaces          | 1.2                                                         | 1.3                      |
+| 1.5   | Route-walking isolation test                 | 1.4                                                         | 1.6                      |
+| 1.6.1 | Web foundations (Suraj)                      | none                                                        | all                      |
+| 1.6.2 | Panel shell (Suraj)                          | 1.6.1 (mock API; real routes 1.2, 1.4 wired by their owner) | 1.1 to 1.5               |
+| 1.7   | Connect the panel to the real server (Suraj) | 1.6.2, 1.1 to 1.5 (done)                                    | none                     |
 
 ### 1.0 Restore green CI
 
 - Fix the three lint errors in existing code (`app.ts` line 111 `any`, line 223 unused `received`; `apps/web/src/App.tsx` line 2 unused `AppPageId`) and the typecheck error in `lib/auth.ts` line 25. Remove the demo route `GET /api/ping` (or add it to the public list), so M1's route-walking test passes.
 - Acceptance: `pnpm lint`, `pnpm typecheck` and `pnpm test` pass on `main`.
+- Status: Done on 29 October 2026 (PR #7, commit `0fac2b8`). `GET /api/ping` was removed from the server in 1.5; the panel's call to it is removed in 1.7.
 
 ### 1.1 Users, password hashing, `create-user`
 
@@ -122,8 +125,9 @@ Out:
 ### 1.3 Lockout
 
 - 10 failed logins for one email within 15 minutes lock that login for 15 minutes, even with the right password. A successful login resets the count.
+- As built: the 15 minutes are counted from the first failure in the window, not as a rolling window, so up to 18 failures can fall close together across two windows. Accepted on 29 October 2026; a rolling window would need a table of failed attempts.
 - The response for an unknown email, a wrong password and a disabled user is the same 401 `INVALID_CREDENTIALS`, so nobody can test which emails exist. A locked account gets 423 `LOGIN_LOCKED` with the unlock time.
-- Data: nullable columns on `users`: `failed_login_count int`, `locked_until timestamptz` (migration 0004).
+- Data: nullable columns on `users`: `failed_login_count int`, `first_failed_login_at timestamptz` (when the current 15-minute window started), `locked_until timestamptz` (migration 0004).
 - Tests: the 11th attempt is locked; the lock ends after 15 minutes (fake clock); success resets the count.
 - Acceptance: the worked example's step 5 behaves as written.
 
@@ -141,27 +145,57 @@ Out:
 - This test runs in CI forever, so every later milestone's routes are checked automatically.
 - Acceptance: adding a route without scope makes CI red.
 
-### 1.6 Panel shell: login, picker, menu
+### 1.6.1 Web foundations (Suraj)
+
+Everything later screens need, so no screen task has to invent it.
+
+- Component tests in `apps/web`: Vitest with `jsdom`, `@testing-library/react` and `@testing-library/user-event`; `pnpm test` runs them in CI.
+- Routing with `react-router-dom`; one route per page in the menu.
+- The API layer `apps/web/src/api/`: one typed function per route, which validates the response with the shared Zod schema. `VITE_API_MODE=mock` answers from `apps/web/src/api/mock/` (in-memory fake data seeded with the worked example's users and clients); `real` (default) calls the server through Vite's `/api` proxy with `credentials: 'include'`, so the session cookie from 1.2 works without changes. Production builds ignore `mock`. Add `VITE_API_MODE` to `.env.example` blank.
+- Contracts folder `packages/shared/src/contracts/` with `auth.ts` for the three routes below, re-exported from the package index.
+- `formatPaise(paise: number): string` in `packages/shared/src/format/money.ts`: whole paise to rupees with two decimals and Indian grouping (`123450` gives `₹1,234.50`). The panel never does money arithmetic; it only formats.
+- One map from error code to the message shown (for example `INVALID_CREDENTIALS` gives "Wrong email or password"), used by every form.
+- Tests: `formatPaise` for 0, 1, 99, 100, 123450, 10000000 and a negative; the API layer rejects a response that does not match its schema; mock mode is off in a production build.
+- Acceptance (Screen ready): `VITE_API_MODE=mock pnpm dev` runs the panel; tests pass in CI.
+
+### 1.6.2 Panel shell (Suraj)
 
 - Login page posts `{ email, password }`; shows "wrong email or password" or "locked until hh:mm".
 - After login the panel calls `/api/auth/me`. One workspace: open it. Several: show the picker; the chosen client appears in the header with a switch button.
 - Menu by role, following the Dovesoft sidebar (HLD section 4): Dashboard, Push Campaign, Templates, Reports, Wallet, Settings for a workspace; Admin for super admin only. Pages not built yet show "coming soon".
 - Dashboard and Push Campaign stop showing `apps/web/src/data/mockData.ts` figures; they show an empty state until their milestones.
-- Tests: component tests for the menu by role and the picker.
-- Acceptance: each user in the worked example sees exactly the menu and picker described.
+- Contract details the spec leaves open, decided here: the 423 body is `{ "error": "LOGIN_LOCKED", "message", "lockedUntil": "<ISO time>" }`; the login response is `{ user: { id, name, email, role } }`.
+- Tests: component tests for the menu by role, the picker, and each login error message.
+- Acceptance (Screen ready): in mock mode, each user in the worked example sees exactly the menu and picker described. Done after 1.7.
+
+### 1.7 Connect the panel to the real server (Suraj)
+
+The backend (1.1 to 1.5) is finished, so this can start as soon as 1.6.2 is Screen ready.
+
+- Local setup: `pnpm db:up`, `pnpm migrate`, `pnpm --filter @reaplift/server cli seed-dev` (password `reaplift-dev-1` for all four users), `pnpm dev`. Set `SESSION_COOKIE_SECURE=false` in `.env` if testing in Safari over plain http.
+- Run the panel with `VITE_API_MODE=real`. The real responses are recorded in `backend-api.md`; where they differ from the contracts in `packages/shared/src/contracts/auth.ts`, change the contract and the mock to match the server.
+- Remove the panel's call to `GET /api/ping` (the route is gone) and the old prototype login code (`role` field, bearer token).
+- Evidence: `frontend.md` (a screenshot per user in the worked example) and `e2e.md` (the demo below, run in the panel).
+- Acceptance: the milestone demo passes in the real panel, and CI on the pull request into `main` shows the route-walking test passing (demo step 7); M1 is Done.
+
+## Who builds what
+
+- **Suraj (screens track):** 1.6.1 and 1.6.2 against the mock API, then 1.7 against the real server. Never waits for the backend; see "Suraj's task list" in the [tracker](../../project-tracker.md).
+- **Anirudh (backend):** 1.0 to 1.5, finished on 29 October 2026. If 1.7 finds the server itself wrong (not just a contract mismatch), Anirudh fixes it.
 
 ## Data and API
 
 Migration 0004 (claim it in the tracker's registry first):
 
 - `auth_sessions`: `id uuid`, `user_id uuid not null`, `client_id uuid null` (the user's client for client users; kept so the table carries `client_id` like every table), `token_hash text not null unique`, `created_at`, `last_seen_at`, `expires_at`, `revoked_at null`, `user_agent text null`, `ip_address text null`
-- `users`: add nullable `failed_login_count int`, `locked_until timestamptz`
+- `users`: add nullable `failed_login_count int`, `first_failed_login_at timestamptz`, `locked_until timestamptz`
 
-| Method | Route              | Who       | Success                 | Errors                                                               |
-| ------ | ------------------ | --------- | ----------------------- | -------------------------------------------------------------------- |
-| POST   | `/api/auth/login`  | anyone    | 200 user; sets cookie   | 400 `INVALID_REQUEST`, 401 `INVALID_CREDENTIALS`, 423 `LOGIN_LOCKED` |
-| POST   | `/api/auth/logout` | logged in | 204; clears cookie      | 401 `UNAUTHENTICATED`                                                |
-| GET    | `/api/auth/me`     | logged in | 200 user and workspaces | 401 `UNAUTHENTICATED`                                                |
+| Method | Route                    | Who                                 | Success                                                 | Errors                                                               |
+| ------ | ------------------------ | ----------------------------------- | ------------------------------------------------------- | -------------------------------------------------------------------- |
+| POST   | `/api/auth/login`        | anyone                              | 200 user; sets cookie                                   | 400 `INVALID_REQUEST`, 401 `INVALID_CREDENTIALS`, 423 `LOGIN_LOCKED` |
+| POST   | `/api/auth/logout`       | logged in                           | 204; clears cookie                                      | 401 `UNAUTHENTICATED`                                                |
+| GET    | `/api/auth/me`           | logged in                           | 200 user and workspaces                                 | 401 `UNAUTHENTICATED`                                                |
+| GET    | `/api/clients/:clientId` | client, assigned staff, super admin | 200 `{ clientId, name, status }` (the workspace header) | 401 `UNAUTHENTICATED`, 403 `CLIENT_SUSPENDED`, 404 `NOT_FOUND`       |
 
 All errors use `{ "error": "<CODE>", "message": "<text>" }`.
 
@@ -177,10 +211,13 @@ None. The role name, session table and cookie were decided on 29 October 2026 (s
 
 ## Current reality
 
-- `POST /api/auth/login` in `apps/server/src/app.ts` checks three hardcoded users (`admin@`, `client@`, `staff@reaplift.ai`, password `password123`) and a `role` field, and keeps sessions in a `Map` with an 8-hour expiry, sent as a bearer token. A restart logs everyone out.
-- `/api/admin/*` routes check for a `super_admin` session; the panel hides pages with `canAccessPage` from `packages/shared`.
-- Tables `users`, `sessions`, `staff_clients`, `audit_logs` exist (0003); nothing reads them.
-- No hashing, logout, lockout, scope hook or isolation test.
+As of 29 October 2026, on `anirudh-e2e-setup`:
+
+- Done: users with argon2id hashes and `cli create-user` / `cli seed-dev` (1.1); `auth_sessions` with the `rl_session` cookie, logout, 12-hour idle and 7-day limits, Origin check (1.2); lockout (1.3); scope hook, `/api/auth/me` and `GET /api/clients/:clientId` (1.4); route-walking test (1.5). Demo users, in-memory sessions and `GET /api/ping` are gone.
+- Code: `apps/server/src/modules/auth/` (`users.ts`, `sessions.ts`, `scope.ts`, `routes.ts`), `apps/server/src/cli.ts`, `db/migrations/0004_auth_sessions.sql`.
+- Tests: `test/auth.test.ts` (unit), `test/login.int.test.ts`, `test/scope.int.test.ts`.
+- The old prototype panel's login (sends `role`, expects a bearer token) no longer works against the server. The panel shell (1.6.2) replaces it; until then use mock mode (1.6.1) or curl.
+- M3's prototype admin routes (`/api/admin/clients`, in-memory) are now behind the scope hook: super admin only.
 
 ## Demo (milestone acceptance)
 

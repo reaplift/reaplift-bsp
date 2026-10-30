@@ -1,7 +1,7 @@
 # M6. Wallet and prices
 
 - Status: Not started
-- Owner: Unassigned
+- Owner: Anirudh (backend), Suraj (screens S7 to S9)
 - Branch prefix: `m6-`
 - Starts after: M3 (clients and logins)
 - External prerequisites: none. D10 (markup rules) has a default, so work can start.
@@ -116,6 +116,23 @@ Out:
 - Later (decided 29 October 2026, not at launch): send the low-balance alert on WhatsApp from ReapLift's own number too.
 - Tests: crossing the line notifies once.
 - Acceptance: step 4 of the worked example.
+
+## Screens (Suraj)
+
+Built on the screens track against the mock API, so they can start before M3 is Done (tracker, "Screens track exception"). Contracts go in `packages/shared/src/contracts/wallet.ts` and `pricing.ts`, from the route table below. Amounts are whole paise, sent as JSON numbers (the server turns `bigint` into numbers; see the conventions in data-model-and-api.md) and are shown only through `formatPaise`; the panel never computes a price or a balance.
+
+| #   | Screens                                                                                                                                                                                                                 | Backend task it pairs with |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------- |
+| S7  | Wallet page in every workspace: balance, the client's prices by category, ledger with filters by kind and date, CSV download (built in the browser from the filtered rows)                                              | 6.4, 6.1                   |
+| S8  | Admin client view: balance box, top-up form (positive amount), adjustment form (either sign, note required), low-balance alert setting                                                                                  | 6.3, 6.6                   |
+| S9  | Admin prices: Meta rates list and add form (rate in paise with up to two decimals, stored as hundredths), default markup in percent (stored as basis points), per-client markup or fixed prices, charge-policy switches | 6.1                        |
+
+- Client and staff never see Meta rates, markup or margin; S8 and S9 are super admin only.
+- Converting typed rupees to paise (and percent to basis points) happens in one tested helper next to `formatPaise`, using whole-number maths only.
+- Tests: rupees-to-paise for "1", "1.5", "1.05", "0.01" and refusing "1.005"; percent-to-basis-points for "25" and "22.5"; each form's validation.
+- Screen ready: the worked example's steps 1 to 5 run in mock mode; screenshots in `frontend.md`.
+
+Anirudh builds the tables, the ledger, `applyLedgerEntry`, price calculation, routes and notifications (6.1 to 6.6), and wires each screen when its route merges.
 
 ## Data and API
 

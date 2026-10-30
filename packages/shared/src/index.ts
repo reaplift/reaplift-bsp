@@ -4,7 +4,7 @@ import { z } from 'zod';
 export const MODES = ['api', 'worker', 'receiver', 'scheduler', 'migrate'] as const;
 export type Mode = (typeof MODES)[number];
 
-export const USER_ROLES = ['super_admin', 'client_admin', 'staff'] as const;
+export const USER_ROLES = ['super_admin', 'staff', 'client'] as const;
 export type UserRole = (typeof USER_ROLES)[number];
 export type AppPageId = 'dashboard' | 'campaign' | 'admin' | 'login';
 

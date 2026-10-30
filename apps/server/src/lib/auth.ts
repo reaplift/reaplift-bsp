@@ -1,48 +1,44 @@
-import { createHash, pbkdf2Sync, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
+import { Algorithm, hash, verify } from '@node-rs/argon2';
 
-const SALT_BYTES = 16;
-const HASH_BYTES = 32;
-const PBKDF2_ITERATIONS = 120_000;
 const SESSION_BYTES = 32;
 
-export function hashPassword(password: string): string {
-  const salt = randomBytes(SALT_BYTES);
-  const hash = pbkdf2Sync(password, salt, PBKDF2_ITERATIONS, HASH_BYTES, 'sha256');
-  return `pbkdf2_sha256:${PBKDF2_ITERATIONS}:${salt.toString('hex')}:${hash.toString('hex')}`;
+// OWASP's argon2id baseline: 19 MiB memory, 2 passes, 1 lane.
+const ARGON2_OPTIONS = {
+  algorithm: Algorithm.Argon2id,
+  memoryCost: 19456,
+  timeCost: 2,
+  parallelism: 1,
+};
+
+/** Hash computed once at startup, verified against when the email is unknown so the response takes as long. */
+let dummyHash: Promise<string> | undefined;
+
+export function hashPassword(password: string): Promise<string> {
+  return hash(password, ARGON2_OPTIONS);
 }
 
-export function verifyPassword(password: string, storedHash: string): boolean {
-  if (!storedHash.startsWith('pbkdf2_sha256:')) {
+export async function verifyPassword(
+  password: string,
+  storedHash: string | null,
+): Promise<boolean> {
+  if (!storedHash) {
+    dummyHash ??= hashPassword('not-a-real-password');
+    await verify(await dummyHash, password).catch(() => false);
     return false;
   }
-
-  const parts = storedHash.split(':');
-  if (parts.length !== 4) {
+  try {
+    return await verify(storedHash, password);
+  } catch {
     return false;
   }
-
-  const [, iterationRaw, saltHex, expectedHex] = parts;
-  const iterations = Number.parseInt(iterationRaw ?? '', 10);
-
-  if (!Number.isFinite(iterations) || !saltHex || !expectedHex) {
-    return false;
-  }
-
-  const salt = Buffer.from(saltHex, 'hex');
-  const expected = Buffer.from(expectedHex, 'hex');
-  const candidate = pbkdf2Sync(password, salt, iterations, expected.length, 'sha256');
-
-  return timingSafeEqual(candidate, expected);
 }
 
 export function createSessionToken(): string {
   return randomBytes(SESSION_BYTES).toString('hex');
 }
 
+/** Only this hash is stored, so a leaked database row cannot be used as a cookie. */
 export function hashToken(token: string): string {
   return createHash('sha256').update(token, 'utf8').digest('hex');
-}
-
-export function isSessionExpired(expiresAt: Date): boolean {
-  return new Date(expiresAt).getTime() <= Date.now();
 }

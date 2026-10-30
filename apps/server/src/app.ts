@@ -1,25 +1,34 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import Fastify, { type FastifyRequest } from 'fastify';
+import Fastify from 'fastify';
+import type { Kysely } from 'kysely';
 import { z } from 'zod';
-import {
-  AdminClient,
-  type HealthResponse,
-  type PingResponse,
-  type UserRole,
-} from '@reaplift/shared';
-import { createSessionToken } from './lib/auth.js';
+import { AdminClient, type HealthResponse } from '@reaplift/shared';
+import type { Database } from './lib/db.js';
+import { registerAuthRoutes } from './modules/auth/routes.js';
+import { registerScope } from './modules/auth/scope.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
     /** Exact JSON body as received; Meta signs these bytes. */
     rawBody?: string;
   }
+  interface FastifyInstance {
+    /** Every route registered, so the route-walking test can check each one's access rule. */
+    routeList: Array<{ method: string; url: string }>;
+  }
 }
 
 export interface AppDeps {
   version: string;
   checkDb: () => Promise<boolean>;
+  db: Kysely<Database>;
   logger?: boolean;
+  /** The panel's address; state-changing requests from any other origin are refused. */
+  panelOrigin?: string;
+  /** Secure flag on the session cookie; off only for plain-http local development. */
+  cookieSecure?: boolean;
+  /** Clock, replaceable in tests (session expiry, lockout). */
+  now?: () => Date;
   metaVerifyToken?: string;
   metaAppSecret?: string;
 }
@@ -28,11 +37,21 @@ export interface AppDeps {
 export function buildApp({
   version,
   checkDb,
+  db,
   logger = false,
+  panelOrigin = 'http://localhost:5173',
+  cookieSecure = true,
+  now = () => new Date(),
   metaVerifyToken = '',
   metaAppSecret = '',
 }: AppDeps) {
   const app = Fastify({ logger });
+  app.decorate('routeList', []);
+  app.addHook('onRoute', (route) => {
+    for (const method of [route.method].flat()) {
+      if (method !== 'HEAD') app.routeList.push({ method, url: route.url });
+    }
+  });
   app.addContentTypeParser('application/json', { parseAs: 'string' }, (req, body, done) => {
     req.rawBody = body as string;
     try {
@@ -60,27 +79,8 @@ export function buildApp({
       walletBalance: 25000,
     },
   ];
-  const demoUsers = {
-    'admin@reaplift.ai': { password: 'password123', role: 'super_admin' as const },
-    'client@reaplift.ai': { password: 'password123', role: 'client_admin' as const },
-    'staff@reaplift.ai': { password: 'password123', role: 'staff' as const },
-  } as const;
-  const sessionStore = new Map<string, { email: string; role: UserRole; expiresAt: Date }>();
-
-  const requireSession = (authorizationHeader: string | undefined) => {
-    if (!authorizationHeader?.startsWith('Bearer ')) {
-      return null;
-    }
-
-    const token = authorizationHeader.slice('Bearer '.length).trim();
-    const session = sessionStore.get(token);
-
-    if (!session || session.expiresAt.getTime() <= Date.now()) {
-      return null;
-    }
-
-    return session;
-  };
+  registerScope(app, { db, now, panelOrigin });
+  registerAuthRoutes(app, { db, now, cookieSecure });
 
   app.get('/healthz', async (_req, reply) => {
     const dbOk = await checkDb();
@@ -92,65 +92,12 @@ export function buildApp({
     return reply.code(dbOk ? 200 : 503).send(body);
   });
 
-  app.get('/api/ping', async (_req, reply) => {
-    const body: PingResponse = {
-      message: 'I am backend. Hello from the server.',
-      source: 'backend',
-    };
-    return reply.code(200).send(body);
-  });
-
-  app.post('/api/auth/login', async (req, reply) => {
-    const payload = req.body as { email?: string; password?: string; role?: string };
-    const email = payload.email?.trim().toLowerCase();
-    const password = payload.password;
-    const role = payload.role as UserRole | undefined;
-
-    if (!email || !password || !role) {
-      return reply.code(400).send({ error: 'email, password and role are required' });
-    }
-
-    const user = demoUsers[email as keyof typeof demoUsers];
-    if (!user || user.password !== password || user.role !== role) {
-      return reply.code(401).send({ error: 'invalid credentials' });
-    }
-
-    const token = createSessionToken();
-    sessionStore.set(token, {
-      email,
-      role,
-      expiresAt: new Date(Date.now() + 8 * 60 * 60 * 1000),
-    });
-
-    return reply.code(200).send({
-      ok: true,
-      user: { email, role },
-      token,
-    });
-  });
-
-  const requireAdminSession = (req: FastifyRequest) => {
-    const session = requireSession(req.headers.authorization as string | undefined);
-    if (!session) {
-      return null;
-    }
-    return session.role === 'super_admin' ? session : null;
-  };
-
-  app.get('/api/admin/clients', async (req, reply) => {
-    const session = requireAdminSession(req);
-    if (!session) {
-      return reply.code(401).send({ error: 'unauthorized' });
-    }
+  // Admin routes below are M3's prototype on in-memory data; the scope hook allows only super admins.
+  app.get('/api/admin/clients', async (_req, reply) => {
     return reply.code(200).send(adminClients);
   });
 
   app.post('/api/admin/clients', async (req, reply) => {
-    const session = requireAdminSession(req);
-    if (!session) {
-      return reply.code(401).send({ error: 'unauthorized' });
-    }
-
     const payload = req.body as unknown;
     const parsed = AdminClient.omit({ id: true }).safeParse(payload);
 
@@ -171,11 +118,6 @@ export function buildApp({
   });
 
   app.patch('/api/admin/clients/:id/status', async (req, reply) => {
-    const session = requireAdminSession(req);
-    if (!session) {
-      return reply.code(401).send({ error: 'unauthorized' });
-    }
-
     const { id } = req.params as { id: string };
     const payload = req.body as { status?: string };
     const status = payload.status;
@@ -195,11 +137,6 @@ export function buildApp({
   });
 
   app.patch('/api/admin/clients/:id/staff', async (req, reply) => {
-    const session = requireAdminSession(req);
-    if (!session) {
-      return reply.code(401).send({ error: 'unauthorized' });
-    }
-
     const { id } = req.params as { id: string };
     const payload = req.body as { assignedStaff?: string };
     const assignedStaff = payload.assignedStaff?.trim();

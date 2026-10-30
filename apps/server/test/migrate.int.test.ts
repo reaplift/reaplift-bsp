@@ -25,22 +25,14 @@ describe.sequential('migrate', () => {
   });
 
   it('adds the milestone 1 message and admin access schema', async () => {
-    await pool.query('drop table if exists audit_logs');
-    await pool.query('drop table if exists staff_clients');
-    await pool.query('drop table if exists sessions');
-    await pool.query('drop table if exists users');
-    await pool.query('drop table if exists message_status_events');
-    await pool.query('drop table if exists meta_events');
-    await pool.query('drop table if exists messages');
-    await pool.query('drop table if exists templates');
-    await pool.query('drop table if exists wa_accounts');
-    await pool.query('drop table if exists clients');
-    await pool.query('drop table if exists schema_migrations');
+    await pool.query('drop schema public cascade');
+    await pool.query('create schema public');
 
     const result = await migrate(pool, migrationsDir());
     expect(result.applied).toContain('0001_init.sql');
     expect(result.applied).toContain('0002_message_platform.sql');
     expect(result.applied).toContain('0003_admin_access.sql');
+    expect(result.applied).toContain('0004_auth_sessions.sql');
 
     const tables = await pool.query<{ table_name: string }>(`
       select table_name
@@ -55,6 +47,7 @@ describe.sequential('migrate', () => {
           'message_status_events',
           'users',
           'sessions',
+          'auth_sessions',
           'staff_clients',
           'audit_logs'
         )
@@ -62,6 +55,7 @@ describe.sequential('migrate', () => {
     `);
     expect(tables.rows.map((row) => row.table_name)).toEqual([
       'audit_logs',
+      'auth_sessions',
       'clients',
       'message_status_events',
       'messages',
@@ -85,5 +79,6 @@ describe.sequential('migrate', () => {
     expect(columns.rows.map((row) => row.column_name)).toContain('status');
     expect(columns.rows.map((row) => row.column_name)).toContain('created_at');
     expect(columns.rows.map((row) => row.column_name)).toContain('role');
+    expect(columns.rows.map((row) => row.column_name)).toContain('locked_until');
   });
 });
