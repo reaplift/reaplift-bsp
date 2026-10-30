@@ -79,6 +79,8 @@ button {
 }
 
 .nav-item {
+  display: block;
+  text-decoration: none;
   border: 0;
   background: transparent;
   color: #dfe7ff;

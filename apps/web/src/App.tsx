@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactElement } from 'react';
+import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { canAccessPage, type UserRole } from '@reaplift/shared';
-import { Layout, type PageId } from './components/Layout';
+import { Layout, PAGE_PATHS, type PageId } from './components/Layout';
 import { Admin } from './pages/Admin';
 import { Dashboard } from './pages/Dashboard';
 import { Login } from './pages/Login';
@@ -23,34 +24,36 @@ const visiblePagesForRole = (role: UserRole | null): PageId[] => {
   return allPages.filter((page) => canAccessPage(role, page));
 };
 
+const homePath = (role: UserRole | null) =>
+  !role ? PAGE_PATHS.login : role === 'super_admin' ? PAGE_PATHS.admin : PAGE_PATHS.dashboard;
+
+// Read before the first render, so a logged-in user who reloads /dashboard is not sent to /login
+// while the saved session is still loading.
+function savedRole(): UserRole | null {
+  try {
+    const saved = localStorage.getItem('reaplift-session');
+    return saved ? (JSON.parse(saved) as SessionState).role : null;
+  } catch {
+    return null;
+  }
+}
+
 export function App() {
-  const [page, setPage] = useState<PageId>('login');
-  const [role, setRole] = useState<UserRole | null>(null);
+  const navigate = useNavigate();
+  const [role, setRole] = useState<UserRole | null>(savedRole);
   const [ping, setPing] = useState<PingState>(null);
   const [loginError, setLoginError] = useState<string | null>(null);
 
   useEffect(() => {
-    const savedSession = localStorage.getItem('reaplift-session');
-    if (savedSession) {
-      const parsed = JSON.parse(savedSession) as SessionState;
-      setRole(parsed.role);
-      setPage(parsed.role === 'super_admin' ? 'admin' : 'dashboard');
-    }
-
     fetch('/api/ping')
       .then((res) => res.json())
       .then((data) => setPing(data as PingState))
       .catch(() => setPing({ message: 'Backend unreachable', source: 'backend' }));
   }, []);
 
-  const handleNavigate = (nextPage: PageId) => {
-    if (canAccessPage(role, nextPage)) {
-      setPage(nextPage);
-      return;
-    }
-
-    setPage(role ? 'dashboard' : 'login');
-  };
+  /** A page the role may not open sends the user to the dashboard, or to login when logged out. */
+  const guard = (page: PageId, element: ReactElement) =>
+    canAccessPage(role, page) ? element : <Navigate to={role ? PAGE_PATHS.dashboard : PAGE_PATHS.login} replace />;
 
   const handleLogin = async (payload: { email: string; password: string; role: UserRole }) => {
     const res = await fetch('/api/auth/login', {
@@ -80,7 +83,7 @@ export function App() {
     localStorage.setItem('reaplift-session', JSON.stringify(session));
     setRole(data.user.role);
     setLoginError(null);
-    setPage(data.user.role === 'super_admin' ? 'admin' : 'dashboard');
+    navigate(homePath(data.user.role));
   };
 
   const getAuthHeader = (): Record<string, string> => {
@@ -96,7 +99,7 @@ export function App() {
   };
 
   return (
-    <Layout currentPage={page} visiblePages={visiblePagesForRole(role)} onNavigate={handleNavigate}>
+    <Layout visiblePages={visiblePagesForRole(role)}>
       <div className="panel" style={{ marginBottom: 18 }}>
         <h2>Backend message</h2>
         <p>{ping ? ping.message : 'Loading backend message...'}</p>
@@ -106,10 +109,17 @@ export function App() {
           <p style={{ color: '#d9485f', margin: 0 }}>{loginError}</p>
         </div>
       )}
-      {page === 'dashboard' && <Dashboard />}
-      {page === 'campaign' && <PushCampaign />}
-      {page === 'admin' && role === 'super_admin' && <Admin authHeader={getAuthHeader()} />}
-      {page === 'login' && <Login onLogin={handleLogin} />}
+      <Routes>
+        <Route path="/" element={<Navigate to={homePath(role)} replace />} />
+        <Route path={PAGE_PATHS.dashboard} element={guard('dashboard', <Dashboard />)} />
+        <Route path={PAGE_PATHS.campaign} element={guard('campaign', <PushCampaign />)} />
+        <Route
+          path={PAGE_PATHS.admin}
+          element={guard('admin', role === 'super_admin' ? <Admin authHeader={getAuthHeader()} /> : <></>)}
+        />
+        <Route path={PAGE_PATHS.login} element={<Login onLogin={handleLogin} />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </Layout>
   );
 }
