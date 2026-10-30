@@ -83,16 +83,17 @@ Out:
 
 ## Tasks
 
-| Task  | Name                                   | Depends on                                                  | Can run in parallel with |
-| ----- | -------------------------------------- | ----------------------------------------------------------- | ------------------------ |
-| 1.0   | Restore green CI                       | none                                                        | all                      |
-| 1.1   | Users, password hashing, `create-user` | none                                                        | 1.6                      |
-| 1.2   | Cookie sessions, logout, expiry        | 1.1                                                         | 1.6                      |
-| 1.3   | Lockout                                | 1.2                                                         | 1.4                      |
-| 1.4   | Request scope and client workspaces    | 1.2                                                         | 1.3                      |
-| 1.5   | Route-walking isolation test           | 1.4                                                         | 1.6                      |
-| 1.6.1 | Web foundations (Suraj)                | none                                                        | all                      |
-| 1.6.2 | Panel shell (Suraj)                    | 1.6.1 (mock API; real routes 1.2, 1.4 wired by their owner) | 1.1 to 1.5               |
+| Task  | Name                                         | Depends on                                                  | Can run in parallel with |
+| ----- | -------------------------------------------- | ----------------------------------------------------------- | ------------------------ |
+| 1.0   | Restore green CI                             | none                                                        | all                      |
+| 1.1   | Users, password hashing, `create-user`       | none                                                        | 1.6                      |
+| 1.2   | Cookie sessions, logout, expiry              | 1.1                                                         | 1.6                      |
+| 1.3   | Lockout                                      | 1.2                                                         | 1.4                      |
+| 1.4   | Request scope and client workspaces          | 1.2                                                         | 1.3                      |
+| 1.5   | Route-walking isolation test                 | 1.4                                                         | 1.6                      |
+| 1.6.1 | Web foundations (Suraj)                      | none                                                        | all                      |
+| 1.6.2 | Panel shell (Suraj)                          | 1.6.1 (mock API; real routes 1.2, 1.4 wired by their owner) | 1.1 to 1.5               |
+| 1.6.3 | Connect the panel to the real server (Suraj) | 1.6.2, 1.1 to 1.5 (done)                                    | none                     |
 
 ### 1.0 Restore green CI
 
@@ -164,12 +165,22 @@ Everything later screens need, so no screen task has to invent it.
 - Dashboard and Push Campaign stop showing `apps/web/src/data/mockData.ts` figures; they show an empty state until their milestones.
 - Contract details the spec leaves open, decided here: the 423 body is `{ "error": "LOGIN_LOCKED", "message", "lockedUntil": "<ISO time>" }`; the login response is `{ user: { id, name, email, role } }`.
 - Tests: component tests for the menu by role, the picker, and each login error message.
-- Acceptance (Screen ready): in mock mode, each user in the worked example sees exactly the menu and picker described. Done when the owner of 1.2 and 1.4 has run it against the real routes.
+- Acceptance (Screen ready): in mock mode, each user in the worked example sees exactly the menu and picker described. Done after 1.6.3.
+
+### 1.6.3 Connect the panel to the real server (Suraj)
+
+The backend (1.1 to 1.5) is finished, so this can start as soon as 1.6.2 is Screen ready.
+
+- Local setup: `pnpm db:up`, `pnpm migrate`, `pnpm --filter @reaplift/server cli seed-dev` (password `reaplift-dev-1` for all four users), `pnpm dev`. Set `SESSION_COOKIE_SECURE=false` in `.env` if testing in Safari over plain http.
+- Run the panel with `VITE_API_MODE=real`. The real responses are recorded in `backend-api.md`; where they differ from the contracts in `packages/shared/src/contracts/auth.ts`, change the contract and the mock to match the server.
+- Remove the panel's call to `GET /api/ping` (the route is gone) and the old prototype login code (`role` field, bearer token).
+- Evidence: `frontend.md` (a screenshot per user in the worked example) and `e2e.md` (the demo below, run in the panel).
+- Acceptance: the milestone demo passes in the real panel; M1 is Done.
 
 ## Who builds what
 
-- **Suraj (screens track):** 1.6.1 and 1.6.2, against the mock API. Never waits for the backend; see "Suraj's task list" in the [tracker](../../project-tracker.md).
-- **Anirudh (backend):** 1.0 to 1.5. When 1.2 and 1.4 merge, Anirudh runs the panel with `VITE_API_MODE=real`, fixes any mismatch with Suraj's contracts in `packages/shared/src/contracts/auth.ts`, and records the evidence; 1.6 is Done then.
+- **Suraj (screens track):** 1.6.1 and 1.6.2 against the mock API, then 1.6.3 against the real server. Never waits for the backend; see "Suraj's task list" in the [tracker](../../project-tracker.md).
+- **Anirudh (backend):** 1.0 to 1.5, finished on 29 October 2026. If 1.6.3 finds the server itself wrong (not just a contract mismatch), Anirudh fixes it.
 
 ## Data and API
 
