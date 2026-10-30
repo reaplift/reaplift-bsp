@@ -179,6 +179,71 @@ button {
   margin: 0;
 }
 
+.table-wrap {
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-table th,
+.data-table td {
+  text-align: left;
+  padding: 12px 10px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.data-table th {
+  color: #64748b;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.team-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.team-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.3fr) auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 14px 12px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 12px;
+  background: rgba(248, 250, 252, 0.9);
+}
+
+.team-row strong,
+.team-row small {
+  display: block;
+}
+
+.team-row small {
+  color: #64748b;
+  margin-top: 4px;
+}
+
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 92px;
+  border-radius: 999px;
+  padding: 6px 8px;
+  background: #ede9fe;
+  color: #5b21b6;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
 .campaign-list {
   display: flex;
   flex-direction: column;
@@ -231,6 +296,16 @@ button {
 .status-draft {
   background: #fef3c7;
   color: #92400e;
+}
+
+.status-active {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status-suspended {
+  background: #fee2e2;
+  color: #991b1b;
 }
 
 .form-grid {

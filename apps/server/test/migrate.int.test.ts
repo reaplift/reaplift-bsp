@@ -24,7 +24,11 @@ describe.sequential('migrate', () => {
     expect(after.rows).toEqual(before.rows);
   });
 
-  it('adds the milestone 1 message and client schema', async () => {
+  it('adds the milestone 1 message and admin access schema', async () => {
+    await pool.query('drop table if exists audit_logs');
+    await pool.query('drop table if exists staff_clients');
+    await pool.query('drop table if exists sessions');
+    await pool.query('drop table if exists users');
     await pool.query('drop table if exists message_status_events');
     await pool.query('drop table if exists meta_events');
     await pool.query('drop table if exists messages');
@@ -36,27 +40,43 @@ describe.sequential('migrate', () => {
     const result = await migrate(pool, migrationsDir());
     expect(result.applied).toContain('0001_init.sql');
     expect(result.applied).toContain('0002_message_platform.sql');
+    expect(result.applied).toContain('0003_admin_access.sql');
 
     const tables = await pool.query<{ table_name: string }>(`
       select table_name
       from information_schema.tables
       where table_schema = 'public'
-        and table_name in ('clients', 'wa_accounts', 'templates', 'messages', 'meta_events', 'message_status_events')
+        and table_name in (
+          'clients',
+          'wa_accounts',
+          'templates',
+          'messages',
+          'meta_events',
+          'message_status_events',
+          'users',
+          'sessions',
+          'staff_clients',
+          'audit_logs'
+        )
       order by table_name
     `);
     expect(tables.rows.map((row) => row.table_name)).toEqual([
+      'audit_logs',
       'clients',
       'message_status_events',
       'messages',
       'meta_events',
+      'sessions',
+      'staff_clients',
       'templates',
+      'users',
       'wa_accounts',
     ]);
 
     const columns = await pool.query<{ column_name: string }>(`
       select column_name
       from information_schema.columns
-      where table_name in ('clients', 'wa_accounts', 'templates', 'messages')
+      where table_name in ('clients', 'wa_accounts', 'templates', 'messages', 'users', 'sessions', 'staff_clients', 'audit_logs')
         and table_schema = 'public'
       order by table_name, ordinal_position
     `);
@@ -64,5 +84,6 @@ describe.sequential('migrate', () => {
     expect(columns.rows.map((row) => row.column_name)).toContain('client_id');
     expect(columns.rows.map((row) => row.column_name)).toContain('status');
     expect(columns.rows.map((row) => row.column_name)).toContain('created_at');
+    expect(columns.rows.map((row) => row.column_name)).toContain('role');
   });
 });

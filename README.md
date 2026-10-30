@@ -7,6 +7,12 @@ ReapLift's own WhatsApp platform, working directly with Meta: template campaigns
 
 Current state: **milestone 0 skeleton**. The server answers `/healthz` and runs database migrations; the panel is a placeholder page.
 
+## Milestone evidence docs
+
+Every active milestone should have a small evidence pack under [docs/milestones](docs/milestones). Each milestone folder contains the demo summary, page actions, backend API checks, DB notes, end-to-end verification, and test evidence.
+
+- [docs/milestones/README.md](docs/milestones/README.md)
+
 ## Setup
 
 Follow the guide for your computer. Each one covers installing the tools, opening the repo in VS Code, the first run and common problems.
@@ -22,6 +28,7 @@ Run all of these from the repo root.
 
 | Command                                                            | What it does                                                          |
 | ------------------------------------------------------------------ | --------------------------------------------------------------------- |
+| `pnpm install`                                                     | Installs the monorepo dependencies                                    |
 | `pnpm dev`                                                         | Runs the API and the panel with live reload                           |
 | `pnpm db:up` / `pnpm db:down`                                      | Starts / stops the local PostgreSQL container (data is kept)          |
 | `pnpm migrate`                                                     | Applies new files in `db/migrations` to the database                  |
@@ -32,6 +39,50 @@ Run all of these from the repo root.
 | `pnpm build`                                                       | Production build of every package                                     |
 | `pnpm format`                                                      | Formats every file with Prettier                                      |
 | `docker compose -f infra/compose.dev.yml --profile app up --build` | Runs database, migrations and API all in containers, as on the server |
+
+## Demo startup for tomorrow
+
+Use this sequence for a clean local demo of the current milestone.
+
+1. Prepare local settings
+
+```bash
+cp .env.example .env
+```
+
+2. Start PostgreSQL and apply migrations
+
+```bash
+docker compose -f infra/compose.dev.yml up -d postgres
+pnpm migrate
+```
+
+3. Start the backend and frontend in separate terminals
+
+```bash
+# terminal 1 (backend logs)
+pnpm --filter @reaplift/server dev
+```
+
+```bash
+# terminal 2 (frontend logs)
+pnpm --filter @reaplift/web dev
+```
+
+The server logs are shown in terminal 1 and the Vite app logs are shown in terminal 2. There is no dedicated log file yet; this is the current live view for debugging and demos.
+
+4. Open the app
+
+- Frontend: http://localhost:5173
+- Backend health: http://localhost:3000/healthz
+
+5. Log in with the demo admin account
+
+- Email: `admin@reaplift.ai`
+- Password: `password123`
+- Role: `super_admin`
+
+The admin page should load the client list and allow client create/status/staff actions through the real backend session.
 
 Health check: `curl http://localhost:3000/healthz` returns `{"status":"ok","version":"dev","db":"ok"}`, or HTTP 503 when the database is down.
 

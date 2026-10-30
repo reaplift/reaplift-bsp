@@ -1,5 +1,6 @@
 import type { Kysely } from 'kysely';
 import { sql } from 'kysely';
+import type { Database } from './db.js';
 import { encryptSecret } from './crypto.js';
 
 export type MetaPayer = 'reaplift_card' | 'partner_credit_line' | 'reaplift_credit_line';
@@ -18,7 +19,7 @@ export interface SeedAccountInput {
 }
 
 export async function seedAccount(
-  db: Kysely<any>,
+  db: Kysely<Database>,
   input: SeedAccountInput,
   encryptionKey: string,
 ): Promise<{ clientId: string; waAccountId: string }> {

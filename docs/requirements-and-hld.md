@@ -26,10 +26,13 @@ Version 1, 10 October 2026. Agreed in a design brainstorm; no code written yet.
 
 ### Meta partner route
 
-- A credit line for reselling requires Meta **Solution Partner** status. The path is Tech Provider first, then Solution Partner after a track record.
-- **At launch:** client WhatsApp accounts sit under ReapLift's Meta business and Meta bills ReapLift's card.
-- **Later:** when Meta approves the credit line, it is attached to client accounts. Nothing changes for clients.
-- "Who pays Meta" is therefore a setting on each client WhatsApp account (ReapLift card, partner credit line, ReapLift credit line).
+Decided 29 October 2026 (see the project tracker's decision log):
+
+- ReapLift becomes a white-label WhatsApp provider, as Dovesoft is today. It becomes a Meta **Solution Partner** with its **own credit line**. The path is Tech Provider first, then Solution Partner; Meta's exact requirements and timeline are still to be verified.
+- Each client owns its WhatsApp account, connects it through Embedded Signup, and ReapLift shares its credit line with that account. Meta bills ReapLift; ReapLift bills the client from its prepaid wallet.
+- Client prices are Meta's rate plus a markup (about 20 to 25%), covering staff, servers and margin.
+- Clients stay on Dovesoft until the platform is built and the credit line exists. There is no interim period in which ReapLift's card pays for client messages.
+- "Who pays Meta" stays a setting on each WhatsApp account (`reaplift_credit_line` for clients; `reaplift_card` only for ReapLift's own test numbers).
 - ReapLift must create its **own Meta developer app** and get it reviewed for WhatsApp messaging and account management. This is separate from the Dovesoft setup and should start in parallel with the build.
 
 ## 3. Users and roles
