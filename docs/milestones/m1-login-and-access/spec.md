@@ -93,7 +93,7 @@ Out:
 | 1.5   | Route-walking isolation test                 | 1.4                                                         | 1.6                      |
 | 1.6.1 | Web foundations (Suraj)                      | none                                                        | all                      |
 | 1.6.2 | Panel shell (Suraj)                          | 1.6.1 (mock API; real routes 1.2, 1.4 wired by their owner) | 1.1 to 1.5               |
-| 1.6.3 | Connect the panel to the real server (Suraj) | 1.6.2, 1.1 to 1.5 (done)                                    | none                     |
+| 1.7   | Connect the panel to the real server (Suraj) | 1.6.2, 1.1 to 1.5 (done)                                    | none                     |
 
 ### 1.0 Restore green CI
 
@@ -165,9 +165,9 @@ Everything later screens need, so no screen task has to invent it.
 - Dashboard and Push Campaign stop showing `apps/web/src/data/mockData.ts` figures; they show an empty state until their milestones.
 - Contract details the spec leaves open, decided here: the 423 body is `{ "error": "LOGIN_LOCKED", "message", "lockedUntil": "<ISO time>" }`; the login response is `{ user: { id, name, email, role } }`.
 - Tests: component tests for the menu by role, the picker, and each login error message.
-- Acceptance (Screen ready): in mock mode, each user in the worked example sees exactly the menu and picker described. Done after 1.6.3.
+- Acceptance (Screen ready): in mock mode, each user in the worked example sees exactly the menu and picker described. Done after 1.7.
 
-### 1.6.3 Connect the panel to the real server (Suraj)
+### 1.7 Connect the panel to the real server (Suraj)
 
 The backend (1.1 to 1.5) is finished, so this can start as soon as 1.6.2 is Screen ready.
 
@@ -179,8 +179,8 @@ The backend (1.1 to 1.5) is finished, so this can start as soon as 1.6.2 is Scre
 
 ## Who builds what
 
-- **Suraj (screens track):** 1.6.1 and 1.6.2 against the mock API, then 1.6.3 against the real server. Never waits for the backend; see "Suraj's task list" in the [tracker](../../project-tracker.md).
-- **Anirudh (backend):** 1.0 to 1.5, finished on 29 October 2026. If 1.6.3 finds the server itself wrong (not just a contract mismatch), Anirudh fixes it.
+- **Suraj (screens track):** 1.6.1 and 1.6.2 against the mock API, then 1.7 against the real server. Never waits for the backend; see "Suraj's task list" in the [tracker](../../project-tracker.md).
+- **Anirudh (backend):** 1.0 to 1.5, finished on 29 October 2026. If 1.7 finds the server itself wrong (not just a contract mismatch), Anirudh fixes it.
 
 ## Data and API
 
