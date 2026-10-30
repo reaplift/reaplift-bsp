@@ -1,7 +1,16 @@
 import type { MeResponse } from '@reaplift/shared';
 
-/** The pages inside a client's workspace. */
-export type WorkspacePage = 'dashboard' | 'campaign';
+/** The pages inside a client's workspace, in menu order (the Dovesoft sidebar, HLD section 4). */
+export const WORKSPACE_PAGES = [
+  { page: 'dashboard', label: 'Dashboard' },
+  { page: 'campaign', label: 'Push Campaign' },
+  { page: 'templates', label: 'Templates' },
+  { page: 'reports', label: 'Reports' },
+  { page: 'wallet', label: 'Wallet' },
+  { page: 'settings', label: 'Settings' },
+] as const;
+
+export type WorkspacePage = (typeof WORKSPACE_PAGES)[number]['page'];
 
 /** `/clients/<id>/<page>`: the client is in the address, like the server's own routes. */
 export const workspacePath = (clientId: string, page: WorkspacePage) =>

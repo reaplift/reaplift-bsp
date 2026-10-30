@@ -1,7 +1,7 @@
 import type { MeResponse } from '@reaplift/shared';
 import { useState, type FormEvent } from 'react';
 import { errorMessage } from '../api/messages';
-import { useAuth } from '../auth/AuthProvider';
+import { useAuth } from '../auth/context';
 
 type LoginProps = {
   /** Called with the user and their workspaces once logged in; the caller decides where to go. */

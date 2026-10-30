@@ -419,3 +419,25 @@ button {
 .workspace-item.disabled:hover {
   background: transparent;
 }
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.topbar-user {
+  display: grid;
+  text-align: right;
+  font-weight: 600;
+}
+
+.topbar-user small {
+  color: #6b7280;
+  font-weight: 400;
+}
+
+.empty-state {
+  margin: 0;
+  color: #6b7280;
+}

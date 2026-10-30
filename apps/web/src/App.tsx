@@ -1,48 +1,29 @@
 import type { MeResponse, Workspace } from '@reaplift/shared';
-import { useEffect, useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
-import { useAuth } from './auth/AuthProvider';
+import { useAuth } from './auth/context';
+import { ComingSoon } from './components/ComingSoon';
 import { Layout, type NavItem } from './components/Layout';
-import { Admin } from './pages/Admin';
 import { Dashboard } from './pages/Dashboard';
 import { Login } from './pages/Login';
 import { PushCampaign } from './pages/PushCampaign';
 import { WorkspacePicker } from './pages/WorkspacePicker';
-import { homePath, workspacePath } from './paths';
+import { homePath, WORKSPACE_PAGES, workspacePath, type WorkspacePage } from './paths';
 import './styles.css';
 
-type PingState = {
-  message: string;
-  source: 'backend';
-} | null;
-
-// The prototype Admin page reloads whenever this object changes, so it must be one constant;
-// the session cookie now travels on its own. Admin.tsx is replaced in S2's last piece.
-const NO_AUTH_HEADER: Record<string, string> = {};
-
-/** The sidebar and the prototype's backend message box around a logged-in page. */
-function Shell({ nav, children }: { nav: NavItem[]; children: ReactNode }) {
-  const [ping, setPing] = useState<PingState>(null);
-
-  useEffect(() => {
-    fetch('/api/ping')
-      .then((res) => res.json())
-      .then((data) => setPing(data as PingState))
-      .catch(() => setPing({ message: 'Backend unreachable', source: 'backend' }));
-  }, []);
-
-  return (
-    <Layout nav={nav}>
-      <div className="panel" style={{ marginBottom: 18 }}>
-        <h2>Backend message</h2>
-        <p>{ping ? ping.message : 'Loading backend message...'}</p>
-      </div>
-      {children}
-    </Layout>
-  );
-}
-
 const adminNav = (me: MeResponse): NavItem[] => (me.user.role === 'super_admin' ? [{ to: '/admin', label: 'Admin' }] : []);
+
+/** Staff with several clients and the super admin can go back to the picker. */
+const canSwitch = (me: MeResponse) => homePath(me) === '/workspaces';
+
+const pageElement: Record<WorkspacePage, ReactNode> = {
+  dashboard: <Dashboard />,
+  campaign: <PushCampaign />,
+  templates: <ComingSoon title="Templates" />,
+  reports: <ComingSoon title="Reports" />,
+  wallet: <ComingSoon title="Wallet" />,
+  settings: <ComingSoon title="Settings" />,
+};
 
 /** `/clients/:clientId/...`: only a client in the user's own list opens; any other goes to the picker. */
 function WorkspaceRoutes({ me }: { me: MeResponse }) {
@@ -51,20 +32,20 @@ function WorkspaceRoutes({ me }: { me: MeResponse }) {
   if (!workspace || workspace.status !== 'active') return <Navigate to="/workspaces" replace />;
 
   const nav: NavItem[] = [
-    { to: workspacePath(workspace.clientId, 'dashboard'), label: 'Dashboard' },
-    { to: workspacePath(workspace.clientId, 'campaign'), label: 'Push campaign' },
+    ...WORKSPACE_PAGES.map(({ page, label }) => ({ to: workspacePath(workspace.clientId, page), label })),
     ...adminNav(me),
   ];
   return (
-    <Shell nav={nav}>
+    <Layout nav={nav} eyebrow="Client workspace" title={workspace.name} canSwitch={canSwitch(me)}>
       <Routes>
-        <Route path="dashboard" element={<Dashboard />} />
-        <Route path="campaign" element={<PushCampaign />} />
+        {WORKSPACE_PAGES.map(({ page }) => (
+          <Route key={page} path={page} element={pageElement[page]} />
+        ))}
         {/* A full path: inside a "*" route, a relative "dashboard" would resolve from the unknown
             page itself (React Router's v7_relativeSplatPath) and loop forever. */}
         <Route path="*" element={<Navigate to={workspacePath(workspace.clientId, 'dashboard')} replace />} />
       </Routes>
-    </Shell>
+    </Layout>
   );
 }
 
@@ -109,9 +90,9 @@ export function App() {
         path="/workspaces"
         element={
           home === '/workspaces' ? (
-            <Shell nav={adminNav(me)}>
+            <Layout nav={adminNav(me)} eyebrow="ReapLift" title="Choose a client" canSwitch={false}>
               <WorkspacePicker workspaces={me.workspaces} showAdmin={me.user.role === 'super_admin'} />
-            </Shell>
+            </Layout>
           ) : (
             <Navigate to={home} replace />
           )
@@ -121,9 +102,9 @@ export function App() {
         path="/admin"
         element={
           me.user.role === 'super_admin' ? (
-            <Shell nav={adminNav(me)}>
-              <Admin authHeader={NO_AUTH_HEADER} />
-            </Shell>
+            <Layout nav={adminNav(me)} eyebrow="ReapLift" title="Administration" canSwitch={canSwitch(me)}>
+              <ComingSoon title="Admin" />
+            </Layout>
           ) : (
             <Navigate to={home} replace />
           )

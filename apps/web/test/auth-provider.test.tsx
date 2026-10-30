@@ -5,7 +5,8 @@ import { createApi, type Api } from '../src/api';
 import { ApiError } from '../src/api/client';
 import { createMockTransport } from '../src/api/mock';
 import type { Transport } from '../src/api/transport';
-import { AuthProvider, useAuth } from '../src/auth/AuthProvider';
+import { AuthProvider } from '../src/auth/AuthProvider';
+import { useAuth } from '../src/auth/context';
 
 const PASSWORD = 'reaplift-dev-1';
 

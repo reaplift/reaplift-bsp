@@ -13,7 +13,7 @@ export function WorkspacePicker({ workspaces, showAdmin }: WorkspacePickerProps)
   return (
     <div className="panel">
       <div className="panel-header">
-        <h2>Choose a client</h2>
+        <h2>Clients</h2>
       </div>
 
       {workspaces.length === 0 ? (
