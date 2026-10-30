@@ -15,13 +15,9 @@ afterAll(() => pool.end());
 
 describe.sequential('seedAccount', () => {
   it('creates a client and encrypted wa account row', async () => {
-    await pool.query('drop table if exists message_status_events');
-    await pool.query('drop table if exists meta_events');
-    await pool.query('drop table if exists messages');
-    await pool.query('drop table if exists templates');
-    await pool.query('drop table if exists wa_accounts');
-    await pool.query('drop table if exists clients');
-    await pool.query('drop table if exists schema_migrations');
+    // Start from an empty schema so new tables from later migrations never block the reset.
+    await pool.query('drop schema public cascade');
+    await pool.query('create schema public');
 
     await migrate(pool, migrationsDir());
 
