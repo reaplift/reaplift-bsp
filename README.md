@@ -142,15 +142,16 @@ Every setting is listed in `.env.example`. Copy it to `.env` for local work. `.e
 
 ## Working with Git
 
-1. Create a branch before starting work. Example: `git checkout -b anirudh-e2e-setup`.
-2. Rebase from `main` before pushing. Example: `git fetch origin && git rebase origin/main`.
-3. Run the repo review gate: `pnpm review:prepush`.
-4. Commit, then `git push -u origin <branch>` and open a pull request into `main`.
-5. CI must be green and a reviewer must approve before merging. Merge with "Squash and merge" or the repo's default merge policy.
+There are two branches: `anirudh-e2e-setup` for all work and `main` for production. Full steps are in [docs/team-workflow.md](docs/team-workflow.md).
+
+1. Start from the latest work branch: `git checkout anirudh-e2e-setup && git pull --rebase origin anirudh-e2e-setup`.
+2. Commit, and run the repo review gate: `pnpm review:prepush`.
+3. Pull with rebase again, then `git push origin anirudh-e2e-setup`. Never force-push.
+4. To release, open one pull request from `anirudh-e2e-setup` into `main`. CI must be green and a reviewer must approve. Use a merge commit, not "Squash and merge", then merge `origin/main` back into the work branch.
 
 ## Working with Claude Code in VS Code
 
-Open the repo folder in VS Code, open Claude Code, and ask for one task at a time from the low-level design, for example: "Do task 1.2 from the low-level design (migration 0002), with tests." Ask it to work on a branch and open a pull request.
+Open the repo folder in VS Code, open Claude Code, and ask for one task at a time from the low-level design, for example: "Do task 1.2 from the low-level design (migration 0002), with tests." It works on `anirudh-e2e-setup`, with no new branch.
 
 ## Milestones
 

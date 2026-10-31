@@ -18,7 +18,7 @@ It validates:
 - DB/API integration tests pass when needed
 - no real Meta sends or real wallet charges are triggered during automation
 - docs are updated when design changes
-- the branch is rebased on the latest `main`
+- the branch has the latest `main` merged in
 
 ## Execution
 
@@ -70,7 +70,7 @@ Check:
 - are integration tests included where DB or API boundaries are involved?
 - is there any real Meta send, live webhook activity, or wallet charge in automated tests?
 - if the design changed, were docs updated in the same change set?
-- is the branch rebased on the latest `main`?
+- does the branch have the latest `main` merged in?
 Return PASS or FAIL with a short list of required fixes.
 ```
 

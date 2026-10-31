@@ -1,115 +1,117 @@
-import { useEffect, useState } from 'react';
-import { canAccessPage, type UserRole } from '@reaplift/shared';
-import { Layout, type PageId } from './components/Layout';
-import { Admin } from './pages/Admin';
+import type { MeResponse, Workspace } from '@reaplift/shared';
+import type { ReactNode } from 'react';
+import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
+import { useAuth } from './auth/context';
+import { ComingSoon } from './components/ComingSoon';
+import { Layout, type NavItem } from './components/Layout';
 import { Dashboard } from './pages/Dashboard';
 import { Login } from './pages/Login';
 import { PushCampaign } from './pages/PushCampaign';
+import { WorkspacePicker } from './pages/WorkspacePicker';
+import { homePath, WORKSPACE_PAGES, workspacePath, type WorkspacePage } from './paths';
 import './styles.css';
 
-type PingState = {
-  message: string;
-  source: 'backend';
-} | null;
+const adminNav = (me: MeResponse): NavItem[] => (me.user.role === 'super_admin' ? [{ to: '/admin', label: 'Admin' }] : []);
 
-type SessionState = {
-  email: string;
-  role: UserRole;
-  token: string;
+/** Staff with several clients and the super admin can go back to the picker. */
+const canSwitch = (me: MeResponse) => homePath(me) === '/workspaces';
+
+const pageElement: Record<WorkspacePage, ReactNode> = {
+  dashboard: <Dashboard />,
+  campaign: <PushCampaign />,
+  templates: <ComingSoon title="Templates" />,
+  reports: <ComingSoon title="Reports" />,
+  wallet: <ComingSoon title="Wallet" />,
+  settings: <ComingSoon title="Settings" />,
 };
 
-const visiblePagesForRole = (role: UserRole | null): PageId[] => {
-  const allPages: PageId[] = ['dashboard', 'campaign', 'admin', 'login'];
-  return allPages.filter((page) => canAccessPage(role, page));
-};
+/** `/clients/:clientId/...`: only a client in the user's own list opens; any other goes to the picker. */
+function WorkspaceRoutes({ me }: { me: MeResponse }) {
+  const { clientId } = useParams();
+  const workspace: Workspace | undefined = me.workspaces.find((w) => w.clientId === clientId);
+  if (!workspace || workspace.status !== 'active') return <Navigate to="/workspaces" replace />;
+
+  const nav: NavItem[] = [
+    ...WORKSPACE_PAGES.map(({ page, label }) => ({ to: workspacePath(workspace.clientId, page), label })),
+    ...adminNav(me),
+  ];
+  return (
+    <Layout nav={nav} eyebrow="Client workspace" title={workspace.name} canSwitch={canSwitch(me)}>
+      <Routes>
+        {WORKSPACE_PAGES.map(({ page }) => (
+          <Route key={page} path={page} element={pageElement[page]} />
+        ))}
+        {/* A full path: inside a "*" route, a relative "dashboard" would resolve from the unknown
+            page itself (React Router's v7_relativeSplatPath) and loop forever. */}
+        <Route path="*" element={<Navigate to={workspacePath(workspace.clientId, 'dashboard')} replace />} />
+      </Routes>
+    </Layout>
+  );
+}
 
 export function App() {
-  const [page, setPage] = useState<PageId>('login');
-  const [role, setRole] = useState<UserRole | null>(null);
-  const [ping, setPing] = useState<PingState>(null);
-  const [loginError, setLoginError] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const { state, reload } = useAuth();
 
-  useEffect(() => {
-    const savedSession = localStorage.getItem('reaplift-session');
-    if (savedSession) {
-      const parsed = JSON.parse(savedSession) as SessionState;
-      setRole(parsed.role);
-      setPage(parsed.role === 'super_admin' ? 'admin' : 'dashboard');
-    }
-
-    fetch('/api/ping')
-      .then((res) => res.json())
-      .then((data) => setPing(data as PingState))
-      .catch(() => setPing({ message: 'Backend unreachable', source: 'backend' }));
-  }, []);
-
-  const handleNavigate = (nextPage: PageId) => {
-    if (canAccessPage(role, nextPage)) {
-      setPage(nextPage);
-      return;
-    }
-
-    setPage(role ? 'dashboard' : 'login');
-  };
-
-  const handleLogin = async (payload: { email: string; password: string; role: UserRole }) => {
-    const res = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-
-    const data = (await res.json()) as {
-      ok?: boolean;
-      error?: string;
-      user?: { email: string; role: UserRole };
-      token?: string;
-    };
-
-    if (!res.ok || !data.ok || !data.user || !data.token) {
-      setLoginError(data.error ?? 'invalid credentials');
-      return;
-    }
-
-    const session: SessionState = {
-      email: data.user.email,
-      role: data.user.role,
-      token: data.token,
-    };
-
-    localStorage.setItem('reaplift-session', JSON.stringify(session));
-    setRole(data.user.role);
-    setLoginError(null);
-    setPage(data.user.role === 'super_admin' ? 'admin' : 'dashboard');
-  };
-
-  const getAuthHeader = (): Record<string, string> => {
-    const saved = localStorage.getItem('reaplift-session');
-    if (!saved) return {};
-
-    try {
-      const session = JSON.parse(saved) as SessionState;
-      return { Authorization: `Bearer ${session.token}` };
-    } catch {
-      return {};
-    }
-  };
-
-  return (
-    <Layout currentPage={page} visiblePages={visiblePagesForRole(role)} onNavigate={handleNavigate}>
-      <div className="panel" style={{ marginBottom: 18 }}>
-        <h2>Backend message</h2>
-        <p>{ping ? ping.message : 'Loading backend message...'}</p>
+  // Until /me answers, the panel does not know who is logged in; routing now would send a
+  // logged-in user who reloads the page to /login.
+  if (state.status === 'loading') {
+    return <p className="auth-panel">Loading…</p>;
+  }
+  if (state.status === 'error') {
+    return (
+      <div className="auth-panel panel">
+        <p className="form-error" role="alert">
+          {state.message}
+        </p>
+        <button type="button" className="primary-button" onClick={reload}>
+          Try again
+        </button>
       </div>
-      {loginError && (
-        <div className="panel" style={{ marginBottom: 18 }}>
-          <p style={{ color: '#d9485f', margin: 0 }}>{loginError}</p>
-        </div>
-      )}
-      {page === 'dashboard' && <Dashboard />}
-      {page === 'campaign' && <PushCampaign />}
-      {page === 'admin' && role === 'super_admin' && <Admin authHeader={getAuthHeader()} />}
-      {page === 'login' && <Login onLogin={handleLogin} />}
-    </Layout>
+    );
+  }
+
+  if (state.status === 'logged-out') {
+    return (
+      <Routes>
+        <Route path="/login" element={<Login onLoggedIn={(me) => navigate(homePath(me), { replace: true })} />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    );
+  }
+
+  const me: MeResponse = { user: state.user, workspaces: state.workspaces };
+  const home = homePath(me);
+  return (
+    <Routes>
+      <Route path="/" element={<Navigate to={home} replace />} />
+      <Route path="/login" element={<Navigate to={home} replace />} />
+      <Route
+        path="/workspaces"
+        element={
+          home === '/workspaces' ? (
+            <Layout nav={adminNav(me)} eyebrow="ReapLift" title="Choose a client" canSwitch={false}>
+              <WorkspacePicker workspaces={me.workspaces} showAdmin={me.user.role === 'super_admin'} />
+            </Layout>
+          ) : (
+            <Navigate to={home} replace />
+          )
+        }
+      />
+      <Route
+        path="/admin"
+        element={
+          me.user.role === 'super_admin' ? (
+            <Layout nav={adminNav(me)} eyebrow="ReapLift" title="Administration" canSwitch={canSwitch(me)}>
+              <ComingSoon title="Admin" />
+            </Layout>
+          ) : (
+            <Navigate to={home} replace />
+          )
+        }
+      />
+      <Route path="/clients/:clientId/*" element={<WorkspaceRoutes me={me} />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }

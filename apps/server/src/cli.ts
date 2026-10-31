@@ -1,11 +1,16 @@
 /**
  * Operator commands: `pnpm --filter @reaplift/server cli <command> [--flag value ...]`.
  *
- *   create-user --email <e> --name <n> --role <super_admin|staff|client> [--client <client id or exact name>]
+ *   create-user --email <e> --name <n> --role <super_admin|staff|client> [--client <client id or exact name>] [--created-by <super admin email>]
  *       Prompts for the password (not echoed). Reads it from stdin when not run in a terminal.
  *   seed-dev
  *       Local development only: the clients and four users of M1's worked example, password `reaplift-dev-1`.
+ *   notify-test --email <address>
+ *       Writes one test notification; the worker's delivery loop sends it.
+ *   show-notifications [--status pending|sent|failed|read] [--limit <n>]
+ *       Lists recent notifications, newest first.
  */
+import { randomUUID } from 'node:crypto';
 import { createInterface } from 'node:readline';
 import { Writable } from 'node:stream';
 import { sql, type Kysely } from 'kysely';
@@ -13,6 +18,7 @@ import { USER_ROLES, type UserRole } from '@reaplift/shared';
 import { loadConfig } from './config.js';
 import { createDb, createPool, type Database } from './lib/db.js';
 import { createUser, UserInputError } from './modules/auth/users.js';
+import { notify } from './modules/notifications/notify.js';
 
 const DEV_PASSWORD = 'reaplift-dev-1';
 
@@ -62,6 +68,16 @@ async function findClientId(db: Kysely<Database>, idOrName: string): Promise<str
   return rows[0]!.id;
 }
 
+async function findSuperAdminId(db: Kysely<Database>, email: string): Promise<string> {
+  const row = (
+    await sql<{ id: string }>`
+      select id from users where email = ${email.trim().toLowerCase()} and role = 'super_admin'
+    `.execute(db)
+  ).rows[0];
+  if (!row) throw new UserInputError(`no super admin has the email "${email}"`);
+  return row.id;
+}
+
 async function ensureClient(
   db: Kysely<Database>,
   name: string,
@@ -80,7 +96,7 @@ async function ensureClient(
 
 async function ensureUser(
   db: Kysely<Database>,
-  user: { email: string; name: string; role: UserRole; clientId?: string },
+  user: { email: string; name: string; role: UserRole; clientId?: string; createdBy?: string },
 ): Promise<string> {
   const existing = (
     await sql<{ id: string }>`select id from users where email = ${user.email}`.execute(db)
@@ -98,19 +114,30 @@ async function seedDev(db: Kysely<Database>, databaseUrl: string) {
   const bluebird = await ensureClient(db, 'Bluebird Retail', 'sales@bluebird.in');
   const greenleaf = await ensureClient(db, 'Greenleaf Foods', 'sales@greenleaf.in');
 
-  await ensureUser(db, { email: 'ravi@reaplift.com', name: 'Ravi', role: 'super_admin' });
-  const meera = await ensureUser(db, { email: 'meera@reaplift.com', name: 'Meera', role: 'staff' });
+  const ravi = await ensureUser(db, {
+    email: 'ravi@reaplift.com',
+    name: 'Ravi',
+    role: 'super_admin',
+  });
+  const meera = await ensureUser(db, {
+    email: 'meera@reaplift.com',
+    name: 'Meera',
+    role: 'staff',
+    createdBy: ravi,
+  });
   await ensureUser(db, {
     email: 'ops@northwind.com',
     name: 'Northwind Ops',
     role: 'client',
     clientId: northwind,
+    createdBy: ravi,
   });
   await ensureUser(db, {
     email: 'sales@greenleaf.in',
     name: 'Greenleaf Sales',
     role: 'client',
     clientId: greenleaf,
+    createdBy: ravi,
   });
 
   for (const clientId of [northwind, bluebird]) {
@@ -134,18 +161,50 @@ async function main() {
       if (!USER_ROLES.includes(role))
         throw new UserInputError(`--role must be one of ${USER_ROLES.join(', ')}`);
       const clientId = f.client ? await findClientId(db, f.client) : null;
+      const createdBy = f['created-by'] ? await findSuperAdminId(db, f['created-by']) : null;
       const { id } = await createUser(db, {
         email: f.email ?? '',
         name: f.name ?? '',
         role,
         clientId,
+        createdBy,
         password: await readPassword(),
       });
       console.log(`Created ${role} ${f.email} (${id})`);
     } else if (command === 'seed-dev') {
       await seedDev(db, config.DATABASE_URL);
+    } else if (command === 'notify-test') {
+      const { email } = flags(rest);
+      if (!email?.includes('@')) throw new UserInputError('--email <address> is required');
+      const entityId = randomUUID(); // a new test each time, so a repeat is not swallowed as a replay
+      await db
+        .transaction()
+        .execute((trx) =>
+          notify(
+            trx,
+            'system.test',
+            { email, entityId },
+            { requestedAt: new Date().toISOString() },
+          ),
+        );
+      console.log(
+        `Queued test email to ${email} (entity ${entityId}); the worker sends it within seconds.`,
+      );
+    } else if (command === 'show-notifications') {
+      const f = flags(rest);
+      const limit = Number(f.limit ?? 20);
+      const rows = (
+        await sql<Record<string, unknown>>`
+          select created_at, event, channel, email, status, attempts, next_attempt_at, sent_at, last_error
+          from notifications
+          where ${f.status ? sql`status = ${f.status}` : sql`true`}
+          order by created_at desc
+          limit ${Number.isInteger(limit) && limit > 0 ? limit : 20}
+        `.execute(db)
+      ).rows;
+      console.table(rows);
     } else {
-      throw new UserInputError('commands: create-user, seed-dev');
+      throw new UserInputError('commands: create-user, seed-dev, notify-test, show-notifications');
     }
   } catch (err) {
     if (!(err instanceof UserInputError)) throw err;

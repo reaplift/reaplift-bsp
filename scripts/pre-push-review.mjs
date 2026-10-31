@@ -62,7 +62,7 @@ function ensureBranchRules() {
 
   const branch = isBranchProtected();
   if (!branch || branch === 'main') {
-    fail('You are on the protected main branch. Create or switch to your personal branch before pushing.');
+    fail('You are on the protected main branch. Switch to anirudh-e2e-setup before pushing.');
   }
 
   const mainRef = baseRef();
@@ -77,7 +77,7 @@ function ensureBranchRules() {
   const [behind, ahead] = (counts || '0 0').split(/\s+/).map(Number);
 
   if (Number(behind) > 0) {
-    fail(`Your branch is behind ${mainRef}. Rebase before pushing. Run: git fetch origin && git rebase origin/main`);
+    fail(`Your branch is behind ${mainRef}. Merge it before pushing. Run: git fetch origin && git merge origin/main`);
   }
 
   if (Number(ahead) === 0) {

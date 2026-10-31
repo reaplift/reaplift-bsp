@@ -37,7 +37,7 @@ pnpm workspaces, TypeScript, Node 22. `apps/server`: Fastify, Zod, Kysely, pg, p
 - Money is whole paise in `bigint`. Phone numbers are digits with country code, no plus (`9198xxxxxxxx`).
 - Every table carries `client_id` and every query filters by it. The only exceptions are the platform tables listed under "Tables without a client" in `docs/data-model-and-api.md`.
 - Every task ships with its tests from the low-level design. Run lint, typecheck and tests before committing.
-- Work on a branch per task (`m1-1.2-sessions`), open a pull request into `main` (the release branch), never push to `main` directly. CI must be green.
+- Two branches only: all work is committed to `anirudh-e2e-setup`; `main` is production and changes only through a release pull request from it. No per-task branches, never force-push the work branch, never push to `main` directly. CI must be green. Steps are in `docs/team-workflow.md`.
 - Never commit secrets. Settings go in `.env` (ignored); add every new setting name to `.env.example` with a blank value.
 - Meta error codes, limits and rates in the design are from memory: check Meta's current docs before relying on them.
 - Do not mark a task complete from a mock UI or in-memory route alone; require the full flow to be validated end to end.

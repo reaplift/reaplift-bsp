@@ -19,6 +19,15 @@ const Env = z.object({
   SESSION_COOKIE_SECURE: z
     .preprocess(blankToUndefined, z.enum(['true', 'false']).default('true'))
     .transform((v) => v === 'true'),
+  /** M2 email: `fake` logs emails (development, tests); `smtp` sends through OCI Email Delivery. */
+  EMAIL_PROVIDER: z.preprocess(blankToUndefined, z.enum(['fake', 'smtp']).default('fake')),
+  /** Fake provider only: when set, every send fails with this message (to watch retries). */
+  EMAIL_FAKE_FAIL: z.string().default(''),
+  SMTP_HOST: z.string().default(''),
+  SMTP_PORT: z.preprocess(blankToUndefined, z.coerce.number().int().positive().default(587)),
+  SMTP_USER: z.string().default(''),
+  SMTP_PASSWORD: z.string().default(''),
+  EMAIL_FROM: z.preprocess(blankToUndefined, z.string().email().default('info@reaplift.com')),
   APP_VERSION: z
     .string()
     .optional()
