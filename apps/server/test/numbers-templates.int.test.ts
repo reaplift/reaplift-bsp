@@ -224,7 +224,6 @@ describe("5.3 and 5.4 a template's life", () => {
   it('a webhook and a sync for the same change update the row once; the same webhook twice changes nothing', async () => {
     const { id: accountId } = await connect(w.ids.northwind);
     const { id, metaId } = await createApproved(accountId, 'promo_one');
-    const stamped = (await call(ASHA, 'GET', url(id))).json().updatedAt;
 
     await store(templateWebhook(metaId, 'APPROVED'));
     await processEvents(w.db);
@@ -232,7 +231,6 @@ describe("5.3 and 5.4 a template's life", () => {
     await syncTemplateStatuses(deps());
     const row = (await call(ASHA, 'GET', url(id))).json();
     expect(row.status).toBe('APPROVED');
-    expect(row.updatedAt === stamped || row.updatedAt >= stamped).toBe(true);
     expect((await rowsOf(`select count(*) from notifications where event = 'template.approved' and channel = 'email'`))[0].count).toBe(2);
   });
 

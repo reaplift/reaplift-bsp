@@ -16,7 +16,7 @@ Pause, resume, cancel, schedule and the rules engine are [M8](../m8-campaign-con
 ```mermaid
 flowchart TD
   A["Push Campaign: name + approved template<br/>(only APPROVED, from M5)"] --> B["Upload Excel or CSV<br/>+ tick 'these numbers opted in' (D7)"]
-  B --> C{"Readable, under 50 MB<br/>and 200,000 rows?"}
+  B --> C{"Readable, under 10 MB<br/>and 20,000 rows?"}
   C -- "no" --> C1["Clear error, nothing saved"]
   C -- "yes" --> D["Rows saved exactly as read"]
   D --> E["Pick the number column"]
@@ -84,12 +84,12 @@ Out:
 
 ### 7.1 Audience upload
 
-- Excel (`.xlsx`) or CSV, up to 50 MB and 200,000 data rows (settings `UPLOAD_MAX_BYTES`, `LIST_MAX_ROWS`).
+- Excel (`.xlsx`) or CSV, up to 10 MB and 20,000 data rows per campaign (owner, 31 October 2026; settings `UPLOAD_MAX_BYTES`, `LIST_MAX_ROWS`). The server enforces this; the panel should also say so before uploading. A client with a larger audience splits it into several campaigns.
 - The upload form requires the opt-in tick (D7); the tick, the user and the time are saved on the list.
 - The file is stored behind a storage interface (local disk under `UPLOAD_DIR` until object storage exists in M10) and its rows are saved exactly as read in `list_contacts.cells jsonb`, in one transaction with the `lists` row.
 - Blank rows are skipped and counted. Every upload makes a new list (decided).
 - Note from the closed `m4-skeleton` branch: exceljs's streaming reader returned incomplete data on large files in measurement; test the chosen reader against a 200,000-row file before relying on it.
-- Tests: blank rows, merged header cells, numbers stored as text, a 200,000-row file, a file over the limit, a corrupt file, another client's list returning 404.
+- Tests: blank rows, merged header cells, numbers stored as text, a 20,000-row file, a file over the limit, a corrupt file, another client's list returning 404.
 - Acceptance: step 2 of the worked example.
 
 ### 7.2 Number column, cleaning and validation
@@ -107,7 +107,7 @@ Out:
 - Reasons: `empty`, `not_a_number`, `too_short`, `too_long`, `not_mobile`, `scientific_notation`, `wrong_country`, `duplicate`. A repeat within the list is marked `duplicate` and points to the first row.
 - Data: nullable columns. `lists`: `number_column int`, `valid_count`, `invalid_count`, `duplicate_count`. `list_contacts`: `number text`, `invalid_reason text`, `duplicate_of_row int`.
 - Tests: a table of at least 25 raw inputs and expected results covering every rule. Examples: `98123 45678` → `919812345678`; `+91-98123-45678` → `919812345678`; `09812345678` → `919812345678`; `00919812345678` → `919812345678`; `9812345678.0` → `919812345678`; `9.81234E+09` → `scientific_notation`; `5812345678` → `not_mobile`; `12345` → `too_short`; `+447911123456` → `wrong_country`; empty → `empty`; the same number in rows 4 and 9 → row 9 `duplicate` of row 4.
-- Acceptance: counts and reasons match a hand-checked fixture file committed with the tests; 200,000 rows clean in under a minute locally.
+- Acceptance: counts and reasons match a hand-checked fixture file committed with the tests; 20,000 rows clean in under a minute locally.
 
 ### 7.3 Campaign draft and variable mapping
 
@@ -142,8 +142,10 @@ Out:
     "balanceAfterPaise": 109750
   }
   ```
+- Expected delivery time (owner, 31 October 2026): the summary and a running campaign's page return `estimate` with `messagesAhead`, `seconds`, `finishesAt` and `waitsForDailyLimit`, worked out from the number's speed, its daily limit and what is already waiting on it. It is when messages are sent to Meta, not when phones receive them, and assumes Meta does not ask us to slow down.
+- Order: each client's number has its own queue and speed, so one client's campaign does not delay another's, and each is treated equally. On one number, the earlier campaign finishes first. Paid priority between clients is for later.
 - Tests: one fixture per check; `willSend + blocked + invalid + duplicate = total`.
-- Acceptance: step 5 of the worked example; a 200,000-row summary within the target in the open questions.
+- Acceptance: step 5 of the worked example; a 20,000-row summary within the target in the open questions.
 
 ### 7.5 Confirm: charge and queue in one step
 
@@ -151,7 +153,7 @@ Out:
 - Confirming twice charges and queues once (the second call sees status `running` and answers 409 `ALREADY_CONFIRMED`).
 - A suspended client or a paused account refuses confirm with 409 and the reason.
 - Who: client users, assigned staff, super admin (decided).
-- Tests: short balance leaves no messages and no ledger row; an opt-out added after the summary is caught at confirm; double confirm; 200,000 rows queued in one transaction.
+- Tests: short balance leaves no messages and no ledger row; an opt-out added after the summary is caught at confirm; double confirm; 20,000 rows queued in one transaction.
 - Acceptance: step 6 of the worked example and the "what-if".
 
 ### 7.6 Sending, totals, completion, campaign page
@@ -261,7 +263,7 @@ Also open:
 
 | Question                                                                                                                                                                                                                       | Default                                                                                                             | Decides |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------- | ------- |
-| Target time for a 200,000-row summary. "30 seconds" came from low-level-design.md task 4.4, where it is marked "target, to confirm"; it is a guess at how long someone will wait on the summary screen, not a measured figure. | Keep 30 seconds as the target; measure on CI now and on the server after M10; show a progress message while it runs | Owner   |
+| Target time for a summary (measured at 200,000 rows: 0.1 s). "30 seconds" came from low-level-design.md task 4.4, where it is marked "target, to confirm"; it is a guess at how long someone will wait on the summary screen, not a measured figure. | Keep 30 seconds as the target; measure on CI now and on the server after M10; show a progress message while it runs | Owner   |
 
 ## Current reality
 

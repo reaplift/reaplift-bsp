@@ -7,7 +7,7 @@ import { readPage, toPage } from '../../lib/pagination.js';
 import { sendError } from '../auth/scope.js';
 import { createUser, EmailTakenError } from '../auth/users.js';
 import { notify } from '../notifications/notify.js';
-import { readBalance } from '../wallet/ledger.js';
+import { readBalance, readOnHold } from '../wallet/ledger.js';
 import { recomputePrices } from '../wallet/pricing.js';
 import { writeAudit } from './audit.js';
 
@@ -112,6 +112,7 @@ export function registerAdminRoutes(
     return reply.code(200).send({
       ...(client as object),
       balancePaise: await readBalance(db, id),
+      onHoldPaise: await readOnHold(db, id),
       users: users.rows,
       staff: staff.rows,
     });

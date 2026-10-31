@@ -75,8 +75,8 @@ Out: log cleanup and archiving after 180 days (phase 2 in the HLD; D8 sets the r
 
 ### 9.4 Per-number campaign report
 
-- Dovesoft's columns (`Reaplift_record1`): `sr_no`, `mobile_no`, `reason`, `status`, `sent_time`, `delivery_status`, `delivery_time`, `read_time`, `que_time`; times as `dd/mm/yyyy hh:mm:ss` in India time; streamed so a 200,000-row campaign does not run out of memory.
-- Tests: a 200,000-row export within memory limits.
+- Dovesoft's columns (`Reaplift_record1`): `sr_no`, `mobile_no`, `reason`, `status`, `sent_time`, `delivery_status`, `delivery_time`, `read_time`, `que_time`; times as `dd/mm/yyyy hh:mm:ss` in India time; streamed so a full-size campaign does not run out of memory.
+- Tests: a 20,000-row export within memory limits.
 - Acceptance: step 3.
 
 ### 9.5 Meta cost per message

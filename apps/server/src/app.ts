@@ -67,8 +67,8 @@ export function buildApp({
   metaSystemToken = '',
   metaCreditLineId = '',
   uploadDir = './uploads',
-  uploadMaxBytes = 50 * 1024 * 1024,
-  listMaxRows = 200_000,
+  uploadMaxBytes = 10 * 1024 * 1024,
+  listMaxRows = 20_000,
 }: AppDeps) {
   const app = Fastify({ logger });
   app.decorate('routeList', []);

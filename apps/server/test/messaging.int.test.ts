@@ -17,6 +17,7 @@ import {
   AccountPacer,
   HOLD_AFTER_NO_RESPONSE_MS,
   MAX_SEND_ATTEMPTS,
+  RATE_LIMIT_COOL_DOWN_MS,
   reportStuck,
   sendDue,
   STUCK_AFTER_MS,
@@ -178,12 +179,62 @@ describe('4.2 and 4.3 sender', () => {
 
     expect(await send(now)).toMatchObject({ retried: 1 });
     const waiting = await row(id);
-    expect(waiting).toMatchObject({ status: 'queued', attempts: 1 });
+    expect(waiting).toMatchObject({ status: 'queued', attempts: 0 });
     expect(waiting.next_attempt_at.getTime()).toBe(now.getTime() + 30_000);
 
     expect(await send(now)).toMatchObject({ retried: 0, sent: 0 });
     expect(await send(new Date(now.getTime() + 30_000))).toMatchObject({ sent: 1 });
-    expect(await row(id)).toMatchObject({ status: 'sent', attempts: 2, failure_reason: null });
+    expect(await row(id)).toMatchObject({ status: 'sent', attempts: 1, failure_reason: null });
+  });
+
+  it('however often Meta says too fast, the message never fails, and sends once Meta allows it', async () => {
+    const id = await queue();
+    let at = soon().getTime();
+    for (const code of [130429, 130429, 4, 80007, 130429, 130429, 130429, 130429]) {
+      fake.queueSendResponses(metaError(400, code, 'too fast'));
+      await send(new Date(at));
+      expect(await row(id)).toMatchObject({ status: 'queued', attempts: 0 });
+      at += 30_000;
+    }
+    await send(new Date(at));
+    expect(await row(id)).toMatchObject({ status: 'sent', attempts: 1, failed_at: null });
+  });
+
+  it("Meta's rate-limit error makes the whole account wait, not only that message", async () => {
+    await queue();
+    await queue();
+    await pool.query(`update wa_accounts set send_rate_per_sec = 1`);
+    fake.queueSendResponses(metaError(429, 130429, 'too fast'));
+    const pacer = new AccountPacer();
+    await send(soon(), pacer);
+    fake.requests.length = 0;
+    await send(later(60_000), pacer);
+    expect(fake.sends()).toHaveLength(0);
+    expect(pacer.isReady(account.waAccountId, Date.now())).toBe(false);
+    expect(pacer.isReady(account.waAccountId, Date.now() + RATE_LIMIT_COOL_DOWN_MS + 1000)).toBe(true);
+  });
+
+  it('a temporary failure goes first in the next round, ahead of the new batch; then it backs off', async () => {
+    const ids = [await queue('919800000001'), await queue('919800000002'), await queue('919800000003'), await queue('919800000004')];
+    await pool.query(`update wa_accounts set send_rate_per_sec = 2`);
+    fake.queueSendResponses(metaError(500, 131000));
+    const now = soon();
+    await send(now);
+    expect(await row(ids[0]!)).toMatchObject({ status: 'queued', attempts: 1 });
+
+    fake.requests.length = 0;
+    await send(now);
+    expect(fake.sends().map((r) => (r.body as { to: string }).to)).toEqual(['919800000001', '919800000003']);
+    expect(await row(ids[3]!)).toMatchObject({ status: 'queued', attempts: 0 });
+  });
+
+  it('a second temporary failure in a row waits 30 seconds, so a struggling Meta is not hammered', async () => {
+    const id = await queue();
+    fake.queueSendResponses(metaError(500, 131000), metaError(500, 131000));
+    const now = soon();
+    await send(now);
+    await send(now);
+    expect((await row(id)).next_attempt_at.getTime()).toBe(now.getTime() + 30_000);
   });
 
   it('a timeout is retried', async () => {

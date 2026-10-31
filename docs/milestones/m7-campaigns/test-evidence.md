@@ -25,6 +25,8 @@ docker exec reaplift-bsp-postgres-1 psql -U reaplift -d reaplift -c "drop databa
 
 ## 7.10 Load test
 
+This ran before the limit per campaign became 20,000 rows, so it tested ten times the current limit.
+
 `test/support/load-test.ts`, with 1% of sends failing:
 
 ```bash

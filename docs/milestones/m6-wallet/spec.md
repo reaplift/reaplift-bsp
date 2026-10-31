@@ -168,7 +168,8 @@ Task 6.6.
 ## Current reality
 
 - All routes below are real, except `PUT /api/admin/clients/:id/prices`, which is not built because `/api/admin/clients/:id/pricing` does the job. The pricing proposal D10 is built as the default and may change (P1 to P9 in [open-questions.md](../../open-questions.md)).
-- Beyond the spec: an adjustment that would make the balance negative is refused with 402, the same as a charge; the admin pricing view marks a price below Meta's rate as `belowCost` (P6); a `default` pricing mode returns a client to the default.
+- Available = balance − money on hold for scheduled campaigns (M8). A charge or a negative adjustment can use only what is available, and the low-balance alert watches available.
+- Beyond the spec: an adjustment that would take more than is available is refused with 402, the same as a charge; the admin pricing view marks a price below Meta's rate as `belowCost` (P6); a `default` pricing mode returns a client to the default.
 - The ledger check runs when the scheduler starts and every 24 hours after that, not at a set time of night.
 - The CSV download is built in the browser (S7), so it has no route.
 

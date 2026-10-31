@@ -30,12 +30,13 @@ let marketing = '';
 let utility = '';
 const cookies: Record<string, string> = {};
 
-const call = (email: string, method: 'GET' | 'POST' | 'PUT', url: string, payload?: object) =>
+const call = (email: string, method: 'GET' | 'POST' | 'PUT' | 'PATCH', url: string, payload?: object) =>
   app.inject({ method, url, headers: { cookie: cookies[email]!, origin: PANEL }, ...(payload ? { payload } : {}) });
 const rows = async (query: string, values: unknown[] = []) => (await w.pool.query(query, values)).rows;
 const base = (clientId = w.ids.northwind) => `/api/clients/${clientId}`;
 const send = (now = later()) => sendDue({ db: w.db, meta, encryptionKey: KEY, pacer: new AccountPacer() }, now);
 const balance = () => readBalance(w.db, w.ids.northwind);
+const wallet = async () => (await call(ASHA, 'GET', `${base()}/wallet`)).json();
 const topup = (amountPaise: number) => call(ADMIN, 'POST', `/api/admin/clients/${w.ids.northwind}/wallet/topups`, { amountPaise });
 
 const draft = async (count: number, templateId = marketing, first = 9000000000) => {
@@ -82,7 +83,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await w.pool.query('alter table wallet_ledger disable trigger wallet_ledger_no_change');
-  await w.pool.query('truncate wallet_ledger, message_status_events, meta_events, notifications, messages, rules restart identity cascade');
+  await w.pool.query('truncate wallet_ledger, wallet_holds, message_status_events, meta_events, notifications, messages, rules restart identity cascade');
   await w.pool.query('delete from campaigns');
   await w.pool.query('alter table wallet_ledger enable trigger wallet_ledger_no_change');
   await w.pool.query(`update wa_accounts set status = 'active', paused_reason = null, send_rate_per_sec = 500`);
@@ -270,15 +271,18 @@ describe('8.3 schedule', () => {
     expect((await campaign(id)).status).toBe('cancelled');
   });
 
-  it('a short balance at start returns it to draft with no ledger row, and tells super admins', async () => {
+  it('a price rise that leaves too little at start returns it to draft, with no ledger row and the hold released', async () => {
     const id = await draft(3);
     await act(id, 'schedule', ASHA, { at: at(10 * 60_000) });
-    await call(ADMIN, 'POST', `/api/admin/clients/${w.ids.northwind}/wallet/adjustments`, { amountPaise: -(await balance()), note: 'empty it' });
+    await call(ADMIN, 'POST', `/api/admin/clients/${w.ids.northwind}/wallet/adjustments`, { amountPaise: -((await wallet()).availablePaise), note: 'leave only the hold' });
+    await call(ADMIN, 'PUT', `/api/admin/clients/${w.ids.northwind}/pricing`, { mode: 'fixed', fixedPaise: { marketing: 200, utility: 200, authentication: 200 } });
 
     await startDueCampaigns(w.db, new Date(CLOCK.getTime() + 10 * 60_000));
+    await call(ADMIN, 'PUT', `/api/admin/clients/${w.ids.northwind}/pricing`, { mode: 'default' });
     expect((await campaign(id)).status).toBe('draft');
     expect((await rows(`select count(*) from messages where campaign_id = $1`, [id]))[0].count).toBe(0);
     expect((await rows(`select count(*) from wallet_ledger where campaign_id = $1`, [id]))[0].count).toBe(0);
+    expect((await wallet()).onHoldPaise).toBe(0);
     const told = await rows(`select email from notifications where event = 'campaign.scheduled_not_started' and channel = 'email' order by email`);
     expect(told.map((r) => r.email)).toContain(ADMIN);
   });
@@ -291,6 +295,78 @@ describe('8.3 schedule', () => {
     expect((await campaign(id)).status).toBe('draft');
     const [{ payload }] = await rows(`select payload from notifications where event = 'campaign.scheduled_not_started' limit 1`);
     expect(payload.reason).toContain('Quality dropped to Low');
+  });
+});
+
+describe('8.3 money on hold for a scheduled campaign', () => {
+  const at = (ms: number) => new Date(CLOCK.getTime() + ms).toISOString();
+  const empty = async () => call(ADMIN, 'POST', `/api/admin/clients/${w.ids.northwind}/wallet/adjustments`, { amountPaise: -(await balance()), note: 'start from nothing' });
+
+  it('the example: money for one campaign scheduled; a second is refused; the money waits; it starts', async () => {
+    await empty();
+    await topup(1000 * PRICE);
+    const first = await draft(1000);
+    const held = await act(first, 'schedule', ASHA, { at: at(10 * 60_000) });
+    expect(held.json().heldPaise).toBe(1000 * PRICE);
+    expect(await wallet()).toMatchObject({ balancePaise: 1000 * PRICE, onHoldPaise: 1000 * PRICE, availablePaise: 0 });
+    expect((await wallet()).holds).toEqual([expect.objectContaining({ campaignId: first, amountPaise: 1000 * PRICE })]);
+
+    const second = await draft(500, marketing, 9100000000);
+    const now = await act(second, 'confirm');
+    expect(now.statusCode).toBe(402);
+    expect(now.json().shortPaise).toBe(500 * PRICE);
+    expect((await call(ASHA, 'GET', `${base()}/campaigns/${second}/summary`)).json().balanceAfterPaise).toBe(-500 * PRICE);
+    const later2 = await act(second, 'schedule', ASHA, { at: at(10 * 60_000) });
+    expect(later2.statusCode).toBe(402);
+    expect((await campaign(second)).status).toBe('draft');
+
+    await startDueCampaigns(w.db, new Date(CLOCK.getTime() + 10 * 60_000));
+    expect((await campaign(first)).status).toBe('running');
+    expect(await wallet()).toMatchObject({ balancePaise: 0, onHoldPaise: 0, availablePaise: 0 });
+    expect((await rows(`select released_because from wallet_holds where campaign_id = $1`, [first]))[0].released_because).toBe('started');
+    expect(await checkLedgers(w.db)).toEqual([]);
+  });
+
+  it('two campaigns scheduled at once with money for one: exactly one holds it', async () => {
+    await empty();
+    await topup(3 * PRICE);
+    const a = await draft(3);
+    const b = await draft(3, marketing, 9100000000);
+    const results = await Promise.all([a, b].map((id) => act(id, 'schedule', ASHA, { at: at(10 * 60_000) })));
+    expect(results.map((r) => r.statusCode).sort()).toEqual([200, 402]);
+    expect((await wallet()).onHoldPaise).toBe(3 * PRICE);
+  });
+
+  it('unscheduling and cancelling give the money back', async () => {
+    await empty();
+    await topup(5 * PRICE);
+    const id = await draft(5);
+    await act(id, 'schedule', ASHA, { at: at(10 * 60_000) });
+    expect((await wallet()).availablePaise).toBe(0);
+    await act(id, 'unschedule');
+    expect((await wallet()).availablePaise).toBe(5 * PRICE);
+    await act(id, 'schedule', ASHA, { at: at(10 * 60_000) });
+    await act(id, 'cancel');
+    expect(await wallet()).toMatchObject({ balancePaise: 5 * PRICE, onHoldPaise: 0, availablePaise: 5 * PRICE });
+  });
+
+  it('a correction cannot take held money, and a low-balance alert watches what is available', async () => {
+    await empty();
+    await topup(10 * PRICE);
+    await call(ADMIN, 'PATCH', `/api/admin/clients/${w.ids.northwind}/low-balance-alert`, { alertPaise: 5 * PRICE });
+    await act(await draft(8), 'schedule', ASHA, { at: at(10 * 60_000) });
+    expect((await rows(`select count(*) from notifications where event = 'wallet.low_balance' and channel = 'email'`))[0].count).toBeGreaterThan(0);
+    const taken = await call(ADMIN, 'POST', `/api/admin/clients/${w.ids.northwind}/wallet/adjustments`, { amountPaise: -3 * PRICE, note: 'too much' });
+    expect(taken.statusCode).toBe(402);
+    expect((await call(ADMIN, 'GET', `/api/admin/clients/${w.ids.northwind}`)).json()).toMatchObject({ balancePaise: 10 * PRICE, onHoldPaise: 8 * PRICE });
+    await call(ADMIN, 'PATCH', `/api/admin/clients/${w.ids.northwind}/low-balance-alert`, { alertPaise: null });
+  });
+
+  it('the nightly check catches a hold left on a campaign that is not waiting', async () => {
+    const id = await draft(1);
+    await act(id, 'schedule', ASHA, { at: at(10 * 60_000) });
+    await w.pool.query(`update campaigns set status = 'draft' where id = $1`, [id]);
+    expect(await checkLedgers(w.db)).toContain(id);
   });
 });
 

@@ -42,7 +42,7 @@ const timed = async <T>(label: string, run: () => Promise<T>) => {
 await call(ravi, 'POST', `/api/admin/clients/${w.ids.northwind}/wa-accounts`, { wabaId: 'waba-1', phoneNumberId: 'phone-1', token: 'good-token' });
 await call(ravi, 'POST', '/api/admin/meta-rates', { category: 'MARKETING', countryCallingCode: '91', rateCentipaise: 7600, validFrom: '2026-01-01T00:00:00Z' });
 await call(ravi, 'POST', `/api/admin/clients/${w.ids.northwind}/wallet/topups`, { amountPaise: ROWS * 100 });
-await w.pool.query(`update wa_accounts set send_rate_per_sec = ${RATE}`);
+await w.pool.query(`update wa_accounts set send_rate_per_sec = ${RATE}, messaging_limit = null`);
 const templateId = (await w.pool.query(`select id from templates where name = 'promo'`)).rows[0].id;
 
 const csv = ['Name,Mobile', ...Array.from({ length: ROWS }, (_, i) => `Name${i},${9000000000 + i}`)].join('\n');

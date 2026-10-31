@@ -126,6 +126,9 @@ Markup price = ceiling of `rate_centipaise × (10000 + that category's markup) �
 **`wallet_ledger`** (Exists, 0009). Append-only; a trigger refuses update and delete.
 `id bigint`, `client_id`, `kind` (`topup` | `adjustment` | `charge` | `refund`), `amount_paise bigint`, `balance_after_paise bigint`, `campaign_id`, `message_id`, `note`, `created_by`, `created_at`; unique (`message_id`) where `kind = 'refund'`.
 
+**`wallet_holds`** (Exists, 0013). Money set aside for a scheduled campaign; not in the ledger.
+`id`, `client_id`, `campaign_id`, `amount_paise`, `created_by`, `created_at`, `released_at`, `released_because` (`started` | `unscheduled` | `cancelled` | `not_started`); one active hold per campaign. Available = balance − active holds.
+
 ### Campaigns (M7, M8)
 
 **`lists`** (Exists, 0010)

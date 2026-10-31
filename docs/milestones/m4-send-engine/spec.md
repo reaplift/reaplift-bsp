@@ -33,7 +33,7 @@ sequenceDiagram
     W->>DB: status sent, meta_message_id, sent_at
   else temporary error (429, 5xx, timeout)
     Meta-->>W: error
-    W->>DB: back to queued, retry after 30 s x 2^(attempt-1), max 5
+    W->>DB: back to queued, first retry in the next round, then 30 s x 2^(n-1), max 5
   else permanent error (bad number, 131049 marketing limit)
     Meta-->>W: error
     W->>DB: status failed, error code and reason (no retry)
@@ -105,8 +105,8 @@ Out:
 
 - Built: `modules/messaging/sender.ts`, with the claim query using `for update skip locked`, and the backoff maths in `lib/worker.ts`.
 - 4.3.1 A loop in `MODE=worker` that claims a batch, sends, and saves the outcome. `modes/worker.ts` runs a list of loops; M2's email loop joins the same list.
-- 4.3.2 A rate limiter per WhatsApp account from `wa_accounts.send_rate_per_sec`. It counts one process's sends, so a second worker never sends a row twice but does double the rate. Run one worker until a shared limit is needed.
-- 4.3.3 Outcome handling: sent; temporary error back to `queued` with `next_attempt_at`; permanent `failed` with code and title; account error pauses the account (`status = 'paused'`, `paused_reason`) and puts the row back.
+- 4.3.2 A rate limiter per WhatsApp account from `wa_accounts.send_rate_per_sec`, which defaults to 50 a second for a new account, well under Meta's default of 80 (checked 31 October 2026). On Meta's rate-limit errors (130429, 80007, 4, or HTTP 429) the whole account waits 30 seconds, and the message goes back to the queue without using an attempt, so it never fails for this. An account stuck on these errors raises M7's stalled-campaign alert. It counts one process's sends, so a second worker never sends a row twice but does double the rate. Run one worker until a shared limit is needed.
+- 4.3.3 Outcome handling: sent; temporary error back to `queued`, retried first in the next round (owner, 31 October 2026), then after 30 s × 2^(n-1) if it fails again, up to 5 attempts; a send with no answer is held instead (M7 7.6a); permanent `failed` with code and title; account error pauses the account (`status = 'paused'`, `paused_reason`) and puts the row back.
 - 4.3.5a Add the `bigint` type parser to `lib/db.ts` (convention in [data-model-and-api.md](../../data-model-and-api.md)): `pg` returns `bigint` as text, and `messages.id` is the first `bigint` the code reads.
 - 4.3.6 The worker always sends with the token stored on the message's own account. ReapLift's test number (manual token) and client accounts (business token from Embedded Signup, M5) therefore work the same way.
 - 4.3.7 Client accounts are paid through ReapLift's shared credit line (decided 29 October 2026). A payment error (131042) on a client account may mean the credit line itself has a problem and every client is about to fail, so besides pausing that account it logs an error with `alert: credit-line`, which M11 task 11.1 turns into an alert to super admins.

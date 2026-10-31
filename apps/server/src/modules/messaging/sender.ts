@@ -11,9 +11,15 @@ import {
 } from '../../lib/meta-client.js';
 import { calculateNextAttemptAt } from '../../lib/worker.js';
 import { refundFailedMessage } from '../campaigns/refunds.js';
+import { dailyRemaining } from './limits.js';
 import { pauseAccountRow } from './quality.js';
 
 export const MAX_SEND_ATTEMPTS = 5;
+export const RATE_LIMIT_COOL_DOWN_MS = 30 * 1000;
+/** Meta's "too fast" errors, from its error-code page. They say nothing about the message, so it must never fail for them. */
+const META_RATE_LIMIT_CODES = new Set([4, 80007, 130429]);
+const isRateLimited = (failure: MetaFailure) =>
+  failure.httpStatus === 429 || (failure.code !== undefined && META_RATE_LIMIT_CODES.has(failure.code));
 export const STUCK_AFTER_MS = 5 * 60 * 1000;
 /**
  * With no answer from Meta, the message may still have been accepted, so wait long enough for its webhook before
@@ -36,6 +42,9 @@ interface ActiveAccount {
   access_token_enc: Buffer;
   send_rate_per_sec: number;
   meta_payer: string;
+  waba_id: string;
+  daily_send_limit: number | null;
+  messaging_limit: string | null;
 }
 
 interface ClaimedMessage {
@@ -61,6 +70,11 @@ export class AccountPacer {
   record(accountId: string, sent: number, ratePerSec: number, now: number) {
     this.nextAllowedAt.set(accountId, now + (sent / ratePerSec) * 1000);
   }
+
+  /** Meta said too fast, so the whole account waits, not only the message that got the error. */
+  coolDown(accountId: string, now: number) {
+    this.nextAllowedAt.set(accountId, Math.max(this.nextAllowedAt.get(accountId) ?? 0, now + RATE_LIMIT_COOL_DOWN_MS));
+  }
 }
 
 export interface SenderDeps {
@@ -85,7 +99,7 @@ export async function sendDue(deps: SenderDeps, now: Date = new Date()): Promise
 
   const accounts = (
     await sql<ActiveAccount>`
-      select a.id, a.client_id, a.display_phone, a.phone_number_id, a.access_token_enc, a.send_rate_per_sec, a.meta_payer
+      select a.id, a.client_id, a.waba_id, a.daily_send_limit, a.messaging_limit, a.display_phone, a.phone_number_id, a.access_token_enc, a.send_rate_per_sec, a.meta_payer
       from wa_accounts a
       join clients c on c.id = a.client_id and c.status = 'active'
       where a.status = 'active' and exists (
@@ -99,7 +113,10 @@ export async function sendDue(deps: SenderDeps, now: Date = new Date()): Promise
     accounts
       .filter((account) => pacer.isReady(account.id, Date.now()))
       .map(async (account) => {
-        const claimed = await claim(db, account, now);
+        // Over the day's limit, nothing is claimed: messages wait in the queue and go out as the 24 hours move on.
+        const remaining = await dailyRemaining(db, account, now);
+        const batch = remaining === null ? account.send_rate_per_sec : Math.min(account.send_rate_per_sec, remaining);
+        const claimed = batch > 0 ? await claim(db, account, now, batch) : [];
         if (claimed.length > 0) {
           pacer.record(account.id, claimed.length, account.send_rate_per_sec, Date.now());
         }
@@ -114,6 +131,7 @@ async function claim(
   db: Kysely<Database>,
   account: ActiveAccount,
   now: Date,
+  batch: number,
 ): Promise<ClaimedMessage[]> {
   return (
     await sql<ClaimedMessage>`
@@ -127,7 +145,7 @@ async function claim(
             select 1 from campaigns k where k.id = messages.campaign_id and k.status = 'running'
           ))
         order by id
-        limit ${account.send_rate_per_sec}
+        limit ${batch}
         for update skip locked
       )
       returning m.id, m.to_number, m.variables, m.attempts,
@@ -170,6 +188,7 @@ async function sendBatch(
       );
 
       if (!result.ok) {
+        if (isRateLimited(result)) deps.pacer.coolDown(account.id, Date.now());
         const handled = await handleFailure(deps, account, message, result, now);
         if (handled === 'paused') paused = true;
         else outcome[handled] += 1;
@@ -205,6 +224,19 @@ async function handleFailure(
   const classified = classifyMetaError(failure.code);
   const code = failure.code ?? null;
 
+  // The message was not at fault, so this uses no attempt: however long Meta says wait, it is never failed for this.
+  if (isRateLimited(failure)) {
+    await sql`
+      update messages
+      set status = 'queued', attempts = attempts - 1, locked_at = null,
+        next_attempt_at = ${new Date(now.getTime() + RATE_LIMIT_COOL_DOWN_MS)},
+        failure_reason = ${failure.title}, meta_error_code = ${code}
+      where id = ${message.id} and status = 'sending'
+    `.execute(db);
+    log?.warn({ accountId: account.id, code }, 'Meta rate limit; account waits and the message is requeued');
+    return 'retried';
+  }
+
   if (classified.category === 'account') {
     const reason = (failure.code && ACCOUNT_REASONS[failure.code]) || `Meta error ${failure.code}: ${failure.title}`;
     await pauseAccount(deps, account, reason, [message], now, code);
@@ -224,7 +256,9 @@ async function handleFailure(
   const noResponse = failure.httpStatus === undefined;
   const nextAttempt = noResponse
     ? new Date(now.getTime() + HOLD_AFTER_NO_RESPONSE_MS)
-    : calculateNextAttemptAt(message.attempts, now);
+    : message.attempts === 1
+      ? now // The next round claims the lowest IDs first, so a retry goes ahead of the new batch.
+      : calculateNextAttemptAt(message.attempts - 1, now);
   await sql`
     update messages
     set status = 'queued', next_attempt_at = ${nextAttempt},

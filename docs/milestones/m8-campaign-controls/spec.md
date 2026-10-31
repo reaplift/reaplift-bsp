@@ -62,7 +62,7 @@ Why it is exact: the worker claims rows with `for update skip locked`, and cance
 ## Worked example: pause, resume, schedule, rules
 
 1. Meera pauses "Diwali wave 2" at 10:15. Rows already `sending` finish; no new rows are claimed. Nothing is charged or refunded. At 10:40 she resumes and sending continues.
-2. Meera schedules "Diwali wave 3" for 31 October 09:00 (India time). No money moves. At 09:00 the scheduler runs the same confirm as M7: checks, charge, queue. If the balance is short then, the campaign returns to `draft` and Meera, Northwind's users and the super admin are told.
+2. Meera schedules "Diwali wave 3" for 31 October 09:00 (India time). Its charge goes on hold, and she is refused if that much is not available. At 09:00 the scheduler runs the same confirm as M7: checks, charge, queue. If it cannot start then, the hold is released, the campaign returns to `draft`, and Meera, Northwind's users and the super admin are told.
 3. Ravi switches on the rule "no repeat of the same template to a number within 24 hours" for all clients. A campaign that targets 300 numbers who got the same template yesterday shows them as `blocked: repeat_within_24h` in its summary.
 4. Ravi sets "at most 2 marketing messages per number per week" for Greenleaf only. Northwind is not affected.
 
@@ -96,14 +96,14 @@ Out:
 
 - The transaction in the diagram above. The refund is one ledger row (`kind = 'refund'`, `campaign_id`, note "6,785 messages cancelled") for the count of rows changed by the update, times the price used at confirm.
 - Cancel is allowed once: a second cancel answers 409 `ALREADY_CANCELLED`.
-- Cancelling a `scheduled` campaign moves no money, because it was never charged.
+- Cancelling a `scheduled` campaign charges nothing, as it was never charged, and releases its hold.
 - Tests (integration, with the worker running against the fake Meta server during the cancel): cancelled count + sent + failed + still-sending-then-finished = queued at confirm; net charge equals charged outcomes × price; a second cancel changes nothing.
 - Acceptance: the cancel example on the fake server, with the nightly check clean afterwards.
 
 ### 8.3 Schedule
 
 - A draft can be scheduled for a time at least 5 minutes ahead, in India time; it can be unscheduled back to draft.
-- The scheduler checks every minute and runs M7's confirm transaction for due campaigns. Money is charged at start, not at scheduling.
+- Scheduling holds the charge (see Current reality). The scheduler checks every minute and runs M7's confirm transaction for due campaigns, which turns the hold into the charge.
 - Tests: a campaign scheduled for 09:00 starts by 09:01; a short balance at start leaves it as `draft` with no ledger row and a notification.
 - Acceptance: step 2 of the pause example.
 
@@ -140,7 +140,7 @@ Out:
 | POST     | `/api/clients/:clientId/campaigns/:id/unschedule` | Back to draft     |
 | GET, PUT | `/api/admin/rules`                                | Rules screen      |
 
-Migration: `rules`; nullable `campaigns.scheduled_at timestamptz`, `campaigns.cancelled_at`, `campaigns.cancelled_by`.
+Migrations: `rules`; nullable `campaigns.scheduled_at timestamptz`, `campaigns.cancelled_at`, `campaigns.cancelled_by`; `wallet_holds` (0013).
 
 ## Notifications
 
@@ -151,13 +151,13 @@ Task 8.5.
 | Question                                                                                             | Default                                                                                      | Decides |
 | ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | ------- |
 | D5: approve the cancel money flow above (queued rows refunded; blocked-at-confirm rows stay charged) | As written                                                                                   | Owner   |
-| Is a scheduled campaign charged when it is scheduled, or when it starts?                             | When it starts, so money is not held for days; it may then fail to start for a short balance | Owner   |
 
 ## Current reality
 
-- All routes above are real. D5 is built as written, and a scheduled campaign is charged when it starts; both are the defaults, still for the owner to approve.
+- All routes above are real. D5 is built as written, the default, still for the owner to approve.
 - The marketing cap counts a rolling 24 hours or 7 days, not calendar days.
-- A scheduled campaign that cannot start for any reason (not only a short balance) returns to draft.
+- **Money on hold (owner, 31 October 2026).** Scheduling sets the campaign's charge aside in `wallet_holds`, so no other campaign or correction can spend it. Example: with ₹1,000, a campaign of 1,000 messages at ₹1 is scheduled, so balance ₹1,000, on hold ₹1,000, available ₹0, and a new 500-message campaign is refused as ₹500 short. At the scheduled time the hold becomes the actual charge in one transaction. Unscheduling or cancelling gives it back. The Wallet route returns `balancePaise`, `onHoldPaise`, `availablePaise` and the list of holds.
+- The charge is worked out again at start, as prices and opt-outs can change. If it now exceeds what is available, the hold is released and the campaign returns to draft, as it does for any other problem at start, such as a paused number.
 
 ## Demo (milestone acceptance)
 

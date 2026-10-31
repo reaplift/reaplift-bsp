@@ -16,7 +16,7 @@ docker exec reaplift-bsp-postgres-1 psql -U reaplift -d reaplift -c "drop databa
 | --- | --- |
 | 8.1 | A paused campaign sends nothing and moves no money; it carries on when resumed; each change is audited |
 | 8.2 | Exact refund in one row; a message already `sending` finishes normally and its failure refunds separately, so net charge equals sent × price; a second cancel, and two at once, refund once; **with the worker sending during the cancel, all 300 messages are accounted for and the nightly check is clean** |
-| 8.3 | Scheduling moves no money; a due campaign starts and charges then; a short balance or a paused number returns it to draft with no ledger row and tells people; unscheduling works; cancelling a scheduled campaign moves no money |
+| 8.3 | Scheduling holds the charge, and a second campaign is refused when that leaves too little; two scheduled at once with money for one: exactly one holds it; a due campaign starts, and the hold becomes the charge; a correction cannot take held money; unscheduling and cancelling give it back; a price rise or a paused number at start returns it to draft with the hold released and no ledger row; the nightly check catches a stray hold |
 | 8.4 | Each rule on and off, for all clients and one client; a client rule overrides the global one, even when off; a cancelled send is not a repeat; a blocked number is charged and not sent; changes are audited |
 | 8.5 | Pause and resume say who did it; cancel gives the refund |
 

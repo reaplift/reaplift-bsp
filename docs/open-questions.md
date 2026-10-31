@@ -2,7 +2,7 @@
 
 Questions that are waiting on ReapLift or Meta. Add new ones here. When one is answered, move it to "Answered" with the date, the source, and the code or spec it changed.
 
-## For ReapLift: client pricing (D10)
+## For ReapLift: client pricing (D10) and campaign size
 
 Proposed by Anirudh on 31 October 2026, and **not agreed yet**. Nothing is built, so changing it costs nothing today. M6 builds it.
 
@@ -24,6 +24,8 @@ Proposed by Anirudh on 31 October 2026, and **not agreed yet**. Nothing is built
 | P6 | Fixed prices do not follow Meta's rate. What if Meta's rate rises above the fixed price? | ReapLift would lose money on each message | The admin screen warns; sending is not blocked |
 | P7 | Do clients send outside India? Meta's rates differ by country, but a fixed price here is one number per type. | A cheap fixed price could lose money on another country | India only for fixed prices |
 | P8 | If Meta bills a message in a different category from its template, who absorbs the difference? | Utility template billed as marketing, or a free message inside a 24-hour reply window | The client pays by template category; ReapLift takes the gain or loss |
+| P11 | Later, should clients be able to pay for higher priority? | Not built. Clients on their own numbers do not compete today, except on one shared WhatsApp account's daily limit | Everyone equal |
+| P10 | Is 10,000 or 20,000 rows the right limit per campaign? Does any client send more in one go today? | A larger audience must be split into several campaigns | 20,000; a setting, so changing it needs no code |
 | P9 | Who may change a client's rates later, and do changes affect campaigns already confirmed? | A rate change during a running campaign | Super admin only; confirmed campaigns keep their price |
 
 ## For Meta
@@ -50,7 +52,6 @@ Docs last checked: 31 October 2026, Graph API v26.0.
 | 7 | Is there any way to stop a duplicate send, such as an idempotency key or a status lookup? We found none. | A send that times out may already be accepted | None exists; `send-stats` measures duplicates, and M7 task 7.6a reduces them | Ask |
 | 8 | Is `biz_opaque_callback_data` accepted on template sends, and returned in `failed` webhooks as well as sent, delivered and read? | `send-stats` and M7 task 7.6a depend on it | Accepted on every send; `failed` not confirmed | Test |
 | 9 | How soon after a send does the `sent` webhook usually arrive? | Sets how long 7.6a holds a timed-out message | 2 to 5 minutes is long enough | Test |
-| 10 | How long and how often does Meta retry a webhook when our server is down? | Decides how much downtime is safe, including a database move | Long enough for a short planned stop | Ask |
 | 11 | Are the error classes in the M4 spec right in practice, especially codes Meta's page does not describe in detail? | A wrong class retries what should fail, or the reverse | As listed in M4 task 4.2.2 | Test |
 
 ## Needed for numbers and templates (M5)
@@ -68,10 +69,11 @@ Docs last checked: 31 October 2026, Graph API v26.0.
 | 21 | Does the 4000 error on a repeat credit-line share still mean "already shared"? We read this from a search result, not a current page. | We treat it as shared, so an account could go active when it is not | Yes | Test |
 | 22 | Do review samples have other limits than the sizes for sent media (image 5 MB, video 16 MB, document 100 MB)? Also, the upload guide lists only PDF, JPEG, PNG and MP4. | A file could pass our check and fail at Meta | The sent-media sizes apply | Test |
 | 23 | Is Embedded Signup v4 the version our flow should use, and does the onboarding order on Meta's page still apply to it? Meta said v2 and v3 are deprecated from 15 October 2026. | The panel's signup button depends on it | v4, in the documented order | Ask, Test |
+| 26 | How does "business portfolio pacing" for large template campaigns (in Meta's changelog) affect our sending and delivery speed? | It may hold back part of a campaign to check quality | Not handled | Ask, Test |
 | 24 | What does Meta do with messages above the daily messaging limit: refuse them, or queue them? | The summary warns and does not block | They fail, and are refunded | Ask, Test |
 | 25 | Does Meta refuse a template send with an empty variable? | A blank cell in a client's sheet would fail and be refunded | Refused | Test |
 | 20 | Are Meta's messaging limits per business portfolio for all of ReapLift's client accounts? If clients own their accounts, whose portfolio counts? | The limit decides how much a client can send | Each client's own portfolio; we copy the value to each number | Ask |
 
 ## Answered
 
-None yet.
+- **Question 10, 31 October 2026, Meta's throughput page:** Meta retries failed webhooks for up to 7 days with exponential backoff, so a short planned stop is safe. It also says to size webhook handling for 3 times outgoing traffic.

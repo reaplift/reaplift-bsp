@@ -6,6 +6,7 @@ import { CampaignCreate, CampaignEdit, NumberColumn, OptOutUpload, SettingWords 
 import { csvLine } from '../../lib/csv.js';
 import type { Database } from '../../lib/db.js';
 import { writeAudit } from '../admin/audit.js';
+import { estimateDelivery } from '../messaging/limits.js';
 import { sendError } from '../auth/scope.js';
 import { notify } from '../notifications/notify.js';
 import { InsufficientBalanceError } from '../wallet/ledger.js';
@@ -267,8 +268,11 @@ export function registerCampaignRoutes(
       from messages where client_id = ${clientId} and campaign_id = ${id} and status = 'failed'
       group by meta_error_code, failure_reason order by count desc
     `.execute(db);
+    const { status, waAccountId } = row as { status: string; waAccountId: string };
     return reply.code(200).send({
       ...(row as object),
+      // Counts every message waiting on the number, this campaign's included.
+      estimate: status === 'running' ? await estimateDelivery(db, waAccountId, 0, now()) : null,
       chargedPaise: money.charged,
       refundedPaise: money.refunded,
       failures: failures.rows.map((f) => ({

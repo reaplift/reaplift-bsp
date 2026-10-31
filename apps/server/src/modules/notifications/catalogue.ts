@@ -117,6 +117,12 @@ export const CATALOGUE = defineCatalogue({
     channels: ['email', 'panel'],
     recipients: ['user_if_any', 'client_users', 'assigned_staff'],
   },
+  'campaign.daily_limit_reached': {
+    subject: (p) => `Campaign ${String(p.name)} is waiting for the daily limit`,
+    text: (p) => `Campaign ${String(p.name)} reached this number's daily limit. ${String(p.queued)} messages are waiting, and will go out automatically as the limit frees up.`,
+    channels: ['email', 'panel'],
+    recipients: ['user_if_any', 'client_users', 'assigned_staff'],
+  },
   'campaign.stalled': {
     subject: (p) => `Campaign ${String(p.name)} has stopped moving`,
     text: (p) => `Campaign ${String(p.name)} has ${String(p.queued)} messages waiting, and none has been sent for 10 minutes.`,

@@ -3,6 +3,9 @@ import { sql } from 'kysely';
 import type { Database } from './db.js';
 import { encryptSecret } from './crypto.js';
 
+/** Meta allows 80 a second by default (checked 31 October 2026). Starting well under it; the super admin can raise it per number. */
+export const DEFAULT_SEND_RATE_PER_SEC = 50;
+
 export type MetaPayer = 'reaplift_card' | 'partner_credit_line' | 'reaplift_credit_line';
 
 export interface SeedAccountInput {
@@ -75,7 +78,7 @@ export async function seedAccount(
       ${input.displayName ?? null},
       ${Buffer.from(encryptSecret(input.accessToken, encryptionKey), 'utf8')},
       ${input.metaPayer ?? 'reaplift_card'},
-      ${input.sendRatePerSec ?? 20},
+      ${input.sendRatePerSec ?? DEFAULT_SEND_RATE_PER_SEC},
       ${input.status ?? 'active'},
       ${input.pausedReason ?? null},
       ${input.creditShareRef ?? null},

@@ -1,14 +1,16 @@
 import type { FastifyInstance } from 'fastify';
 import { sql, type Kysely } from 'kysely';
 import { randomInt } from 'node:crypto';
-import { ConnectAccount, EmbeddedSignup, ReplaceToken } from '@reaplift/shared';
+import { ConnectAccount, EmbeddedSignup, ReplaceToken, SendLimits } from '@reaplift/shared';
 import { encryptSecret } from '../../lib/crypto.js';
 import type { Database } from '../../lib/db.js';
 import type { MetaClient } from '../../lib/meta-client.js';
 import { sendError } from '../auth/scope.js';
+import { writeAudit } from '../admin/audit.js';
 import { UserInputError } from '../auth/users.js';
 import { notify } from '../notifications/notify.js';
 import { connectAccount } from './account.js';
+import { readLimitUsage } from './limits.js';
 
 const CREDIT_NOT_SHARED = 'credit line not shared';
 /** Which currency Meta invoices the credit line in is question 2 in docs/open-questions.md. */
@@ -19,7 +21,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ACCOUNT_BOX = sql`
   id, client_id as "clientId", waba_id as "wabaId", phone_number_id as "phoneNumberId",
   display_phone as "displayPhone", display_name as "displayName", quality_rating as "qualityRating",
-  messaging_limit as "messagingLimit", meta_payer as "metaPayer", status, paused_reason as "pausedReason",
+  messaging_limit as "messagingLimit", send_rate_per_sec as "sendRatePerSec", daily_send_limit as "dailySendLimit", meta_payer as "metaPayer", status, paused_reason as "pausedReason",
   onboarded_via as "onboardedVia", connected_at as "connectedAt"
 `;
 
@@ -196,6 +198,45 @@ export function registerAccountRoutes(
       `.execute(trx);
     });
     return reply.code(200).send({ status: 'active' });
+  });
+
+  app.get('/api/admin/limits-usage', async (_req, reply) => {
+    return reply.code(200).send(await readLimitUsage(db, now()));
+  });
+
+  // Applies from the worker's next round, with no restart.
+  app.patch('/api/admin/wa-accounts/:id/limits', async (req, reply) => {
+    const { id } = req.params as { id: string };
+    if (!UUID.test(id)) return sendError(reply, 404, 'NOT_FOUND', 'Not found');
+    const parsed = SendLimits.safeParse(req.body);
+    if (!parsed.success) return sendError(reply, 400, 'INVALID_REQUEST', 'Send sendRatePerSec (1 to 1000) or dailySendLimit');
+    const saved = await db.transaction().execute(async (trx) => {
+      const before = (
+        await sql<{ client_id: string; send_rate_per_sec: number; daily_send_limit: number | null }>`
+          select client_id, send_rate_per_sec, daily_send_limit from wa_accounts where id = ${id} for update
+        `.execute(trx)
+      ).rows[0];
+      if (!before) return null;
+      const sendRatePerSec = parsed.data.sendRatePerSec ?? before.send_rate_per_sec;
+      const dailySendLimit = parsed.data.dailySendLimit === undefined ? before.daily_send_limit : parsed.data.dailySendLimit;
+      await sql`
+        update wa_accounts set send_rate_per_sec = ${sendRatePerSec}, daily_send_limit = ${dailySendLimit}
+        where id = ${id} and client_id = ${before.client_id}
+      `.execute(trx);
+      await writeAudit(trx, {
+        clientId: before.client_id,
+        userId: req.auth!.userId,
+        action: 'wa_account.limits_set',
+        entityType: 'wa_account',
+        entityId: id,
+        before: { sendRatePerSec: before.send_rate_per_sec, dailySendLimit: before.daily_send_limit },
+        after: { sendRatePerSec, dailySendLimit },
+        at: now(),
+      });
+      return { sendRatePerSec, dailySendLimit };
+    });
+    if (!saved) return sendError(reply, 404, 'NOT_FOUND', 'Not found');
+    return reply.code(200).send(saved);
   });
 
   app.post('/api/admin/wa-accounts/:id/token', async (req, reply) => {

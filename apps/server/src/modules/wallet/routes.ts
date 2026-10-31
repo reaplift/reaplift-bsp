@@ -6,7 +6,7 @@ import { readPage, toPage } from '../../lib/pagination.js';
 import { writeAudit } from '../admin/audit.js';
 import { sendError } from '../auth/scope.js';
 import { notify } from '../notifications/notify.js';
-import { applyLedgerEntry, InsufficientBalanceError, readBalance, type LedgerKind } from './ledger.js';
+import { applyLedgerEntry, InsufficientBalanceError, readBalance, readOnHold, type LedgerKind } from './ledger.js';
 import { CATEGORIES, chargePolicyFor, priceAt, recomputePrices } from './pricing.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -36,8 +36,19 @@ export function registerWalletRoutes(app: FastifyInstance, deps: { db: Kysely<Da
         select low_balance_alert_paise from clients where id = ${clientId}
       `.execute(db)
     ).rows[0]!;
+    const balancePaise = await readBalance(db, clientId);
+    const onHoldPaise = await readOnHold(db, clientId);
+    const holds = await sql`
+      select h.campaign_id as "campaignId", k.name as "campaignName", k.scheduled_at as "scheduledAt", h.amount_paise as "amountPaise"
+      from wallet_holds h join campaigns k on k.id = h.campaign_id and k.client_id = h.client_id
+      where h.client_id = ${clientId} and h.released_at is null
+      order by k.scheduled_at
+    `.execute(db);
     return reply.code(200).send({
-      balancePaise: await readBalance(db, clientId),
+      balancePaise,
+      onHoldPaise,
+      availablePaise: balancePaise - onHoldPaise,
+      holds: holds.rows,
       lowBalanceAlertPaise: client.low_balance_alert_paise,
     });
   });
@@ -114,7 +125,7 @@ export function registerWalletRoutes(app: FastifyInstance, deps: { db: Kysely<Da
         if (err instanceof InsufficientBalanceError) {
           return reply.code(402).send({
             error: 'INSUFFICIENT_BALANCE',
-            message: 'This would make the balance negative',
+            message: 'This would take more than the available balance',
             shortPaise: err.shortPaise,
           });
         }

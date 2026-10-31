@@ -122,6 +122,10 @@ Answered questions move here with their date, and the spec is updated in the sam
 
 ### 31 October 2026
 
+- **Per-second and per-day limits are admin settings (owner):** set per number by the super admin. At the daily limit, messages wait and resume rather than fail. Details in [M5](milestones/m5-number-and-templates/spec.md).
+- **Retries go first (owner):** a message that fails with a temporary error is retried at the front of the next round, ahead of the new batch.
+- **A campaign is at most 20,000 rows (owner):** this replaces 200,000 per campaign, and the server enforces it. The file limit drops from 50 MB to 10 MB. Both are settings. The figure, 10,000 or 20,000, is to confirm with ReapLift (P10 in [open-questions.md](open-questions.md)).
+- **Scheduled campaigns hold their money (owner):** scheduling sets the charge aside so nothing else can spend it, and it becomes the charge at start. The Wallet shows current balance, on hold and available. This replaces the earlier default of checking the balance only at start.
 - **Anirudh builds all remaining backend (owner):** M3, M6, M7, M8 and M9's backend, in order, each tested with integration tests against the fake Meta server, as an exception to the dependency rule. **M3's backend moves from Suraj to Anirudh; Suraj stays on screens.** No milestone is Done until its screens and demo are.
 - **M5 backend started before M3 and M4 are Done (owner).** This is an exception to the dependency rule. The backend runs against the fake Meta server and needs only the `clients` table. M5's screens and M5 being Done still wait for M3, and for M4's real-phone demo. All of M5's backend is built, including a route to replace a token and a route to retry the credit-line share, neither of which the spec named.
 - **Questions waiting on ReapLift or Meta now live in one place:** [open-questions.md](open-questions.md).
@@ -262,7 +266,9 @@ Claim a number in the pull request that opens the task, before writing the file.
 | 0010   | `0010_campaigns.sql`        | M7 7.1 to 7.8      | On `anirudh-e2e-setup`                                                    |
 | 0011   | `0011_campaign_controls.sql` | M8 8.3, 8.4       | On `anirudh-e2e-setup`                                                    |
 | 0012   | `0012_reports.sql`          | M9 9.1, 9.5, 9.7   | On `anirudh-e2e-setup`                                                    |
-| 0013   | next free                   |                    | Free                                                                      |
+| 0013   | `0013_wallet_holds.sql`     | M8 8.3             | On `anirudh-e2e-setup`                                                    |
+| 0014   | `0014_send_limits.sql`      | M5 limits          | On `anirudh-e2e-setup`                                                    |
+| 0015   | next free                   |                    | Free                                                                      |
 
 ## Suraj's task list (screens track)
 

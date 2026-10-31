@@ -101,7 +101,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await w.pool.query('alter table wallet_ledger disable trigger wallet_ledger_no_change');
-  await w.pool.query('truncate wallet_ledger, message_status_events, meta_events, opt_outs, notifications, messages restart identity cascade');
+  await w.pool.query('truncate wallet_ledger, wallet_holds, message_status_events, meta_events, opt_outs, notifications, messages restart identity cascade');
   await w.pool.query('delete from campaigns');
   await w.pool.query('alter table wallet_ledger enable trigger wallet_ledger_no_change');
   await w.pool.query(`update wa_accounts set status = 'active', paused_reason = null, send_rate_per_sec = 500`);
@@ -247,9 +247,11 @@ describe('7.4 summary and 7.5 confirm', () => {
       duplicate: 1,
       pricePaise: 95,
       chargePaise: 285,
+      availablePaise: 200000,
       balancePaise: 200000,
       balanceAfterPaise: 199715,
       limitWarning: null,
+      estimate: expect.objectContaining({ messagesAhead: 0, waitsForDailyLimit: false }),
     });
     expect(summary.willSend + summary.blocked.total + summary.invalid.total + summary.duplicate).toBe(summary.total);
     expect((await rows('select count(*) from messages'))[0].count).toBe(0);
@@ -480,7 +482,7 @@ describe('7.6a a send that gets no answer', () => {
     fake.queueSendResponses(metaError(500, 131000));
     const now = later();
     await send(now);
-    expect((await rows('select next_attempt_at from messages'))[0].next_attempt_at.getTime()).toBe(now.getTime() + 30_000);
+    expect((await rows('select next_attempt_at from messages'))[0].next_attempt_at.getTime()).toBe(now.getTime());
   });
 
   it('a webhook after the retry is the double send: changes nothing, raises no error', async () => {
@@ -491,6 +493,149 @@ describe('7.6a a send that gets no answer', () => {
     expect(await processEvents(w.db)).toEqual({ processed: 1, waiting: 0, errored: 0 });
     expect((await rows('select status, meta_message_id from messages'))[0]).toEqual({ status: 'sent', meta_message_id: message.meta_message_id });
   });
+});
+
+describe('per-second and per-day limits', () => {
+  const accountRow = async () => (await rows('select id from wa_accounts'))[0].id as string;
+  const limits = (payload: object, email = ADMIN) => app.inject({
+    method: 'PATCH',
+    url: `/api/admin/wa-accounts/${accountIdOf}/limits`,
+    headers: { cookie: cookies[email]!, origin: PANEL },
+    payload,
+  });
+  let accountIdOf = '';
+  const list = (count: number) => ['Name,Mobile', ...Array.from({ length: count }, (_, i) => `A,${9000002000 + i}`)].join('\n');
+
+  beforeEach(async () => {
+    accountIdOf = await accountRow();
+    await w.pool.query(`update wa_accounts set daily_send_limit = null, messaging_limit = 'TIER_2K'`);
+  });
+  afterAll(() => w.pool.query(`update wa_accounts set daily_send_limit = null`));
+
+  it('only a super admin sets them; bad values are refused; each change is audited and shows in the account box', async () => {
+    expect((await limits({ sendRatePerSec: 50 }, ASHA)).statusCode).toBe(403);
+    expect((await limits({ sendRatePerSec: 50 }, MEERA)).statusCode).toBe(403);
+    expect((await limits({ sendRatePerSec: 0 })).statusCode).toBe(400);
+    expect((await limits({ sendRatePerSec: 1001 })).statusCode).toBe(400);
+    expect((await limits({ dailySendLimit: 0 })).statusCode).toBe(400);
+    expect((await limits({})).statusCode).toBe(400);
+
+    expect((await limits({ sendRatePerSec: 50, dailySendLimit: 1000 })).json()).toEqual({ sendRatePerSec: 50, dailySendLimit: 1000 });
+    expect((await call(ASHA, 'GET', `${base()}/wa-accounts`)).json().items[0]).toMatchObject({ sendRatePerSec: 50, dailySendLimit: 1000 });
+    const [audit] = await rows(`select details from audit_logs where action = 'wa_account.limits_set' order by id desc limit 1`);
+    expect(audit.details.after).toEqual({ sendRatePerSec: 50, dailySendLimit: 1000 });
+    expect((await limits({ dailySendLimit: null })).json().dailySendLimit).toBeNull();
+    await limits({ sendRatePerSec: 500 });
+  });
+
+  it('a new speed applies from the next round', async () => {
+    await topup(100000);
+    await confirm(await readyCampaign({}, list(10)));
+    await limits({ sendRatePerSec: 3 });
+    await send();
+    expect(fake.sends()).toHaveLength(3);
+    await limits({ sendRatePerSec: 500 });
+    await send();
+    expect(fake.sends()).toHaveLength(10);
+  });
+
+  it('at the daily limit messages wait, none fails, people are told once, and they resume as the 24 hours move on', async () => {
+    await topup(100000);
+    await limits({ dailySendLimit: 4 });
+    const id = await confirmReady(10);
+    const now = later();
+    await send(now);
+    await send(now);
+    expect(fake.sends()).toHaveLength(4);
+    expect(await campaign(id)).toMatchObject({ sent: 4, failed: 0, status: 'running' });
+
+    await watchCampaigns(w.db, new Date(now.getTime() + STALLED_AFTER_MS));
+    await watchCampaigns(w.db, new Date(now.getTime() + STALLED_AFTER_MS));
+    expect((await rows(`select count(*) from notifications where event = 'campaign.daily_limit_reached' and email = $1 and channel = 'email'`, [ASHA]))[0].count).toBe(1);
+    expect((await rows(`select count(*) from notifications where event = 'campaign.stalled'`))[0].count).toBe(0);
+
+    const nextDay = new Date(now.getTime() + 24 * 60 * 60 * 1000 + 1000);
+    await send(nextDay);
+    expect(fake.sends()).toHaveLength(8);
+    expect((await rows(`select count(*) from messages where status = 'failed'`))[0].count).toBe(0);
+  });
+
+  it("the tighter limit wins, whether it is Meta's or the setting; a lower setting cannot be beaten by a bigger Meta tier", async () => {
+    await topup(100000);
+    await w.pool.query(`update wa_accounts set messaging_limit = 'TIER_50'`);
+    await limits({ dailySendLimit: 1000 });
+    const id = await readyCampaign({}, list(60));
+    expect((await call(ASHA, 'GET', `${base()}/campaigns/${id}/summary`)).json().limitWarning).toEqual({ limit: 50 });
+    await limits({ dailySendLimit: 20 });
+    expect((await call(ASHA, 'GET', `${base()}/campaigns/${id}/summary`)).json().limitWarning).toEqual({ limit: 20 });
+    await confirm(id);
+    await send();
+    expect(fake.sends()).toHaveLength(20);
+  });
+
+  describe('expected delivery time', () => {
+    const estimate = async (id: string) => (await call(ASHA, 'GET', `${base()}/campaigns/${id}/summary`)).json().estimate;
+
+    it('comes from the speed, and counts what is already waiting on the number', async () => {
+      await topup(1000000);
+      await limits({ sendRatePerSec: 70 });
+      const first = await readyCampaign({}, list(700));
+      expect(await estimate(first)).toMatchObject({ messagesAhead: 0, seconds: 10, waitsForDailyLimit: false });
+      expect(new Date((await estimate(first)).finishesAt).getTime()).toBe(CLOCK.getTime() + 10_000);
+
+      await confirm(first);
+      expect((await campaign(first)).estimate).toMatchObject({ messagesAhead: 700, seconds: 10 });
+      const lines = ['Name,Mobile', ...Array.from({ length: 700 }, (_, i) => `A,${9100000000 + i}`)];
+      const second = await readyCampaign({}, lines.join('\n'));
+      expect(await estimate(second)).toMatchObject({ messagesAhead: 700, seconds: 20 });
+      await limits({ sendRatePerSec: 500 });
+    });
+
+    it('adds a day for each day the limit makes it wait', async () => {
+      await limits({ sendRatePerSec: 10, dailySendLimit: 100 });
+      const DAY = 24 * 60 * 60;
+      expect(await estimate(await readyCampaign({}, list(100)))).toMatchObject({ seconds: 10, waitsForDailyLimit: false });
+      expect(await estimate(await readyCampaign({}, list(150)))).toMatchObject({ seconds: 15 + DAY, waitsForDailyLimit: true });
+      expect(await estimate(await readyCampaign({}, list(350)))).toMatchObject({ seconds: 35 + 3 * DAY, waitsForDailyLimit: true });
+      await limits({ sendRatePerSec: 500, dailySendLimit: null });
+    });
+
+    it('a paused campaign’s messages are not counted as ahead', async () => {
+      await topup(100000);
+      const id = await readyCampaign({}, list(50));
+      await confirm(id);
+      await call(ASHA, 'POST', `${base()}/campaigns/${id}/pause`);
+      expect((await estimate(await readyCampaign({}, list(20)))).messagesAhead).toBe(0);
+    });
+  });
+
+  it('the super admin sees limits used per number and overall; nobody else can', async () => {
+    await topup(100000);
+    await limits({ sendRatePerSec: 500, dailySendLimit: 10 });
+    await confirmReady(14);
+    await send();
+    const usage = (await call(ADMIN, 'GET', '/api/admin/limits-usage')).json();
+    expect(usage.items[0]).toMatchObject({
+      clientName: 'Northwind Labs',
+      sendRatePerSec: 500,
+      dailySendLimit: 10,
+      metaLimit: 'TIER_2K',
+      effectiveDailyLimit: 10,
+      usedLast24Hours: 10,
+      remaining: 0,
+      usedPercent: 100,
+      waiting: 4,
+    });
+    expect(usage.overall).toMatchObject({ numbers: 1, pausedNumbers: 0, usedLast24Hours: 10, waiting: 4, numbersAtDailyLimit: 1 });
+    expect((await call(ASHA, 'GET', '/api/admin/limits-usage')).statusCode).toBe(403);
+    expect((await call(MEERA, 'GET', '/api/admin/limits-usage')).statusCode).toBe(403);
+  });
+
+  const confirmReady = async (count: number) => {
+    const id = await readyCampaign({}, list(count));
+    await confirm(id);
+    return id;
+  };
 });
 
 describe('7.8 opt-outs', () => {

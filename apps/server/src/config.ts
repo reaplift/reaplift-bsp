@@ -22,8 +22,8 @@ const Env = z.object({
   META_CREDIT_LINE_ID: z.string().default(''),
   /** Where uploaded files go until object storage exists (M10). */
   UPLOAD_DIR: z.preprocess(blankToUndefined, z.string().default('./uploads')),
-  UPLOAD_MAX_BYTES: z.preprocess(blankToUndefined, z.coerce.number().int().positive().default(50 * 1024 * 1024)),
-  LIST_MAX_ROWS: z.preprocess(blankToUndefined, z.coerce.number().int().positive().default(200_000)),
+  UPLOAD_MAX_BYTES: z.preprocess(blankToUndefined, z.coerce.number().int().positive().default(10 * 1024 * 1024)),
+  LIST_MAX_ROWS: z.preprocess(blankToUndefined, z.coerce.number().int().positive().default(20_000)),
   /** Latest stable when M4 was built (checked 30 October 2026). */
   META_GRAPH_VERSION: z.preprocess(blankToUndefined, z.string().default('v26.0')),
   /** Only changed to point at the fake Meta server. */

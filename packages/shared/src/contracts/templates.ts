@@ -58,6 +58,15 @@ export const EmbeddedSignup = z
   .object({ code: z.string().min(1), wabaId: z.string().min(1), phoneNumberId: z.string().min(1) })
   .strict();
 
+/** Both are for the super admin to change; a null daily limit leaves only Meta's. */
+export const SendLimits = z
+  .object({
+    sendRatePerSec: z.number().int().min(1).max(1000).optional(),
+    dailySendLimit: z.number().int().min(1).nullable().optional(),
+  })
+  .strict()
+  .refine((body) => body.sendRatePerSec !== undefined || body.dailySendLimit !== undefined);
+
 export const ReplaceToken = z.object({ token: z.string().min(1) }).strict();
 
 export const ConnectAccount = z

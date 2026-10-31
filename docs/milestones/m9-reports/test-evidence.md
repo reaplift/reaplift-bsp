@@ -23,7 +23,7 @@ docker exec reaplift-bsp-postgres-1 psql -U reaplift -d reaplift -c "drop databa
 | 9.7 | Within 0.5% is clean; beyond it alerts and lists the largest differences; a planted wrong rate is caught |
 | 9.8 | 80% and 95% each alert once a month; no alert without a limit |
 
-Not run: a 200,000-row export's memory use, the one-second dashboard target on 6 months of data, and the demo's panel steps.
+Not run: a 20,000-row export's memory use, the one-second dashboard target on 6 months of data, and the demo's panel steps.
 
 ## The whole backend, as real processes
 

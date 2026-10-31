@@ -2,8 +2,9 @@ import { sql, type Kysely, type Transaction } from 'kysely';
 import type { VariableMap } from '@reaplift/shared';
 import type { Database } from '../../lib/db.js';
 import { notify } from '../notifications/notify.js';
-import { applyLedgerEntry, readBalance } from '../wallet/ledger.js';
+import { applyLedgerEntry, readBalance, readOnHold, releaseHold } from '../wallet/ledger.js';
 import { chargePolicyFor, priceAt } from '../wallet/pricing.js';
+import { effectiveDailyLimit, estimateDelivery, type DeliveryEstimate } from '../messaging/limits.js';
 import { marketingCap, repeatWithinHours } from './rules.js';
 
 export interface CampaignRow {
@@ -58,6 +59,7 @@ interface Facts {
   accountStatus: string;
   accountReason: string | null;
   messagingLimit: string | null;
+  dailySendLimit: number | null;
   clientStatus: string;
   numberColumn: number | null;
   columnCount: number;
@@ -67,7 +69,7 @@ async function readFacts(db: Kysely<Database>, campaign: CampaignRow): Promise<F
   return (
     await sql<Facts>`
       select t.status as "templateStatus", t.category as "templateCategory", t.variable_count as "variableCount",
-        a.status as "accountStatus", a.paused_reason as "accountReason", a.messaging_limit as "messagingLimit",
+        a.status as "accountStatus", a.paused_reason as "accountReason", a.messaging_limit as "messagingLimit", a.daily_send_limit as "dailySendLimit",
         c.status as "clientStatus", l.number_column as "numberColumn",
         coalesce(jsonb_array_length(l.columns), 0) as "columnCount"
       from campaigns k
@@ -100,15 +102,6 @@ function refuseIfNotReady(campaign: CampaignRow, facts: Facts) {
   }
 }
 
-const LIMIT_PER_DAY: Record<string, number> = {
-  TIER_50: 50,
-  TIER_250: 250,
-  TIER_1K: 1000,
-  TIER_2K: 2000,
-  TIER_10K: 10000,
-  TIER_100K: 100000,
-};
-
 export interface Summary {
   total: number;
   willSend: number;
@@ -117,9 +110,12 @@ export interface Summary {
   duplicate: number;
   pricePaise: number;
   chargePaise: number;
+  /** What the client can spend: its balance, less money on hold for scheduled campaigns. */
+  availablePaise: number;
   balancePaise: number;
   balanceAfterPaise: number;
   limitWarning: { limit: number } | null;
+  estimate: DeliveryEstimate;
 }
 
 interface Computed extends Summary {
@@ -179,7 +175,8 @@ export async function computeSummary(db: Kysely<Database>, campaign: CampaignRow
     (policy.invalid ? invalidTotal * price : 0) +
     (policy.duplicate ? duplicate * price : 0);
   const balancePaise = await readBalance(db, campaign.client_id);
-  const limit = LIMIT_PER_DAY[facts.messagingLimit ?? ''];
+  const availablePaise = balancePaise - (await readOnHold(db, campaign.client_id));
+  const limit = effectiveDailyLimit(facts.dailySendLimit, facts.messagingLimit);
 
   return {
     total: eligible + invalidTotal + duplicate,
@@ -189,9 +186,11 @@ export async function computeSummary(db: Kysely<Database>, campaign: CampaignRow
     duplicate,
     pricePaise: price,
     chargePaise,
+    availablePaise,
     balancePaise,
-    balanceAfterPaise: balancePaise - chargePaise,
-    limitWarning: limit !== undefined && willSend > limit ? { limit } : null,
+    balanceAfterPaise: availablePaise - chargePaise,
+    limitWarning: limit !== null && willSend > limit ? { limit } : null,
+    estimate: await estimateDelivery(db, campaign.wa_account_id, willSend, at),
     blocks,
     sendPricePaise,
     blockedPricePaise,
@@ -227,6 +226,9 @@ export async function confirmCampaign(
   if (!allowedFrom.includes(campaign.status)) {
     throw new CampaignRefused(409, 'ALREADY_CONFIRMED', `This campaign is ${campaign.status}`);
   }
+
+  // Its hold becomes the charge below; the money is free for that moment only inside this transaction.
+  if (campaign.status === 'scheduled') await releaseHold(trx, clientId, campaignId, 'started', at);
 
   const summary = await computeSummary(trx, campaign, at);
   if (summary.willSend + summary.blocked.total === 0) {

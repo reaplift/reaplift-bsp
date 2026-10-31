@@ -35,7 +35,7 @@ export async function runWorker(config: Config, log: Logger) {
     { name: 'notifications', everyMs: 2_000, run: () => deliverDue(db, provider, new Date(), log) },
     {
       name: 'messages',
-      everyMs: 500,
+      everyMs: 100,
       run: () => sendDue({ db, meta, encryptionKey: config.APP_ENCRYPTION_KEY, pacer, log }),
     },
     {

@@ -82,7 +82,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await w.pool.query('alter table wallet_ledger disable trigger wallet_ledger_no_change');
-  await w.pool.query('truncate wallet_ledger, message_status_events, meta_events, notifications, messages, daily_stats, meta_invoices restart identity cascade');
+  await w.pool.query('truncate wallet_ledger, wallet_holds, message_status_events, meta_events, notifications, messages, daily_stats, meta_invoices restart identity cascade');
   await w.pool.query('delete from campaigns');
   await w.pool.query('alter table wallet_ledger enable trigger wallet_ledger_no_change');
   await w.pool.query(`delete from settings where key = 'credit_limit_paise'`);

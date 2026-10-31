@@ -178,7 +178,7 @@ describe('6.2 to 6.6 the ledger', () => {
 
   it('filters and pages the ledger; the wallet shows the balance', async () => {
     const c = w.ids.northwind;
-    expect((await call(ASHA, 'GET', `/api/clients/${c}/wallet`)).json()).toEqual({ balancePaise: 35000, lowBalanceAlertPaise: 50000 });
+    expect((await call(ASHA, 'GET', `/api/clients/${c}/wallet`)).json()).toEqual({ balancePaise: 35000, onHoldPaise: 0, availablePaise: 35000, holds: [], lowBalanceAlertPaise: 50000 });
     const adjustments = await ledger(c, ASHA, '?kind=adjustment');
     expect(adjustments.items.every((r: { kind: string }) => r.kind === 'adjustment')).toBe(true);
     expect((await ledger(c, ASHA, '?to=2000-01-01')).items).toEqual([]);

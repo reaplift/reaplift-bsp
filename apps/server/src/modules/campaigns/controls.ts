@@ -6,7 +6,7 @@ import type { Logger } from '../../lib/logger.js';
 import { writeAudit } from '../admin/audit.js';
 import { sendError, type Scope } from '../auth/scope.js';
 import { notify } from '../notifications/notify.js';
-import { applyLedgerEntry, InsufficientBalanceError } from '../wallet/ledger.js';
+import { applyLedgerEntry, holdFunds, InsufficientBalanceError, releaseHold } from '../wallet/ledger.js';
 import { CampaignRefused, computeSummary, confirmCampaign, type CampaignRow } from './campaign.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -53,6 +53,7 @@ export async function startDueCampaigns(db: Kysely<Database>, now: Date = new Da
           where id = ${campaign.id} and client_id = ${campaign.client_id} and status = 'scheduled'
         `.execute(trx);
         if (Number(back.numAffectedRows ?? 0) > 0) {
+          await releaseHold(trx, campaign.client_id, campaign.id, 'not_started', now);
           await notify(trx, 'campaign.scheduled_not_started', scope, { name: campaign.name, reason });
         }
       });
@@ -133,6 +134,8 @@ export function registerCampaignControls(app: FastifyInstance, deps: { db: Kysel
           where id = ${id} and client_id = ${scope.clientId}
         `.execute(trx);
 
+        await releaseHold(trx, scope.clientId, id, 'cancelled', at);
+
         // A row the worker claimed a moment ago is already `sending`, so it is skipped and its result decides its charge.
         const cancelled = (
           await sql<{ cancelled: number; refund: number }>`
@@ -185,20 +188,30 @@ export function registerCampaignControls(app: FastifyInstance, deps: { db: Kysel
     if (at.getTime() < current.getTime() + MIN_SCHEDULE_AHEAD_MS) {
       return sendError(reply, 400, 'TOO_SOON', 'Schedule at least 5 minutes ahead');
     }
+    let heldPaise = 0;
     try {
       await db.transaction().execute(async (trx) => {
         const campaign = await lockCampaign(trx, scope.clientId, id);
         if (!campaign) throw new Stop(404, 'NOT_FOUND', 'Not found');
         if (campaign.status !== 'draft') throw new Stop(409, 'WRONG_STATUS', `This campaign is ${campaign.status}`);
-        await computeSummary(trx, campaign, current); // A campaign that could not start now is refused now.
+        // A campaign that could not start now is refused now. Its money is set aside, so nothing else can spend it.
+        const summary = await computeSummary(trx, campaign, current);
+        if (summary.willSend + summary.blocked.total === 0) {
+          throw new CampaignRefused(400, 'LIST_EMPTY', 'This audience has no valid numbers');
+        }
+        heldPaise = summary.chargePaise;
+        await holdFunds(trx, { clientId: scope.clientId, campaignId: id, amountPaise: heldPaise, createdBy: scope.userId, at: current });
         await sql`
           update campaigns set status = 'scheduled', scheduled_at = ${at}, updated_at = ${current}
           where id = ${id} and client_id = ${scope.clientId}
         `.execute(trx);
-        await audit(trx, scope, id, 'campaign.scheduled', { after: { scheduledAt: at.toISOString() } });
+        await audit(trx, scope, id, 'campaign.scheduled', { after: { scheduledAt: at.toISOString(), heldPaise } });
       });
-      return reply.code(200).send({ status: 'scheduled', scheduledAt: at.toISOString() });
+      return reply.code(200).send({ status: 'scheduled', scheduledAt: at.toISOString(), heldPaise });
     } catch (err) {
+      if (err instanceof InsufficientBalanceError) {
+        return reply.code(402).send({ error: 'INSUFFICIENT_BALANCE', message: 'Top up needed', shortPaise: err.shortPaise });
+      }
       return stopped(reply, err);
     }
   });
@@ -216,6 +229,7 @@ export function registerCampaignControls(app: FastifyInstance, deps: { db: Kysel
           update campaigns set status = 'draft', scheduled_at = null, updated_at = ${now()}
           where id = ${id} and client_id = ${scope.clientId}
         `.execute(trx);
+        await releaseHold(trx, scope.clientId, id, 'unscheduled', now());
         await audit(trx, scope, id, 'campaign.unscheduled', {});
       });
       return reply.code(200).send({ status: 'draft' });
