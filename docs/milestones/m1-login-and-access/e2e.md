@@ -93,4 +93,4 @@ CI run 41039409157 on PR #13 (commit `a5e4e7d`), job "pre-push review", step `pn
 Test Files  5 passed (5)   Tests  44 passed (44)
 ```
 
-The spec's acceptance asks for this on the pull request into `main`. The panel's PRs go into `anirudh-e2e-setup` first (#12, #13, this one), so that last check is made when that branch is merged into `main`; M1 is Done then.
+The spec's acceptance asks for this on the pull request into `main`. The panel's PRs go into `anirudh-e2e-setup` first (#12, #13, this one), so that last check was made on PR #15, from that branch into `main`: `scope.int.test.ts` passed all 15 tests on commit `7a827bd`, and M1 became Done when it merged on 30 October 2026.
