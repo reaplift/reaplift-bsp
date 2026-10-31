@@ -1,49 +1,13 @@
 # Team workflow and Git policy
 
-This repository is worked on by a small team, so we keep the Git flow simple and standard:
+This repository is worked on by a small team, so we use two branches and nothing else:
 
-- `main` is the only protected release branch.
-- Each developer keeps a personal working branch.
-- We rebase from `main` before pushing.
-- We never push directly to `main`.
-- Review and CI must pass before merge.
+- `anirudh-e2e-setup` is the work branch. Everyone commits here.
+- `main` is production. It changes only through a release pull request from the work branch.
 
-We do not use one branch per task in this repo. A task-per-branch model creates branch churn for a two-person team and makes handoff harder. The tracker remains the source of truth for what task is active; the branch is just where the current developer is working.
+We do not use one branch per task, stacked branches, or a pull request per task. The tracker remains the source of truth for what task is active and what has been done.
 
-## Branch model
-
-Use a non-`main` branch for every change. Example names:
-
-- `anirudh-e2e-setup`
-- `feature/meta-config`
-- `fix/send-validation`
-
-The exact naming convention is flexible, but the rule is fixed: do not push directly to `main`.
-
-## Required workflow before every push
-
-Run these commands in order before pushing a branch:
-
-```bash
-git checkout main
-git pull --ff-only origin main
-git checkout -b anirudh-e2e-setup
-# or: git checkout -b feature/meta-config
-# work on the branch and commit locally
-
-git status
-git add -A
-git commit -m "Describe the change"
-
-git fetch origin
-git rebase origin/main
-# resolve any conflicts locally
-# continue the rebase until it finishes
-
-pnpm review:prepush
-
-git push -u origin anirudh-e2e-setup
-```
+## Daily work
 
 Set the local Git hook once per repo clone:
 
@@ -52,39 +16,46 @@ git config core.hooksPath .githooks
 chmod +x .githooks/pre-push
 ```
 
-If the push is rejected because the branch is behind `main`, do not force-push blindly. Rebase again and resolve the conflict before trying again.
+Then, for every piece of work:
+
+```bash
+git checkout anirudh-e2e-setup
+git pull --rebase origin anirudh-e2e-setup
+
+# work and commit locally
+
+pnpm lint
+pnpm typecheck
+pnpm test
+
+git pull --rebase origin anirudh-e2e-setup
+git push origin anirudh-e2e-setup
+```
+
+Push small commits often, so the two of us stay close together. CI runs on every push to the work branch. If CI goes red, fixing it comes before any new work, because the branch is shared.
 
 ## Conflict handling
 
-Conflicts are normal when two people work in the same area. We keep the process simple:
+- `git pull --rebase` only moves your own commits that have not been pushed yet, so it is safe. Resolve any conflict locally and continue.
+- Never force-push the work branch, and never rebase commits that are already pushed. Both rewrite the other person's history.
+- If a push is rejected, pull with rebase again and push again.
 
-- rebase from `main` before pushing
-- resolve conflicts locally before pushing
-- keep the change small and easy to review
-- do not bypass review because the branch is behind
+## Releasing to production
 
-This repo does not treat same-file edits as a special case to avoid. We avoid silent overwrites by rebasing first and reviewing before merge.
-
-## Pull request and merge rules
-
-Before merge to `main`:
-
-1. The branch is rebased on the latest `main`.
-2. The PR is open and reviewed by the other developer.
-3. CI is green.
-4. The tracker task is updated to the correct state.
-5. Only then is the branch merged to `main`.
-
-Direct pushes to `main` are not allowed.
-
-## After merge
-
-After the branch is merged, switch back to `main` and sync it:
+1. CI is green on the latest commit of `anirudh-e2e-setup`, and the tracker matches the code.
+2. Open one pull request from `anirudh-e2e-setup` into `main`. The other developer reviews it.
+3. Merge with a merge commit, not "Squash and merge". A squash leaves the two branches with different histories, and the next release then conflicts.
+4. Bring the merge commit back to the work branch, so it is not left behind `main`:
 
 ```bash
-git checkout main
-git pull --ff-only origin main
+git checkout anirudh-e2e-setup
+git pull --rebase origin anirudh-e2e-setup
+git fetch origin
+git merge origin/main
+git push origin anirudh-e2e-setup
 ```
+
+Direct pushes to `main` are not allowed.
 
 ## Review checklist before pushing
 
@@ -96,10 +67,7 @@ Before pushing, confirm all of the following:
 - lint, typecheck and relevant tests pass locally
 - no real Meta send or real wallet charge is triggered by automated tests
 - any design change is reflected in the docs
-- the branch is updated with the latest `main`
 
 ## Relationship with tracker and docs
 
-The tracker still tells us what is active and what has been done. The Git flow is deliberately simple so the team can work without branch sprawl.
-
-If the task is blocked or design changes, update the tracker and the relevant design doc in the same change set.
+If a task is blocked or the design changes, update the tracker and the relevant design doc in the same commit.

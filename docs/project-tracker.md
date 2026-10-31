@@ -2,7 +2,7 @@
 
 This is the one place for overall status, the order of work, the rules everyone follows, and the decisions the owner has made. Each milestone's full detail (flow diagram, worked example, tasks, tests, data, open questions) lives in its own spec under [docs/milestones/](milestones/README.md). Every table and route, existing and planned, is listed in [data-model-and-api.md](data-model-and-api.md). Read this file first, then the spec for the milestone you are working on.
 
-Last updated: 29 October 2026.
+Last updated: 30 October 2026.
 
 ## How the plan is organised
 
@@ -120,6 +120,10 @@ Each has a default, so work does not stop; the default is built unless the owner
 
 Answered questions move here with their date, and the spec is updated in the same pull request.
 
+### 30 October 2026
+
+- **Two branches (replaces one branch per task):** all work goes on `anirudh-e2e-setup`; `main` is production and is updated only by a release pull request from that branch. Per-task and stacked branches made merging and pulling tedious, and contradicted team-workflow.md. CI now also runs on every push to `anirudh-e2e-setup`, because task pull requests no longer trigger it.
+
 ### 29 October 2026
 
 - **Business model and Meta partner route (answers D1):** ReapLift becomes a white-label WhatsApp provider like Dovesoft. It becomes a Meta **Solution Partner** with its **own credit line** (E7): Meta bills ReapLift, and ReapLift bills clients from their prepaid wallets. Clients own their WhatsApp accounts, connect them through Embedded Signup, and ReapLift shares its credit line with each account (M5). Prices are Meta's rate plus a markup of about 20 to 25%, which covers staff, servers and margin (M6; details in D10). ReapLift's clients stay on Dovesoft until the platform is built and E7 is done, so no interim billing path is needed. This replaces the design's launch plan of holding client numbers under ReapLift's own Meta business and paying by card (HLD section 2 updated).
@@ -216,7 +220,7 @@ If any check fails, the task is In progress or Prototype, never Done.
 - Migrations: a new numbered file only; never edit a merged one; only add tables, nullable columns and indexes. Claim the number in the registry below first.
 - Money is whole paise in `bigint`. Phone numbers are digits with country code, no plus (`919812345678`).
 - Every table carries `client_id` and every query filters by it, except the platform tables listed in [data-model-and-api.md](data-model-and-api.md).
-- One branch per task, named `m<milestone>-<task>-<short-name>` (for example `m1-1.2-sessions`), merged by pull request into `main`. Never push to `main`. CI must be green.
+- Two branches only: everyone commits to `anirudh-e2e-setup` (work), and `main` is production. No per-task branches and no pull requests between tasks. A release is one pull request from `anirudh-e2e-setup` into `main`. Never push to `main`. CI must be green. Steps are in [team-workflow.md](team-workflow.md). Where a doc says "the same pull request" about a task, read it as the same commit or push on the work branch.
 - No secrets in git. Every new setting goes in `.env.example` with a blank value.
 - Run lint, typecheck and tests before committing.
 
@@ -248,7 +252,7 @@ How it works:
 3. **Contract changes.** If the backend needs a different shape, the backend pull request changes the schema **and** the mock handler together, so the screen keeps compiling and working.
 4. **Connecting to the real server is Suraj's, once the backend is finished.** When a milestone's backend routes are merged, a "connect" task (C1, C2, ...) is added to the list below. In it Suraj runs his screens with `VITE_API_MODE=real`, fixes any mismatch with the contracts (asking the backend owner only if the server itself is wrong), and records the real requests and responses and the end-to-end run in the milestone's evidence. That is when the milestone's tasks become Done. A connect task is added only when its backend is finished, so it never waits on anyone.
 5. **Unclear spec.** Pick the simplest option that matches the spec and the Dovesoft panel (HLD section 4), note the choice under the spec's "Open questions" as "Chosen by Suraj: ...", and continue.
-6. **Reviews do not block.** Open a pull request per task and start the next task on a new branch from it. If a pull request has no review after one working day and CI is green, merge it; Anirudh reviews afterwards and any fix is a new pull request.
+6. **Reviews do not block.** Commit each task directly to `anirudh-e2e-setup` and start the next task on the same branch; no task branch or task pull request. Anirudh reviews the commits after pulling them and at the release pull request into `main`; any fix is a new commit.
 7. **Files.** Suraj edits only `apps/web/**`, `packages/shared/src/contracts/**`, `packages/shared/src/format/**` and the screen sections of the M1, M3 and M6 specs. Backend work does not edit these, except the schema-and-mock change in point 3. No migrations, so no clashes in the registry.
 8. **Done for a screen task = Screen ready:** the screen works in mock mode for every role in the spec's worked example; component tests pass in CI; lint and typecheck pass; screenshots are in the milestone's `frontend.md`.
 

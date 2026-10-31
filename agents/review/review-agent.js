@@ -48,7 +48,7 @@ function main() {
 
   const currentBranch = git(['rev-parse', '--abbrev-ref', 'HEAD']);
   if (currentBranch.status !== 0 || !currentBranch.stdout.trim() || currentBranch.stdout.trim() === 'main') {
-    fail('You are on the protected main branch. Switch to your personal branch before pushing.');
+    fail('You are on the protected main branch. Switch to anirudh-e2e-setup before pushing.');
   }
 
   const mainRef = baseRef();
@@ -58,7 +58,7 @@ function main() {
     const [behind = 0, ahead = 0] = (leftRight.stdout || '0 0').split(/\s+/).map(Number);
 
     if (behind > 0) {
-      fail(`Your branch is behind ${mainRef}. Rebase before pushing. Run: git fetch origin && git rebase origin/main`);
+      fail(`Your branch is behind ${mainRef}. Merge it before pushing. Run: git fetch origin && git merge origin/main`);
     }
 
     if (ahead === 0) {

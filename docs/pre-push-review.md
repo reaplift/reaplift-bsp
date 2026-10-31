@@ -44,7 +44,7 @@ Before a developer pushes, a lightweight review pass must confirm:
 - the code is build-safe
 - tests are present and meaningful
 - no real money or live Meta messages are triggered by automation
-- the branch is up to date with `main`
+- the work branch is up to date with `origin/anirudh-e2e-setup`
 - the docs are still consistent with the implementation
 
 ## Required local checks
@@ -91,17 +91,16 @@ Return PASS or FAIL with a short list of required fixes.
 
 ## Merge and safety rules
 
-- Do not push a branch that is behind `main` without rebasing.
-- Do not merge to `main` without a PR and review sign-off.
+- Do not push the work branch while it is behind `main`; merge `origin/main` into it (see [team-workflow.md](team-workflow.md)). Never force-push it.
+- Do not merge to `main` without a release PR and review sign-off.
 - Do not rely on local checks alone; CI is the final gate.
 - Do not use automated tests to send real messages or burn real money.
 
 ## Example push sequence
 
 ```bash
-git checkout main
-git pull --ff-only origin main
-git checkout -b anirudh-e2e-setup
+git checkout anirudh-e2e-setup
+git pull --rebase origin anirudh-e2e-setup
 # work, commit, then before push:
 
 pnpm lint
@@ -112,9 +111,8 @@ pnpm test
 pnpm db:up
 pnpm test:int
 
-git fetch origin
-git rebase origin/main
-git push -u origin anirudh-e2e-setup
+git pull --rebase origin anirudh-e2e-setup
+git push origin anirudh-e2e-setup
 ```
 
 ## Review outcome
@@ -122,7 +120,7 @@ git push -u origin anirudh-e2e-setup
 The branch is ready to push only when:
 
 - all required checks pass
-- the branch is rebased on `main`
+- the work branch is not behind `main`
 - the tracker is updated
 - the reviewer is satisfied
 - the change is safe for CI and review
