@@ -6,6 +6,9 @@ import { AdminClient, type HealthResponse } from '@reaplift/shared';
 import type { Database } from './lib/db.js';
 import { registerAuthRoutes } from './modules/auth/routes.js';
 import { registerScope } from './modules/auth/scope.js';
+import { registerAccountRoutes } from './modules/messaging/account-routes.js';
+import { registerTemplateRoutes } from './modules/templates/routes.js';
+import type { MetaClient } from './lib/meta-client.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -31,6 +34,13 @@ export interface AppDeps {
   now?: () => Date;
   metaVerifyToken?: string;
   metaAppSecret?: string;
+  /** Connecting a number calls Meta and stores its token encrypted; without these it answers 503. */
+  meta?: MetaClient;
+  encryptionKey?: string;
+  metaAppId?: string;
+  metaSystemToken?: string;
+  metaCreditLineId?: string;
+  uploadDir?: string;
 }
 
 /** Builds the HTTP app. Dependencies are passed in so tests can replace them. */
@@ -44,6 +54,12 @@ export function buildApp({
   now = () => new Date(),
   metaVerifyToken = '',
   metaAppSecret = '',
+  meta,
+  encryptionKey,
+  metaAppId = '',
+  metaSystemToken = '',
+  metaCreditLineId = '',
+  uploadDir = './uploads',
 }: AppDeps) {
   const app = Fastify({ logger });
   app.decorate('routeList', []);
@@ -81,6 +97,17 @@ export function buildApp({
   ];
   registerScope(app, { db, now, panelOrigin });
   registerAuthRoutes(app, { db, now, cookieSecure });
+  registerAccountRoutes(app, {
+    db,
+    now,
+    meta,
+    encryptionKey,
+    metaAppId,
+    metaAppSecret,
+    metaSystemToken,
+    metaCreditLineId,
+  });
+  registerTemplateRoutes(app, { db, now, meta, encryptionKey, metaAppId, uploadDir });
 
   app.get('/healthz', async (_req, reply) => {
     const dbOk = await checkDb();

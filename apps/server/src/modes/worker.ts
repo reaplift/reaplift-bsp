@@ -4,6 +4,7 @@ import type { Logger } from '../lib/logger.js';
 import { MetaClient } from '../lib/meta-client.js';
 import { AccountPacer, reportStuck, sendDue } from '../modules/messaging/sender.js';
 import { deliverDue } from '../modules/notifications/delivery.js';
+import { submitDue } from '../modules/templates/submission.js';
 import {
   FakeEmailProvider,
   SmtpEmailProvider,
@@ -36,6 +37,11 @@ export async function runWorker(config: Config, log: Logger) {
       name: 'messages',
       everyMs: 500,
       run: () => sendDue({ db, meta, encryptionKey: config.APP_ENCRYPTION_KEY, pacer, log }),
+    },
+    {
+      name: 'template-submissions',
+      everyMs: 2_000,
+      run: () => submitDue({ db, meta, encryptionKey: config.APP_ENCRYPTION_KEY, log }),
     },
     { name: 'stuck-messages', everyMs: 60_000, run: () => reportStuck(db, log) },
   ];

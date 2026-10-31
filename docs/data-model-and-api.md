@@ -87,13 +87,13 @@ Replaced by `auth_sessions`, because its `client_id` is `not null` and a super a
 
 **`wa_accounts`** (Exists, 0002). One row per connected phone number.
 `id`, `client_id`, `waba_id`, `phone_number_id` (unique), `display_phone`, `display_name`, `access_token_enc bytea` (a business token from Embedded Signup for clients; a system user token for ReapLift's own test numbers), `quality_rating`, `messaging_limit`, `meta_payer` (`reaplift_credit_line` for clients; `reaplift_card` for ReapLift's test numbers; `partner_credit_line` is in the check but unused), `send_rate_per_sec`, `status` (`active` | `paused`), `paused_reason`, `created_at`.
-Planned (M5): `onboarded_via text` (`manual` | `embedded_signup`), `credit_share_ref text` (what Meta returns when ReapLift's credit line is shared), `connected_by uuid`, `connected_at timestamptz`.
+Added in 0007 (M5): `onboarded_via text` (`manual` | `embedded_signup`), `credit_share_ref text` (what Meta returns when ReapLift's credit line is shared), `connected_by uuid`, `connected_at timestamptz`.
 
 **`templates`** (Exists, 0002)
 `id`, `client_id`, `wa_account_id`, `meta_template_id`, `name`, `language`, `category` (`MARKETING` | `UTILITY` | `AUTHENTICATION`), `components jsonb`, `variable_count`, `status` (no check, so the M5 states need no change), `updated_at`; unique (`wa_account_id`, `name`, `language`).
-Planned (M5): `validation_errors jsonb`, `submitted_at`, `rejection_reason`, `meta_recommendation`, `media_storage_key`, `created_by`.
+Added in 0007 (M5): `validation_errors jsonb`, `submitted_at`, `submitted_by`, `rejection_reason`, `meta_recommendation`, `media_storage_key`, `created_by`.
 
-**`settings`** (Planned, M5). Platform table.
+**`settings`** (Exists, 0007). Platform table.
 `key` (primary key, for example `promo_words`, `stop_words`), `value jsonb`, `updated_by`, `updated_at`.
 
 ### Sending (M4)
@@ -114,11 +114,11 @@ There is no `cancelled` status; M8 uses `blocked` with reason `campaign_cancelle
 `id`, `category`, `country_calling_code`, `rate_centipaise bigint`, `valid_from`, `entered_by`, `created_at`.
 
 **`pricing`** (Planned, M6). `client_id` null is the default for all clients.
-`id`, `client_id`, `mode` (`markup` | `fixed`), `markup_bp int` (2500 = 25%), `fixed_marketing_paise`, `fixed_utility_paise`, `fixed_authentication_paise`, `valid_from`, `updated_by`.
+`id`, `client_id`, `mode` (`markup` | `fixed`), `markup_marketing_bp`, `markup_utility_bp`, `markup_authentication_bp` (`int`, 2500 = 25%), `fixed_marketing_paise`, `fixed_utility_paise`, `fixed_authentication_paise`, `valid_from`, `updated_by`.
 
 **`price_lists`** (Planned, M6). The resulting price each client pays.
 `id`, `client_id`, `category`, `country_calling_code`, `price_paise bigint`, `source` (`markup` | `fixed`), `meta_rate_id`, `valid_from`.
-Markup price = ceiling of `rate_centipaise × (10000 + markup_bp) ÷ 1,000,000`, in whole-number arithmetic. Example: 8631 × 12000 ÷ 1,000,000 = 103.572, so 104 paise.
+Markup price = ceiling of `rate_centipaise × (10000 + that category's markup) ÷ 1,000,000`, in whole-number arithmetic. Example: 8631 × 12000 ÷ 1,000,000 = 103.572, so 104 paise.
 
 **`charge_policy`** (Planned, M6). `client_id` null is the default for all clients.
 `id`, `client_id`, `outcome` (`blocked`, `sent_not_delivered`, `delivered`, `failed`, and D6's `invalid`, `duplicate`), `charged boolean`.

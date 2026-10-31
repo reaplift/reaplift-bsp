@@ -1,7 +1,7 @@
 import { sql, type Kysely } from 'kysely';
 import type { Database } from '../../lib/db.js';
 import type { MetaClient, MetaFailure, MetaTemplate } from '../../lib/meta-client.js';
-import { seedAccount } from '../../lib/seed-account.js';
+import { seedAccount, type SeedAccountInput } from '../../lib/seed-account.js';
 import { UserInputError } from '../auth/users.js';
 
 const TEMPLATE_CATEGORIES = new Set(['MARKETING', 'UTILITY', 'AUTHENTICATION']);
@@ -51,6 +51,7 @@ export async function syncTemplates(
         meta_template_id = excluded.meta_template_id, category = excluded.category,
         components = excluded.components, variable_count = excluded.variable_count,
         status = excluded.status, updated_at = now()
+      where templates.status not in ('DRAFT', 'VALIDATION_FAILED', 'SUBMITTING')
     `.execute(db);
   }
   return {
@@ -60,10 +61,18 @@ export async function syncTemplates(
 }
 
 export interface ConnectAccountInput {
-  clientName: string;
+  /** An existing client; without it, a new client is created with `clientName`. */
+  clientId?: string;
+  clientName?: string;
   wabaId: string;
   phoneNumberId: string;
   token: string;
+  connectedBy?: string | null;
+  /** Embedded Signup's extras; a manual connection leaves them out. */
+  seed?: Pick<
+    SeedAccountInput,
+    'metaPayer' | 'status' | 'pausedReason' | 'onboardedVia' | 'creditShareRef' | 'twoStepPin'
+  >;
 }
 
 /** Tests the IDs and token against Meta before saving anything, then copies the templates. */
@@ -86,7 +95,10 @@ export async function connectAccount(
       seedAccount(
         trx,
         {
+          clientId: input.clientId,
           clientName: input.clientName,
+          connectedBy: input.connectedBy,
+          ...input.seed,
           wabaId: input.wabaId,
           phoneNumberId: input.phoneNumberId,
           displayPhone: (phone.display_phone_number ?? '').replace(/\D/g, ''),
@@ -109,6 +121,17 @@ export async function connectAccount(
     { id: ids.waAccountId, clientId: ids.clientId, wabaId: input.wabaId },
     input.token,
   );
+
+  // So the account box is complete at once; if this fails, the hourly sync fills it in.
+  const health = await meta.phoneHealth(input.phoneNumberId, input.token);
+  if (health.ok) {
+    await sql`
+      update wa_accounts
+      set quality_rating = ${health.data.quality_rating ?? null},
+        messaging_limit = ${health.data.whatsapp_business_manager_messaging_limit ?? null}
+      where id = ${ids.waAccountId}
+    `.execute(db);
+  }
   return { ...ids, templates };
 }
 

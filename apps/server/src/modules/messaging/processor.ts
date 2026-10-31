@@ -2,6 +2,8 @@ import { sql, type Kysely, type Transaction } from 'kysely';
 import type { Database } from '../../lib/db.js';
 import type { Logger } from '../../lib/logger.js';
 import { applyMessageStatusUpdate, type MessageUpdateState } from '../../lib/status-processor.js';
+import { applyTemplateWebhook, type TemplateWebhook } from '../templates/status.js';
+import { applyLimitWebhook, type LimitWebhook } from './quality.js';
 
 export const ORPHAN_TIMEOUT_MS = 10 * 60 * 1000;
 const BATCH_SIZE = 100;
@@ -15,7 +17,10 @@ interface StatusUpdate {
 }
 
 interface WebhookBody {
-  entry?: Array<{ changes?: Array<{ field?: string; value?: { statuses?: StatusUpdate[] } }> }>;
+  entry?: Array<{
+    id?: string;
+    changes?: Array<{ field?: string; value?: { statuses?: StatusUpdate[] } }>;
+  }>;
 }
 
 interface EventRow {
@@ -39,8 +44,8 @@ export interface ProcessOutcome {
 }
 
 /**
- * Handles stored webhooks one at a time, each in its own transaction. Replies, template updates and account
- * updates are marked processed with no action; M5 and M7 add handlers, and the stored rows can be replayed.
+ * Handles stored webhooks one at a time, each in its own transaction. Other events, such as replies, are marked
+ * processed with no action; M7 adds a handler for those, and the stored rows can be replayed.
  */
 export async function processEvents(
   db: Kysely<Database>,
@@ -67,7 +72,7 @@ export async function processEvents(
         eventId = event.id;
         lastId = event.id;
 
-        const orphans = await applyStatuses(trx, event);
+        const orphans = await applyStatuses(trx, event, now);
         if (orphans === 0) {
           await sql`update meta_events set processed_at = ${now} where id = ${event.id}`.execute(trx);
           outcome.processed += 1;
@@ -98,7 +103,17 @@ export async function processEvents(
 }
 
 /** Returns how many statuses are for a message not known yet. */
-async function applyStatuses(trx: Transaction<Database>, event: EventRow): Promise<number> {
+async function applyStatuses(trx: Transaction<Database>, event: EventRow, now: Date): Promise<number> {
+  for (const entry of event.body.entry ?? []) {
+    for (const change of entry.changes ?? []) {
+      if (change.field === 'message_template_status_update') {
+        await applyTemplateWebhook(trx, change.value as TemplateWebhook, now);
+      } else if (change.field === 'phone_number_quality_update') {
+        await applyLimitWebhook(trx, entry.id, change.value as LimitWebhook);
+      }
+    }
+  }
+
   let orphans = 0;
   for (const update of statusesIn(event.body)) {
     const current = (

@@ -44,6 +44,7 @@ export async function resolveRecipients(
 
   for (const rule of rules) {
     let rows: Array<{ id: string | null; email: string }>;
+    if (rule === 'user_if_any' && !scope.userId) continue;
     if (rule === 'address') {
       rows = [{ id: null, email: need(scope.email, rule, 'email') }];
     } else {

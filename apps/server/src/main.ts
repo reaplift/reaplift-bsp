@@ -2,7 +2,7 @@ import { loadConfig } from './config.js';
 import { createLogger } from './lib/logger.js';
 import { runApi } from './modes/api.js';
 import { runMigrate } from './modes/migrate.js';
-import { runNotBuiltYet } from './modes/not-built-yet.js';
+import { runScheduler } from './modes/scheduler.js';
 import { runReceiver } from './modes/receiver.js';
 import { runWorker } from './modes/worker.js';
 
@@ -23,6 +23,6 @@ switch (config.MODE) {
     await runReceiver(config, log);
     break;
   case 'scheduler':
-    await runNotBuiltYet(config.MODE, 3, log);
+    await runScheduler(config, log);
     break;
 }

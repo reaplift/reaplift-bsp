@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 export * from './contracts/auth.js';
+export * from './contracts/templates.js';
 export * from './format/money.js';
 
 /** Modes the single server image can start in. */

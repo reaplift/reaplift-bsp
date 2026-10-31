@@ -24,7 +24,7 @@ import { createInterface } from 'node:readline';
 import { Writable } from 'node:stream';
 import { sql, type Kysely } from 'kysely';
 import { USER_ROLES, type UserRole } from '@reaplift/shared';
-import { DEV_ENCRYPTION_KEY, loadConfig, META_API_URL, type Config } from './config.js';
+import { loadConfig, usesPublicKeyWithRealMeta, type Config } from './config.js';
 import { createDb, createPool, type Database } from './lib/db.js';
 import { MetaClient } from './lib/meta-client.js';
 import { createUser, UserInputError } from './modules/auth/users.js';
@@ -164,7 +164,7 @@ async function seedDev(db: Kysely<Database>, databaseUrl: string) {
 
 /** The development key is public, so a real Meta token must not be stored with it. */
 function requireRealKey(config: Config) {
-  if (config.META_API_BASE_URL === META_API_URL && config.APP_ENCRYPTION_KEY === DEV_ENCRYPTION_KEY) {
+  if (usesPublicKeyWithRealMeta(config)) {
     throw new UserInputError(
       'set APP_ENCRYPTION_KEY in .env first (32 characters, from `openssl rand -base64 24`)',
     );

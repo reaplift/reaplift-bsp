@@ -126,6 +126,19 @@ export interface MetaTemplate {
   category: string;
   status: string;
   components?: unknown[];
+  rejected_reason?: string;
+}
+
+export interface MetaTemplateRequest {
+  name: string;
+  language: string;
+  category: string;
+  components: unknown[];
+}
+
+export interface MetaPhoneHealth {
+  quality_rating?: string;
+  whatsapp_business_manager_messaging_limit?: string;
 }
 
 interface MetaClientOptions {
@@ -163,13 +176,87 @@ export class MetaClient {
     );
   }
 
+  createTemplate(wabaId: string, token: string, template: MetaTemplateRequest) {
+    return this.request<{ id?: string }>(`/${encodeURIComponent(wabaId)}/message_templates`, token, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(template),
+    });
+  }
+
+  /** Replaces a template's category and components; Meta does not allow changing its name or language. */
+  editTemplate(metaTemplateId: string, token: string, edit: Pick<MetaTemplateRequest, 'category' | 'components'>) {
+    return this.request<{ success?: boolean }>(`/${encodeURIComponent(metaTemplateId)}`, token, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(edit),
+    });
+  }
+
+  /** The code from Embedded Signup lasts about 30 seconds. The secret goes in the query, as Meta's API requires, and is never logged. */
+  async exchangeCode(appId: string, appSecret: string, code: string): Promise<MetaResult<{ access_token?: string }>> {
+    const query = new URLSearchParams({ client_id: appId, client_secret: appSecret, code });
+    return this.request(`/oauth/access_token?${query}`, '');
+  }
+
+  subscribeApp(wabaId: string, token: string) {
+    return this.request<{ success?: boolean }>(`/${encodeURIComponent(wabaId)}/subscribed_apps`, token, { method: 'POST' });
+  }
+
+  /** Uses the system user's token, and bills the customer's account to ReapLift's credit line. */
+  shareCreditLine(creditLineId: string, systemToken: string, wabaId: string, currency: string) {
+    const query = new URLSearchParams({ waba_currency: currency, waba_id: wabaId });
+    return this.request<{ allocation_config_id?: string }>(
+      `/${encodeURIComponent(creditLineId)}/whatsapp_credit_sharing_and_attach?${query}`,
+      systemToken,
+      { method: 'POST' },
+    );
+  }
+
+  registerNumber(phoneNumberId: string, token: string, pin: string) {
+    return this.request<{ success?: boolean }>(`/${encodeURIComponent(phoneNumberId)}/register`, token, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ messaging_product: 'whatsapp', pin }),
+    });
+  }
+
+  /** Meta's Resumable Upload API, in one go: returns the handle a media header's review sample needs. */
+  async uploadSample(
+    appId: string,
+    token: string,
+    file: { name: string; type: string; bytes: Buffer },
+  ): Promise<MetaResult<{ h?: string }>> {
+    const query = new URLSearchParams({
+      file_name: file.name,
+      file_length: String(file.bytes.length),
+      file_type: file.type,
+    });
+    const session = await this.request<{ id?: string }>(`/${encodeURIComponent(appId)}/uploads?${query}`, token, {
+      method: 'POST',
+    });
+    if (!session.ok) return session;
+    return this.request<{ h?: string }>(`/${session.data.id ?? ''}`, token, {
+      method: 'POST',
+      headers: { authorization: `OAuth ${token}`, file_offset: '0' },
+      body: new Uint8Array(file.bytes),
+    });
+  }
+
+  phoneHealth(phoneNumberId: string, token: string) {
+    return this.request<MetaPhoneHealth>(
+      `/${encodeURIComponent(phoneNumberId)}?fields=quality_rating,whatsapp_business_manager_messaging_limit`,
+      token,
+    );
+  }
+
   /** Every template of the account, following Meta's pages. */
   async listTemplates(wabaId: string, token: string): Promise<MetaResult<MetaTemplate[]>> {
     const all: MetaTemplate[] = [];
     let after: string | undefined;
     do {
       const query = new URLSearchParams({
-        fields: 'id,name,language,category,status,components',
+        fields: 'id,name,language,category,status,components,rejected_reason',
         limit: '100',
         ...(after ? { after } : {}),
       });
@@ -194,7 +281,7 @@ export class MetaClient {
     try {
       res = await fetch(`${this.root}${path}`, {
         ...init,
-        headers: { ...init.headers, authorization: `Bearer ${token}` },
+        headers: { authorization: `Bearer ${token}`, ...init.headers },
         signal: AbortSignal.timeout(this.timeoutMs),
       });
       text = await res.text();

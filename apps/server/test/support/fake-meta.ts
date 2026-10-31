@@ -47,6 +47,16 @@ export class FakeMeta {
   templatePageSize = 100;
   phoneNumbers = [{ id: 'phone-1', display_phone_number: '+91 98000 00000', verified_name: 'ReapLift Test' }];
   validToken = 'good-token';
+  systemToken = 'system-token';
+  businessToken = 'business-token';
+  validCode = 'good-code';
+  /** Answer for the next credit-line share; after that, each succeeds. */
+  creditResponses: FakeResponse[] = [];
+  registerResponses: FakeResponse[] = [];
+  quality = 'GREEN';
+  messagingLimit = 'TIER_2K';
+  /** Answers for the next template create or edit calls, in order; after that, each succeeds. */
+  templateResponses: FakeResponse[] = [];
   /** Answers for the next send calls, in order; after that, every send succeeds. */
   private queued: FakeResponse[] = [];
   private nextId = 1;
@@ -111,7 +121,7 @@ export class FakeMeta {
       method,
       path,
       authorization,
-      body: raw ? JSON.parse(raw) : undefined,
+      body: raw && !path.includes('upload:') ? JSON.parse(raw) : undefined,
       at: Date.now(),
     });
 
@@ -123,8 +133,52 @@ export class FakeMeta {
       return { status: 200, body: { messaging_product: 'whatsapp', messages: [{ id: accepted }] } };
     }
 
-    if (authorization !== `Bearer ${this.validToken}`) {
+    if (path.endsWith('/oauth/access_token')) {
+      return parsed.searchParams.get('code') === this.validCode
+        ? { status: 200, body: { access_token: this.businessToken, token_type: 'bearer' } }
+        : metaError(400, 100, 'Invalid code');
+    }
+    if (path.endsWith('/whatsapp_credit_sharing_and_attach')) {
+      if (authorization !== `Bearer ${this.systemToken}`) return metaError(401, 190, 'Not the system token');
+      return (
+        this.creditResponses.shift() ?? {
+          status: 200,
+          body: { allocation_config_id: 'alloc-1', waba_id: parsed.searchParams.get('waba_id') },
+        }
+      );
+    }
+    if (path.endsWith('/uploads') && method === 'POST') return { status: 200, body: { id: 'upload:session-1' } };
+    if (path.endsWith('/upload:session-1')) {
+      if (!authorization?.startsWith('OAuth ')) return metaError(401, 190, 'Upload needs an OAuth header');
+      return { status: 200, body: { h: 'handle-1' } };
+    }
+
+    if (authorization !== `Bearer ${this.validToken}` && authorization !== `Bearer ${this.businessToken}`) {
       return metaError(401, 190, 'Invalid OAuth access token');
+    }
+    if (method === 'POST' && path.endsWith('/subscribed_apps')) return { status: 200, body: { success: true } };
+    if (method === 'POST' && path.endsWith('/register')) {
+      return this.registerResponses.shift() ?? { status: 200, body: { success: true } };
+    }
+    if (method === 'POST') {
+      const next = this.templateResponses.shift();
+      if (next) return next;
+      const body = JSON.parse(raw) as Partial<MetaTemplate>;
+      if (path.endsWith('/message_templates')) {
+        const id = `tmpl-${this.nextId++}`;
+        this.templates.push({ ...(body as MetaTemplate), id, status: 'PENDING' });
+        return { status: 200, body: { id, status: 'PENDING', category: body.category } };
+      }
+      const template = this.templates.find((t) => path.endsWith(`/${t.id}`));
+      if (!template) return metaError(400, 100, `unknown template ${path}`);
+      Object.assign(template, body, { status: 'PENDING' });
+      return { status: 200, body: { success: true } };
+    }
+    if (this.phoneNumbers.some((n) => path.endsWith(`/${n.id}`))) {
+      return {
+        status: 200,
+        body: { quality_rating: this.quality, whatsapp_business_manager_messaging_limit: this.messagingLimit },
+      };
     }
     if (path.endsWith('/phone_numbers')) return { status: 200, body: { data: this.phoneNumbers } };
     if (path.endsWith('/message_templates')) {
@@ -164,6 +218,24 @@ export function statusWebhook(
               messaging_product: 'whatsapp',
               statuses: [{ id: metaMessageId, status, timestamp: String(timestamp), ...extra }],
             },
+          },
+        ],
+      },
+    ],
+  });
+}
+
+/** The body Meta posts when a template's status changes. */
+export function templateWebhook(metaTemplateId: string, event: string, extra: Record<string, unknown> = {}) {
+  return JSON.stringify({
+    object: 'whatsapp_business_account',
+    entry: [
+      {
+        id: 'waba-1',
+        changes: [
+          {
+            field: 'message_template_status_update',
+            value: { event, message_template_id: metaTemplateId, reason: 'NONE', ...extra },
           },
         ],
       },

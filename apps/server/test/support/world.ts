@@ -1,5 +1,5 @@
 import { sql } from 'kysely';
-import { buildApp } from '../../src/app.js';
+import { buildApp, type AppDeps } from '../../src/app.js';
 import { createDb, createPool } from '../../src/lib/db.js';
 import { migrate } from '../../src/migrate/runner.js';
 import { migrationsDir } from '../../src/modes/migrate.js';
@@ -47,13 +47,14 @@ export async function createWorld() {
   }
 
   let clock = new Date('2026-11-02T10:00:00Z');
-  const makeApp = () =>
+  const makeApp = (extra: Partial<AppDeps> = {}) =>
     buildApp({
       version: 'test',
       checkDb: async () => true,
       db,
       now: () => clock,
       panelOrigin: PANEL,
+      ...extra,
     });
   const app = makeApp();
 

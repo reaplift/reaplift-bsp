@@ -10,6 +10,7 @@ import {
   type MetaFailure,
 } from '../../lib/meta-client.js';
 import { calculateNextAttemptAt } from '../../lib/worker.js';
+import { pauseAccountRow } from './quality.js';
 
 export const MAX_SEND_ATTEMPTS = 5;
 export const STUCK_AFTER_MS = 5 * 60 * 1000;
@@ -23,6 +24,8 @@ const CREDIT_LINE_PAYERS = new Set(['partner_credit_line', 'reaplift_credit_line
 
 interface ActiveAccount {
   id: string;
+  client_id: string;
+  display_phone: string;
   phone_number_id: string;
   access_token_enc: Buffer;
   send_rate_per_sec: number;
@@ -76,7 +79,7 @@ export async function sendDue(deps: SenderDeps, now: Date = new Date()): Promise
 
   const accounts = (
     await sql<ActiveAccount>`
-      select a.id, a.phone_number_id, a.access_token_enc, a.send_rate_per_sec, a.meta_payer
+      select a.id, a.client_id, a.display_phone, a.phone_number_id, a.access_token_enc, a.send_rate_per_sec, a.meta_payer
       from wa_accounts a
       where a.status = 'active' and exists (
         select 1 from messages m
@@ -242,10 +245,7 @@ async function pauseAccount(
   code: number | null = null,
 ) {
   await db.transaction().execute(async (trx) => {
-    await sql`
-      update wa_accounts set status = 'paused', paused_reason = ${reason}
-      where id = ${account.id} and status = 'active'
-    `.execute(trx);
+    await pauseAccountRow(trx, { id: account.id, clientId: account.client_id, number: account.display_phone }, reason, now);
     for (const message of messages) {
       await sql`
         update messages
