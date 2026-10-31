@@ -115,6 +115,17 @@ describe('9.5 Meta cost per message', () => {
     expect(costs[2].pricing_type).toBe('free_customer_service');
   });
 
+  it('with no rate for that category, the cost stays blank, not zero, and says so', async () => {
+    const id = await runCampaign('c', 1);
+    await send();
+    await deliver((await wamids(id))[0]!, { pricing: { category: 'authentication', type: 'regular', billable: true } });
+    const warnings: unknown[] = [];
+    const log = { warn: (details: unknown) => warnings.push(details), error: () => {}, info: () => {} };
+    await processEvents(w.db, new Date(), log as never);
+    expect((await rows('select meta_cost_centipaise as cost from messages'))[0].cost).toBeNull();
+    expect(warnings).toEqual([expect.objectContaining({ category: 'AUTHENTICATION', country: '91' })]);
+  });
+
   it('a failed message has no cost', async () => {
     const id = await runCampaign('c', 1);
     await send();

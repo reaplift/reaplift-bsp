@@ -199,7 +199,7 @@ async function applyStatuses(trx: Transaction<Database>, event: EventRow, now: D
         pricing_type = coalesce(${update.pricing?.type ?? null}, pricing_type)
       where id = ${current.id}
     `.execute(trx);
-    if (next.delivered_at && next.status !== 'failed') await recordMetaCost(trx, current.id, next.delivered_at);
+    if (next.delivered_at && next.status !== 'failed') await recordMetaCost(trx, current.id, next.delivered_at, log);
     if (next.status === 'failed' && current.status !== 'failed') await refundFailedMessage(trx, current.id, now);
   }
   return orphans;

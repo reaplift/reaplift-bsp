@@ -24,3 +24,20 @@ docker exec reaplift-bsp-postgres-1 psql -U reaplift -d reaplift -c "drop databa
 | 9.8 | 80% and 95% each alert once a month; no alert without a limit |
 
 Not run: a 200,000-row export's memory use, the one-second dashboard target on 6 months of data, and the demo's panel steps.
+
+## The whole backend, as real processes
+
+Run on 31 October 2026: the API, worker, receiver, scheduler and fake Meta server as separate processes, over real HTTP, on a fresh database. One journey through the routes:
+
+1. Create a client and its login; the login must change its first password.
+2. Enter a Meta rate, set the client's markup (86.31 paise at 20% gave 104 paise), and top up ₹2,000.
+3. Connect a number; submit a template; a signed webhook approves it.
+4. Upload a 6-row CSV: 4 valid, 1 invalid, 1 duplicate. One number was opted out.
+5. Summary: 3 to send, 1 blocked, ₹4.16. Confirm charged ₹4.16; a second confirm answered `ALREADY_CONFIRMED`.
+6. The worker sent 3 messages. Signed webhooks took each to read. The campaign completed; the balance was ₹1,995.84.
+7. A rule against repeats blocked those 3 numbers in the next campaign's summary.
+8. The month-wise and per-number reports matched the rows; a client got 403 on the Meta view.
+
+Every email went through the fake provider as `sent`. No log held the Meta token, the app secret or a password; no process logged an error, and all four were still running at the end.
+
+This run showed that a delivered message with no Meta rate left its cost blank without saying so. It now logs a warning, and has a test.

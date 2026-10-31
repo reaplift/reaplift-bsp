@@ -64,7 +64,7 @@ In this run, the API, worker, receiver and scheduler logs had no line containing
 | --- | --- |
 | `pnpm lint`, `pnpm typecheck` | clean |
 | `pnpm test` | shared 19, server 57, web 95, all pass |
-| `DATABASE_URL=<a separate test database> pnpm test:int` | 8 files, 114 tests, all pass |
+| `DATABASE_URL=<a separate test database> pnpm test:int` | 8 files, 114 tests when M5 was built, all pass |
 
 `test/template-rules.test.ts` has failing and passing cases for each rule. `test/numbers-templates.int.test.ts` covers the following, on real PostgreSQL and the fake Meta server over HTTP:
 

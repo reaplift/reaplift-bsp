@@ -17,7 +17,7 @@ const ZONE = sql.lit(TIME_ZONE);
  * What Meta bills for a delivered message, once. It uses Meta's own category and the rate valid at delivery. `billable`
  * is deprecated, so a message counts as free if either it or the pricing type says so (question 5 in open-questions.md).
  */
-export async function recordMetaCost(trx: Transaction<Database>, messageId: number, deliveredAt: Date) {
+export async function recordMetaCost(trx: Transaction<Database>, messageId: number, deliveredAt: Date, log?: Logger) {
   const message = (
     await sql<{ pricing_category: string | null; pricing_type: string | null; billable: boolean | null; template_category: string; country: string | null; cost: number | null }>`
       select m.pricing_category, m.pricing_type, m.billable, t.category as template_category,
@@ -42,7 +42,11 @@ export async function recordMetaCost(trx: Transaction<Database>, messageId: numb
       order by valid_from desc, seq desc limit 1
     `.execute(trx)
   ).rows[0];
-  if (!rate) return;
+  if (!rate) {
+    // Left blank, not zero, and said out loud: without a rate, recorded cost and margin are wrong until one is entered.
+    log?.warn({ messageId, category, country: message.country }, 'no Meta rate for a delivered message; cost not recorded');
+    return;
+  }
   await sql`
     update messages set meta_cost_centipaise = ${rate.rate_centipaise}, meta_cost_paise = round(${rate.rate_centipaise}::numeric / 100)
     where id = ${messageId}
