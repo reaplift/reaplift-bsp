@@ -15,6 +15,8 @@ export interface FakeResponse {
   status: number;
   body?: unknown;
   delayMs?: number;
+  /** Meta accepts the message before answering, so a client that times out never sees the ID. */
+  acceptFirst?: boolean;
 }
 
 export const metaError = (status: number, code: number, message = `error ${code}`): FakeResponse => ({
@@ -33,12 +35,14 @@ export const HELLO_WORLD: MetaTemplate = {
 
 export interface FakeMetaOptions {
   /** After each accepted send, called with the phone's status updates. */
-  onAccepted?: (metaMessageId: string, to: string) => void;
+  onAccepted?: (metaMessageId: string, to: string, callbackData?: string) => void;
 }
 
 /** Stands in for Meta's Graph API over real HTTP, so tests exercise the same client production uses. */
 export class FakeMeta {
   readonly requests: FakeRequest[] = [];
+  /** Every wamid given out, including those whose answer came too late for the client to see. */
+  readonly accepted: string[] = [];
   templates: MetaTemplate[] = [HELLO_WORLD];
   templatePageSize = 100;
   phoneNumbers = [{ id: 'phone-1', display_phone_number: '+91 98000 00000', verified_name: 'ReapLift Test' }];
@@ -84,6 +88,17 @@ export class FakeMeta {
     });
   }
 
+  private accept(raw: string): string {
+    const id = `wamid.fake-${this.runId}-${this.nextId++}`;
+    const { to, biz_opaque_callback_data: callbackData } = JSON.parse(raw) as {
+      to: string;
+      biz_opaque_callback_data?: string;
+    };
+    this.accepted.push(id);
+    this.options.onAccepted?.(id, to, callbackData);
+    return id;
+  }
+
   private async answer(
     method: string,
     url: string,
@@ -102,11 +117,10 @@ export class FakeMeta {
 
     if (method === 'POST' && path.endsWith('/messages')) {
       const next = this.queued.shift();
+      const accepted = !next || next.acceptFirst ? this.accept(raw) : undefined;
       if (next?.delayMs) await new Promise((resolve) => setTimeout(resolve, next.delayMs));
-      if (next) return next;
-      const id = `wamid.fake-${this.runId}-${this.nextId++}`;
-      this.options.onAccepted?.(id, (JSON.parse(raw) as { to: string }).to);
-      return { status: 200, body: { messaging_product: 'whatsapp', messages: [{ id }] } };
+      if (next && !accepted) return next;
+      return { status: 200, body: { messaging_product: 'whatsapp', messages: [{ id: accepted }] } };
     }
 
     if (authorization !== `Bearer ${this.validToken}`) {

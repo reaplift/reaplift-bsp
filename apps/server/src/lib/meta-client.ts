@@ -58,6 +58,8 @@ export interface BuildTemplateMessagePayloadInput {
   templateName: string;
   language: string;
   variables: string[];
+  /** Our message ID. Meta returns it in status webhooks, so a send that timed out can still be recognised. */
+  callbackData?: string;
 }
 
 export function buildTemplateMessagePayload({
@@ -65,11 +67,13 @@ export function buildTemplateMessagePayload({
   templateName,
   language,
   variables,
+  callbackData,
 }: BuildTemplateMessagePayloadInput) {
   return {
     messaging_product: 'whatsapp',
     to,
     type: 'template',
+    ...(callbackData !== undefined && { biz_opaque_callback_data: callbackData }),
     template: {
       name: templateName,
       language: { code: language },
@@ -135,7 +139,7 @@ export class MetaClient {
   private readonly root: string;
   private readonly timeoutMs: number;
 
-  constructor({ baseUrl, version, timeoutMs = 15_000 }: MetaClientOptions) {
+  constructor({ baseUrl, version, timeoutMs = 30_000 }: MetaClientOptions) {
     this.root = `${baseUrl.replace(/\/$/, '')}/${version}`;
     this.timeoutMs = timeoutMs;
   }

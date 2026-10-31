@@ -120,6 +120,10 @@ Each has a default, so work does not stop; the default is built unless the owner
 
 Answered questions move here with their date, and the spec is updated in the same pull request.
 
+### 31 October 2026
+
+- **Timeouts and double sends (owner):** Meta has no status lookup or idempotency key, so a send that times out may already have been accepted. M4 now waits 30 seconds instead of 15 and puts our message ID in `biz_opaque_callback_data` on every send. Before campaigns, [M7 task 7.6a](milestones/m7-campaigns/spec.md#76a-check-for-a-webhook-before-retrying-a-timeout) holds a timed-out message and checks for a webhook before retrying. `cli send-stats` reports the percent of messages sent twice, per client, from the stored webhooks.
+
 ### 30 October 2026
 
 - **M4 built against the fake Meta server.** Found and fixed on the way: tokens were encrypted with AES-CBC while the spec said GCM (no real tokens were stored); the error classes retried codes Meta says not to, such as 131050; an empty `components` block was sent for templates without variables; and a dropped idle database connection would have crashed the process. Latest Graph API version checked: v26.0.

@@ -76,6 +76,7 @@ Out:
 | 7.4  | Summary                                    | 7.2, 7.3, 7.8                                  | 7.6 UI work              |
 | 7.5  | Confirm: charge and queue in one step      | 7.4                                            | 7.6                      |
 | 7.6  | Sending, totals, completion, campaign page | 7.5 for real data; UI can start on seeded rows | 7.7                      |
+| 7.6a | Check for a webhook before retrying a timeout | M4's real-phone demo                        | 7.1 to 7.5               |
 | 7.7  | Refunds on Meta failure                    | 7.5                                            | 7.6                      |
 | 7.8  | Opt-outs                                   | none                                           | 7.1 to 7.3               |
 | 7.9  | Notifications for M7 events                | 7.5, 7.6                                       | 7.10                     |
@@ -161,6 +162,17 @@ Out:
 - Campaign list and campaign page: status, totals, the charge, refunds, failure reasons grouped (131049 shown as "Meta limit, not retried").
 - Tests: after a randomised run on the fake server, totals equal a count of the rows.
 - Acceptance: step 7 and 10 of the worked example; totals on screen equal a `count(*)` of the campaign's messages.
+
+### 7.6a Check for a webhook before retrying a timeout
+
+A send that times out may still have been accepted by Meta, and Meta has no status lookup or idempotency key, so a plain retry can send twice and cost money twice at campaign volume. M4 already puts our message ID in `biz_opaque_callback_data`, which Meta returns in status webhooks.
+
+- When a send gets no response (timeout or network error), hold the message instead of using the normal retry schedule. A response with an error code retries as before.
+- If a status webhook with that callback data arrives during the hold, Meta accepted the message: save the `wamid`, apply the status, and do not resend.
+- If nothing arrives, retry when the hold ends. A webhook arriving later can still mean a double send, and this is accepted.
+- Set the hold from real `sent` webhook timings measured in M4's real-phone demo; 2 to 5 minutes is the starting guess. Check first that Meta returns the callback data in `failed` webhooks too.
+- Tests: a timeout then a webhook sends once and saves the `wamid`; a timeout with no webhook retries after the hold; an error response does not hold; a webhook after the retry changes nothing and is logged.
+- Acceptance: on the fake server, a send accepted but answered too late is sent exactly once.
 
 ### 7.7 Refunds on Meta failure
 

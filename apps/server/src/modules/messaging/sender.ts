@@ -152,6 +152,7 @@ async function sendBatch(
           templateName: message.template_name,
           language: message.template_language,
           variables: message.variables,
+          callbackData: String(message.id),
         }),
       );
 

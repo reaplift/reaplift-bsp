@@ -225,13 +225,34 @@ No screen or command resumes an account or replaces a token yet. That is M5.
 
 In this run, the API, worker and receiver logs had no line containing the token, the app secret or the verify token. Request logs drop the query string, because Meta's webhook check carries the verify token there. Message logs carry the message ID, never the phone number.
 
+## 6a. Measure double sends
+
+Meta accepts the first send but answers after the worker's 30 second timeout, so the retry sends the message again. Run on 31 October 2026. Restart the fake with `FAKE_META_LATE_FIRST_MS=31000`, send one message, and wait about 80 seconds:
+
+```bash
+pnpm --filter @reaplift/server cli send-stats --days 30
+```
+
+```
+│ client                   │ messages │ accepted │ retried │ duplicated │ extra_sends │ failed_but_sent │ duplicate_percent │
+│ 'ReapLift Internal Test' │ 1        │ 1        │ 1       │ 1          │ 1           │ 0               │ 100               │
+```
+
+The fake's log shows both sends, `wamid.fake-mvwmtck8-1` and `-2`. The output above is from a fresh database with only this message, so your numbers include your earlier sends.
+
+- `duplicated`: messages Meta reported under two or more `wamid`s, as a share of `accepted` in `duplicate_percent`.
+- `extra_sends`: the sends beyond the first.
+- `failed_but_sent`: messages we marked failed that Meta reports as sent.
+
+A `wamid` Meta reports as failed is not counted. The webhooks of the lost `wamid` also end with `process_error = 'message not found'` after 10 minutes, which is expected until M7 task 7.6a.
+
 ## 7. Automated tests
 
 | Command                                                 | Result                                                 |
 | ------------------------------------------------------- | ------------------------------------------------------ |
 | `pnpm lint`, `pnpm typecheck`, `pnpm build`             | clean                                                  |
-| `pnpm test`                                             | shared 19, server 43, web 95, all pass                 |
-| `DATABASE_URL=<a separate test database> pnpm test:int` | 7 files, 75 tests, all pass, three runs in a row       |
+| `pnpm test`                                             | shared 19, server 45, web 95, all pass                 |
+| `DATABASE_URL=<a separate test database> pnpm test:int` | 7 files, 82 tests, all pass                            |
 
 `pnpm test:int` drops the schema of the database it runs on; see [M0's test evidence](../m0-foundation/test-evidence.md) for the safe command.
 

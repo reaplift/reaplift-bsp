@@ -12,6 +12,8 @@
  *       Queues one template message; the worker sends it.
  *   show-message <id>
  *       Prints one message and every status Meta reported.
+ *   send-stats [--days <n>]
+ *       Per client: messages, how many Meta accepted, retried, and the percent sent twice. Default 30 days.
  *   notify-test --email <address>
  *       Writes one test notification; the worker's delivery loop sends it.
  *   show-notifications [--status pending|sent|failed|read] [--limit <n>]
@@ -27,6 +29,7 @@ import { createDb, createPool, type Database } from './lib/db.js';
 import { MetaClient } from './lib/meta-client.js';
 import { createUser, UserInputError } from './modules/auth/users.js';
 import { connectAccount, queueTestMessage, readMessage } from './modules/messaging/account.js';
+import { readSendStats } from './modules/messaging/stats.js';
 import { notify } from './modules/notifications/notify.js';
 
 const DEV_PASSWORD = 'reaplift-dev-1';
@@ -247,6 +250,10 @@ async function main() {
       if (!found) throw new UserInputError(`no message ${id}`);
       console.log(found.message);
       console.table(found.statuses);
+    } else if (command === 'send-stats') {
+      const days = Number(flags(rest).days ?? 30);
+      if (!Number.isInteger(days) || days < 1) throw new UserInputError('--days must be a whole number above 0');
+      console.table(await readSendStats(db, new Date(Date.now() - days * 24 * 60 * 60 * 1000)));
     } else if (command === 'notify-test') {
       const { email } = flags(rest);
       if (!email?.includes('@')) throw new UserInputError('--email <address> is required');
@@ -279,7 +286,7 @@ async function main() {
       console.table(rows);
     } else {
       throw new UserInputError(
-        'commands: create-user, seed-dev, seed-account, send-test, show-message, notify-test, show-notifications',
+        'commands: create-user, seed-dev, seed-account, send-test, show-message, send-stats, notify-test, show-notifications',
       );
     }
   } catch (err) {

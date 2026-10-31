@@ -1,9 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   buildTemplateMessagePayload,
   classifyMetaError,
   extractMetaMessageId,
   isRetryableMetaError,
+  MetaClient,
 } from '../src/lib/meta-client.js';
 
 describe('meta client', () => {
@@ -34,6 +35,26 @@ describe('meta client', () => {
     });
 
     expect(payload.template).toEqual({ name: 'hello_world', language: { code: 'en_US' } });
+  });
+
+  it('puts callback data at the top level of the message, only when given', () => {
+    const input = { to: '919812345678', templateName: 'hello_world', language: 'en_US', variables: [] };
+
+    expect(buildTemplateMessagePayload({ ...input, callbackData: '42' })).toMatchObject({
+      biz_opaque_callback_data: '42',
+    });
+    expect(buildTemplateMessagePayload(input)).not.toHaveProperty('biz_opaque_callback_data');
+  });
+
+  it('waits 30 seconds for Meta by default', async () => {
+    const timeout = vi.spyOn(AbortSignal, 'timeout');
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}')));
+
+    await new MetaClient({ baseUrl: 'http://fake', version: 'v26.0' }).listPhoneNumbers('waba', 'token');
+
+    expect(timeout).toHaveBeenCalledWith(30_000);
+    vi.unstubAllGlobals();
+    timeout.mockRestore();
   });
 
   it('marks transient HTTP and rate-limit failures as retryable', () => {

@@ -20,6 +20,7 @@ import {
   sendDue,
   STUCK_AFTER_MS,
 } from '../src/modules/messaging/sender.js';
+import { readSendStats } from '../src/modules/messaging/stats.js';
 import { FakeMeta, HELLO_WORLD, metaError, signWebhook, statusWebhook } from './support/fake-meta.js';
 
 const url = process.env.DATABASE_URL;
@@ -158,7 +159,11 @@ describe('4.2 and 4.3 sender', () => {
     const [request] = fake.sends();
     expect(request?.path).toBe('/v26.0/phone-1/messages');
     expect(request?.authorization).toBe('Bearer good-token');
-    expect(request?.body).toMatchObject({ to: TO, template: { name: 'hello_world' } });
+    expect(request?.body).toMatchObject({
+      to: TO,
+      template: { name: 'hello_world' },
+      biz_opaque_callback_data: String(id),
+    });
 
     fake.requests.length = 0;
     expect(await send()).toEqual({ sent: 0, retried: 0, failed: 0, paused: 0 });
@@ -186,6 +191,18 @@ describe('4.2 and 4.3 sender', () => {
 
     expect(await send()).toMatchObject({ retried: 1 });
     expect(await row(id)).toMatchObject({ status: 'queued', failure_reason: 'TimeoutError' });
+  });
+
+  it('a retry carries the same callback data as the first attempt', async () => {
+    const id = await queue();
+    fake.queueSendResponses({ status: 500 });
+    const now = soon();
+
+    await send(now);
+    await send(new Date(now.getTime() + 30_000));
+
+    const sent = fake.sends().map((r) => (r.body as { biz_opaque_callback_data: string }).biz_opaque_callback_data);
+    expect(sent).toEqual([String(id), String(id)]);
   });
 
   it('gives up after the attempt limit', async () => {
@@ -465,5 +482,79 @@ describe('4.5 event processor', () => {
 
     expect(await statusCount()).toBe(3);
     expect((await pool.query('select count(*) from meta_events where processed_at is null')).rows[0].count).toBe(0);
+  });
+});
+
+describe('send-stats', () => {
+  const store = (body: string) => pool.query('insert into meta_events (body) values ($1::jsonb)', [body]);
+  const report = (wamid: string, id: number, status = 'sent') =>
+    store(statusWebhook(wamid, status, 1_800_000_000, { biz_opaque_callback_data: String(id) }));
+  const stats = async () => (await readSendStats(db, new Date(Date.now() - 60_000)))[0];
+
+  /** Meta takes the first attempt but answers too late; the retry goes out as a second message. */
+  const sentTwice = async () => {
+    const id = await queue();
+    const from = fake.accepted.length;
+    fake.queueSendResponses({ status: 200, delayMs: 800, acceptFirst: true });
+    const now = soon();
+    await send(now);
+    await send(new Date(now.getTime() + 30_000));
+    const [first, second] = fake.accepted.slice(from);
+    return { id, first: first!, second: second! };
+  };
+
+  it('counts a timed-out send that Meta accepted, then the retry, as one duplicate', async () => {
+    const { id, first, second } = await sentTwice();
+    expect((await row(id)).meta_message_id).toBe(second);
+    await queue();
+    await send();
+    await report(first, id);
+    await report(second, id);
+
+    expect(await stats()).toMatchObject({
+      messages: 2,
+      accepted: 2,
+      retried: 1,
+      duplicated: 1,
+      extra_sends: 1,
+      failed_but_sent: 0,
+      duplicate_percent: 50,
+    });
+  });
+
+  it('shows nothing duplicated until Meta reports the second wamid', async () => {
+    await sentTwice();
+    expect(await stats()).toMatchObject({ accepted: 1, retried: 1, duplicated: 0, duplicate_percent: 0 });
+  });
+
+  it('does not count a replayed webhook, or a wamid Meta reports as failed', async () => {
+    const { id, first, second } = await sentTwice();
+    for (let i = 0; i < 3; i++) await report(second, id);
+    await report(first, id, 'failed');
+
+    expect(await stats()).toMatchObject({ accepted: 1, duplicated: 0, extra_sends: 0 });
+  });
+
+  it('finds a message we marked failed that Meta really sent', async () => {
+    const id = await queue();
+    fake.queueSendResponses(metaError(400, 131026));
+    await send();
+    await report('wamid.we-never-saw', id);
+
+    expect(await stats()).toMatchObject({ messages: 1, accepted: 1, failed_but_sent: 1, duplicated: 0 });
+  });
+
+  it('survives webhooks of any shape, and ignores callback data that matches no message', async () => {
+    await store('{"entry":"not a list"}');
+    await store('{"entry":[{"changes":[{"field":"messages","value":{"statuses":"nope"}}]}]}');
+    await report('wamid.other', 999_999);
+    await queue();
+
+    expect(await stats()).toMatchObject({ messages: 1, accepted: 0, duplicated: 0, duplicate_percent: 0 });
+  });
+
+  it('leaves out messages older than the window', async () => {
+    await queue();
+    expect(await readSendStats(db, new Date(Date.now() + 60_000))).toEqual([]);
   });
 });

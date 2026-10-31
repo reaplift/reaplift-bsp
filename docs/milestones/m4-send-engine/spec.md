@@ -94,7 +94,7 @@ Out:
 
 ### 4.2 Meta HTTP client and fake Meta server
 
-- Built: error classifier, message body builder and HTTP client (`lib/meta-client.ts`). A template without variables sends no `components`.
+- Built: error classifier, message body builder and HTTP client (`lib/meta-client.ts`). A template without variables sends no `components`. Calls wait 30 seconds for Meta. Every send carries our message ID in `biz_opaque_callback_data`, which Meta returns in status webhooks; [M7 task 7.6a](../m7-campaigns/spec.md#76a-check-for-a-webhook-before-retrying-a-timeout) uses it.
 - 4.2.1 HTTP call `POST https://graph.facebook.com/<version>/<phone_number_id>/messages` with the version from `META_GRAPH_VERSION`: blank means v26.0, the latest when built (checked 30 October 2026).
 - 4.2.2 Check every error code in the classifier against Meta's current error-code page and write the date checked in a comment. Treat **131049** (per-person marketing limit) as a final failure whether it comes back from the send call or in a `failed` webhook: Meta says wait at least 24 hours, so it is never retried automatically, and M7 shows it as "Meta limit". Classes as built, checked against [Meta's error-code page](https://developers.facebook.com/documentation/business-messaging/whatsapp/support/error-codes) on 30 October 2026: temporary (network, 5xx, 1, 2, 4, 80007, 130429, 131000, 131016, 131056, 131057, 133004), permanent (100, 130472, 131008, 131009, 131021, 131026, 131047, 131048, 131049, 131050, 131051, 131053, 132000, 132001, 132005, 132007, 132012, 132015, 132016, 132068, 132069), account (0, 3, 10, 190, 200 to 299, 368, 131005, 131031, 131042, 133010). A code not listed retries, up to 5 attempts.
 - 4.2.3 A fake Meta server (`test/support/fake-meta.ts`) that can answer success, any error code, or a delay, and can post signed webhooks to the receiver. `pnpm --filter @reaplift/server fake-meta` runs it alone, so the flow can be run by hand with no Meta account.
@@ -146,6 +146,7 @@ Out:
 
 - `cli send-test --to <number> --template <name> --lang <code> [--var value ...]` queues one row with source `cli`.
 - `cli show-message <id>` prints the row and every status with its time.
+- `cli send-stats [--days <n>]` prints, per client, the percent of accepted messages sent twice, worked out from the stored webhooks (`modules/messaging/stats.ts`). It needs no migration. It can only count a double send once Meta's webhooks for both sends have arrived.
 - Built, and run against the fake Meta server. The real-phone check is the demo below.
 
 ## Data and API
@@ -163,7 +164,6 @@ None in M4. The account-paused alert is sent from M5 task 5.6 and M11 task 11.1.
 
 | Question                                                                                         | Default                                    | Decides  |
 | ------------------------------------------------------------------------------------------------ | ------------------------------------------ | -------- |
-| A timeout may mean Meta accepted the message, so the retry could send it twice. Accept this?       | Yes, retry, as this spec says              | Owner    |
 | May the local receiver be exposed through a tunnel for the real-phone demo before M10?           | Yes, only during the demo                  | Owner    |
 
 ## Current reality
@@ -171,6 +171,7 @@ None in M4. The account-paused alert is sent from M5 task 5.6 and M11 task 11.1.
 - E1 is not done (owner confirmed 30 October 2026): ReapLift is still getting its Meta business account. The test receiver will be the owner's phone.
 - All of M4 runs against the fake Meta server, in CI and by hand. Nothing has called the real Meta API, so the request shapes are checked only against Meta's documentation.
 - No screen or command resumes a paused account or replaces its token yet; that is M5. Until then it is SQL, shown in `test-evidence.md`.
+- A timeout still retries on the normal schedule, so a message Meta accepted without our seeing the reply can be sent twice. Meta has no status lookup or idempotency key. M7 task 7.6a closes most of this before campaigns.
 - Sending supports body variables only. A template with a header variable counts it in `variable_count`, but Meta would refuse the send (M5 or M7 extends the builder).
 
 ## Demo (milestone acceptance)
