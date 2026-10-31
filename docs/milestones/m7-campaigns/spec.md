@@ -1,7 +1,7 @@
 # M7. Campaigns: create, send, track
 
-- Status: Not started
-- Owner: Unassigned
+- Status: In progress. Backend 7.1 to 7.10 built on 31 October 2026; see [test-evidence.md](test-evidence.md). Screens are not started.
+- Owner: Anirudh (backend); screens unassigned
 - Starts after: M5 (approved templates, connected numbers), M6 (prices and wallet)
 - External prerequisites: none beyond those of M4 and M5
 
@@ -265,7 +265,12 @@ Also open:
 
 ## Current reality
 
-Nothing exists on `main`. The Push Campaign page shows mock figures. The `m4-skeleton` branch (upload and lists) was closed without merging on 29 October 2026.
+- All routes above are real. The Push Campaign page still shows mock figures, as its screens are not built.
+- Beyond the spec: `POST /api/admin/clients/:id/opt-outs` takes the numbers as JSON; `GET` and `PUT /api/admin/settings/:key` edit `promo_words` and `stop_words`.
+- 7.6a holds a message with no answer for 5 minutes, a starting figure to set from real timings (question 9 in [open-questions.md](../../open-questions.md)). A status whose wamid we never saw is matched through the callback data.
+- A row whose variable cell is blank is still sent; Meta is expected to refuse it, and it is then refunded.
+- If the `sent_not_delivered` switch is turned off, nothing refunds those messages: the summary charges at `delivered`'s switch, and no later step changes it.
+- The stop-word check needs the exact word. Replies are matched on `text` and `button` messages.
 
 ## Demo (milestone acceptance)
 

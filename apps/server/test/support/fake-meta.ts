@@ -54,6 +54,9 @@ export class FakeMeta {
   creditResponses: FakeResponse[] = [];
   registerResponses: FakeResponse[] = [];
   quality = 'GREEN';
+  /** Every Nth send fails with error 131026, for the load test. */
+  failEvery = 0;
+  private sendCount = 0;
   messagingLimit = 'TIER_2K';
   /** Answers for the next template create or edit calls, in order; after that, each succeeds. */
   templateResponses: FakeResponse[] = [];
@@ -126,6 +129,8 @@ export class FakeMeta {
     });
 
     if (method === 'POST' && path.endsWith('/messages')) {
+      this.sendCount += 1;
+      if (this.failEvery && this.sendCount % this.failEvery === 0) return metaError(400, 131026);
       const next = this.queued.shift();
       const accepted = !next || next.acceptFirst ? this.accept(raw) : undefined;
       if (next?.delayMs) await new Promise((resolve) => setTimeout(resolve, next.delayMs));

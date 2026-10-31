@@ -15,6 +15,7 @@ import {
 import { ORPHAN_TIMEOUT_MS, processEvents } from '../src/modules/messaging/processor.js';
 import {
   AccountPacer,
+  HOLD_AFTER_NO_RESPONSE_MS,
   MAX_SEND_ATTEMPTS,
   reportStuck,
   sendDue,
@@ -498,7 +499,7 @@ describe('send-stats', () => {
     fake.queueSendResponses({ status: 200, delayMs: 800, acceptFirst: true });
     const now = soon();
     await send(now);
-    await send(new Date(now.getTime() + 30_000));
+    await send(new Date(now.getTime() + HOLD_AFTER_NO_RESPONSE_MS));
     const [first, second] = fake.accepted.slice(from);
     return { id, first: first!, second: second! };
   };

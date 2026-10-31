@@ -89,6 +89,21 @@ export async function checkLedgers(db: Kysely<Database>, now: Date = new Date(),
   ).rows;
   const bad = rows.filter((r) => r.sum_paise !== r.balance_paise || r.lowest_paise < 0);
 
+  // Each campaign: charges minus refunds equal what its messages were charged, less those refunded or cancelled.
+  const campaigns = (
+    await sql<{ id: string; client_id: string; name: string; net_paise: number; expected_paise: number }>`
+      select k.id, k.client_id, k.name,
+        coalesce((select -sum(l.amount_paise) from wallet_ledger l where l.client_id = k.client_id and l.campaign_id = k.id), 0)::bigint as net_paise,
+        (coalesce(k.other_charged_paise, 0) + coalesce((
+          select sum(m.client_price_paise) from messages m
+          where m.campaign_id = k.id and m.block_reason is distinct from 'campaign_cancelled'
+            and not exists (select 1 from wallet_ledger r where r.kind = 'refund' and r.message_id = m.id)
+        ), 0))::bigint as expected_paise
+      from campaigns k
+      where k.confirmed_at is not null
+    `.execute(db)
+  ).rows.filter((k) => k.net_paise !== k.expected_paise);
+
   const day = now.toISOString().slice(0, 10);
   await db.transaction().execute(async (trx) => {
     for (const row of bad) {
@@ -99,8 +114,17 @@ export async function checkLedgers(db: Kysely<Database>, now: Date = new Date(),
         { name: row.name, sumPaise: row.sum_paise, balancePaise: row.balance_paise },
       );
     }
+    for (const campaign of campaigns) {
+      await notify(
+        trx,
+        'wallet.reconciliation_mismatch',
+        { clientId: campaign.client_id, entityId: `${campaign.id}:${day}` },
+        { name: `${campaign.name} (campaign)`, sumPaise: campaign.net_paise, balancePaise: campaign.expected_paise },
+      );
+    }
   });
-  if (bad.length > 0) log?.error({ clients: bad.map((r) => r.client_id) }, 'ledger check found a mismatch');
-  else log?.info({ clients: rows.length }, 'ledger check clean');
-  return bad.map((r) => r.client_id);
+  if (bad.length > 0 || campaigns.length > 0) {
+    log?.error({ clients: bad.map((r) => r.client_id), campaigns: campaigns.map((k) => k.id) }, 'ledger check found a mismatch');
+  } else log?.info({ clients: rows.length }, 'ledger check clean');
+  return [...bad.map((r) => r.client_id), ...campaigns.map((k) => k.id)];
 }

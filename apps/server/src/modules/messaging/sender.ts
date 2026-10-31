@@ -10,10 +10,16 @@ import {
   type MetaFailure,
 } from '../../lib/meta-client.js';
 import { calculateNextAttemptAt } from '../../lib/worker.js';
+import { refundFailedMessage } from '../campaigns/refunds.js';
 import { pauseAccountRow } from './quality.js';
 
 export const MAX_SEND_ATTEMPTS = 5;
 export const STUCK_AFTER_MS = 5 * 60 * 1000;
+/**
+ * With no answer from Meta, the message may still have been accepted, so wait long enough for its webhook before
+ * sending it again (M7 7.6a). A starting figure, to be set from real timings; see docs/open-questions.md, question 9.
+ */
+export const HOLD_AFTER_NO_RESPONSE_MS = 5 * 60 * 1000;
 
 const ACCOUNT_REASONS: Record<number, string> = {
   190: 'token invalid',
@@ -81,6 +87,7 @@ export async function sendDue(deps: SenderDeps, now: Date = new Date()): Promise
     await sql<ActiveAccount>`
       select a.id, a.client_id, a.display_phone, a.phone_number_id, a.access_token_enc, a.send_rate_per_sec, a.meta_payer
       from wa_accounts a
+      join clients c on c.id = a.client_id and c.status = 'active'
       where a.status = 'active' and exists (
         select 1 from messages m
         where m.wa_account_id = a.id and m.status = 'queued' and m.next_attempt_at <= ${now}
@@ -116,6 +123,9 @@ async function claim(
       where t.id = m.template_id and m.id in (
         select id from messages
         where wa_account_id = ${account.id} and status = 'queued' and next_attempt_at <= ${now}
+          and (campaign_id is null or exists (
+            select 1 from campaigns k where k.id = messages.campaign_id and k.status = 'running'
+          ))
         order by id
         limit ${account.send_rate_per_sec}
         for update skip locked
@@ -211,9 +221,13 @@ async function handleFailure(
     return 'failed';
   }
 
+  const noResponse = failure.httpStatus === undefined;
+  const nextAttempt = noResponse
+    ? new Date(now.getTime() + HOLD_AFTER_NO_RESPONSE_MS)
+    : calculateNextAttemptAt(message.attempts, now);
   await sql`
     update messages
-    set status = 'queued', next_attempt_at = ${calculateNextAttemptAt(message.attempts, now)},
+    set status = 'queued', next_attempt_at = ${nextAttempt},
       failure_reason = ${failure.title}, meta_error_code = ${code}
     where id = ${message.id} and status = 'sending'
   `.execute(db);
@@ -228,11 +242,14 @@ function markFailed(
   code: number | null,
   now: Date,
 ) {
-  return sql`
-    update messages
-    set status = 'failed', failed_at = ${now}, failure_reason = ${reason}, meta_error_code = ${code}
-    where id = ${id} and status = 'sending'
-  `.execute(db);
+  return db.transaction().execute(async (trx) => {
+    const changed = await sql`
+      update messages
+      set status = 'failed', failed_at = ${now}, failure_reason = ${reason}, meta_error_code = ${code}
+      where id = ${id} and status = 'sending'
+    `.execute(trx);
+    if (Number(changed.numAffectedRows ?? 0) > 0) await refundFailedMessage(trx, id, now);
+  });
 }
 
 /** Pauses the account and returns the rows to the queue without using up an attempt: the message was not at fault. */

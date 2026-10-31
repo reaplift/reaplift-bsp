@@ -2,11 +2,14 @@ import { sql, type Kysely, type Transaction } from 'kysely';
 import type { Database } from '../../lib/db.js';
 import type { Logger } from '../../lib/logger.js';
 import { applyMessageStatusUpdate, type MessageUpdateState } from '../../lib/status-processor.js';
+import { applyReplies, type ReplyWebhook } from '../campaigns/opt-outs.js';
+import { refundFailedMessage } from '../campaigns/refunds.js';
 import { applyTemplateWebhook, type TemplateWebhook } from '../templates/status.js';
 import { applyLimitWebhook, type LimitWebhook } from './quality.js';
 
 export const ORPHAN_TIMEOUT_MS = 10 * 60 * 1000;
 const BATCH_SIZE = 100;
+const DEADLOCK = '40P01';
 
 interface StatusUpdate {
   id: string;
@@ -14,6 +17,7 @@ interface StatusUpdate {
   timestamp: string;
   errors?: Array<{ code?: number; title?: string }>;
   pricing?: { category?: string; billable?: boolean };
+  biz_opaque_callback_data?: string;
 }
 
 interface WebhookBody {
@@ -72,7 +76,7 @@ export async function processEvents(
         eventId = event.id;
         lastId = event.id;
 
-        const orphans = await applyStatuses(trx, event, now);
+        const orphans = await applyStatuses(trx, event, now, log);
         if (orphans === 0) {
           await sql`update meta_events set processed_at = ${now} where id = ${event.id}`.execute(trx);
           outcome.processed += 1;
@@ -90,6 +94,10 @@ export async function processEvents(
       });
     } catch (err) {
       if (eventId === 0) throw err; // Reading the queue failed, not one event; the loop tries again.
+      if ((err as { code?: string }).code === DEADLOCK) {
+        outcome.waiting += 1; // Nothing is wrong with the event; the next run takes it again.
+        continue;
+      }
       const message = err instanceof Error ? err.message : String(err);
       log?.error({ eventId, err: message }, 'webhook could not be processed');
       await sql`
@@ -102,21 +110,52 @@ export async function processEvents(
   return outcome;
 }
 
+/**
+ * A status whose wamid we never saw may be from a send that timed out, which Meta did accept. Our message ID in the
+ * callback data shows which message it was. If that message has no wamid and is still waiting, this is its send, so
+ * it must not go out again. If it already has another wamid or has given up, this is a double send: it is counted by
+ * `cli send-stats` and changes nothing here.
+ */
+async function recogniseByCallback(
+  trx: Transaction<Database>,
+  update: StatusUpdate,
+  log?: Logger,
+): Promise<(MessageUpdateState & { id: number }) | 'ignore' | 'unknown'> {
+  const callback = update.biz_opaque_callback_data ?? '';
+  if (!/^[1-9]\d{0,17}$/.test(callback)) return 'unknown';
+  const message = (
+    await sql<MessageUpdateState & { id: number; meta_message_id: string | null }>`
+      select id, status, sent_at, delivered_at, read_at, failed_at, failure_reason, meta_error_code, meta_message_id
+      from messages where id = ${callback}
+      for update
+    `.execute(trx)
+  ).rows[0];
+  if (!message) return 'unknown';
+  if (message.meta_message_id || (message.status !== 'queued' && message.status !== 'sending')) {
+    log?.warn({ messageId: message.id }, 'status for a second send of this message');
+    return 'ignore';
+  }
+  await sql`update messages set meta_message_id = ${update.id} where id = ${message.id}`.execute(trx);
+  return message;
+}
+
 /** Returns how many statuses are for a message not known yet. */
-async function applyStatuses(trx: Transaction<Database>, event: EventRow, now: Date): Promise<number> {
+async function applyStatuses(trx: Transaction<Database>, event: EventRow, now: Date, log?: Logger): Promise<number> {
   for (const entry of event.body.entry ?? []) {
     for (const change of entry.changes ?? []) {
       if (change.field === 'message_template_status_update') {
         await applyTemplateWebhook(trx, change.value as TemplateWebhook, now);
       } else if (change.field === 'phone_number_quality_update') {
         await applyLimitWebhook(trx, entry.id, change.value as LimitWebhook);
+      } else if (change.field === 'messages') {
+        await applyReplies(trx, change.value as ReplyWebhook);
       }
     }
   }
 
   let orphans = 0;
   for (const update of statusesIn(event.body)) {
-    const current = (
+    let current = (
       await sql<MessageUpdateState & { id: number }>`
         select id, status, sent_at, delivered_at, read_at, failed_at, failure_reason, meta_error_code
         from messages where meta_message_id = ${update.id}
@@ -124,8 +163,13 @@ async function applyStatuses(trx: Transaction<Database>, event: EventRow, now: D
       `.execute(trx)
     ).rows[0];
     if (!current) {
-      orphans += 1;
-      continue;
+      const found = await recogniseByCallback(trx, update, log);
+      if (found === 'ignore') continue;
+      if (found === 'unknown') {
+        orphans += 1;
+        continue;
+      }
+      current = found;
     }
 
     const metaTime = new Date(Number(update.timestamp) * 1000);
@@ -153,6 +197,7 @@ async function applyStatuses(trx: Transaction<Database>, event: EventRow, now: D
         billable = coalesce(${update.pricing?.billable ?? null}, billable)
       where id = ${current.id}
     `.execute(trx);
+    if (next.status === 'failed' && current.status !== 'failed') await refundFailedMessage(trx, current.id, now);
   }
   return orphans;
 }

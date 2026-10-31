@@ -68,6 +68,8 @@ Docs last checked: 31 October 2026, Graph API v26.0.
 | 21 | Does the 4000 error on a repeat credit-line share still mean "already shared"? We read this from a search result, not a current page. | We treat it as shared, so an account could go active when it is not | Yes | Test |
 | 22 | Do review samples have other limits than the sizes for sent media (image 5 MB, video 16 MB, document 100 MB)? Also, the upload guide lists only PDF, JPEG, PNG and MP4. | A file could pass our check and fail at Meta | The sent-media sizes apply | Test |
 | 23 | Is Embedded Signup v4 the version our flow should use, and does the onboarding order on Meta's page still apply to it? Meta said v2 and v3 are deprecated from 15 October 2026. | The panel's signup button depends on it | v4, in the documented order | Ask, Test |
+| 24 | What does Meta do with messages above the daily messaging limit: refuse them, or queue them? | The summary warns and does not block | They fail, and are refunded | Ask, Test |
+| 25 | Does Meta refuse a template send with an empty variable? | A blank cell in a client's sheet would fail and be refunded | Refused | Test |
 | 20 | Are Meta's messaging limits per business portfolio for all of ReapLift's client accounts? If clients own their accounts, whose portfolio counts? | The limit decides how much a client can send | Each client's own portfolio; we copy the value to each number | Ask |
 
 ## Answered

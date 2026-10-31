@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 export * from './contracts/admin.js';
 export * from './contracts/auth.js';
+export * from './contracts/campaigns.js';
 export * from './contracts/templates.js';
 export * from './contracts/wallet.js';
 export * from './format/money.js';

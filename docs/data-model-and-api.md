@@ -128,20 +128,20 @@ Markup price = ceiling of `rate_centipaise Ã— (10000 + that category's markup) Ã
 
 ### Campaigns (M7, M8)
 
-**`lists`** (Planned, M7)
+**`lists`** (Exists, 0010)
 `id`, `client_id`, `file_name`, `storage_key`, `row_count`, `blank_rows_skipped`, `columns jsonb`, `opt_in_confirmed_by`, `opt_in_confirmed_at`, `number_column`, `valid_count`, `invalid_count`, `duplicate_count`, `created_by`, `created_at`.
 
-**`list_contacts`** (Planned, M7)
+**`list_contacts`** (Exists, 0010)
 `list_id`, `row_number`, `client_id`, `cells jsonb`, `number`, `invalid_reason`, `duplicate_of_row`; primary key (`list_id`, `row_number`).
 
-**`campaigns`** (Planned, M7)
-`id`, `client_id`, `name`, `template_id`, `wa_account_id`, `list_id`, `variable_map jsonb`, `status` (`draft` | `scheduled` | `running` | `paused` | `completed` | `cancelled`, all listed from the start), `created_by`, `confirmed_by`, `confirmed_at`, `total`, `blocked`, `sent`, `delivered`, `read`, `failed`, `created_at`, `updated_at`.
-Planned (M8): `scheduled_at`, `cancelled_at`, `cancelled_by`.
+**`campaigns`** (Exists, 0010)
+`id`, `client_id`, `name`, `template_id`, `wa_account_id`, `list_id`, `variable_map jsonb`, `status` (`draft` | `scheduled` | `running` | `paused` | `completed` | `cancelled`, all listed from the start), `created_by`, `confirmed_by`, `confirmed_at`, `total`, `blocked`, `sent`, `delivered`, `read`, `failed`, `other_charged_paise`, `created_at`, `updated_at`. A trigger on `messages` keeps the status totals current.
+Added in 0011 (M8): `scheduled_at`, `cancelled_at`, `cancelled_by`.
 
-**`opt_outs`** (Planned, M7)
+**`opt_outs`** (Exists, 0010)
 `client_id`, `number`, `source` (`stop_reply` | `upload` | `manual`), `created_at`; unique (`client_id`, `number`).
 
-**`rules`** (Planned, M8). `client_id` null applies to all clients.
+**`rules`** (Exists, 0011). `client_id` null applies to all clients.
 `id`, `client_id`, `type` (`repeat_within_hours` | `marketing_cap`), `values jsonb`, `enabled`, `updated_by`, `updated_at`.
 
 ### Reports (M9)

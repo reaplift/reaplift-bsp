@@ -70,8 +70,8 @@ Update your row in the same pull request that changes a task's status.
 | [M4](milestones/m4-send-engine/spec.md) Send engine                           | Operator queues one template message; it reaches a phone; sent, delivered and read are recorded     | Built against the fake Meta server (4.1 to 4.6, 4.7 commands); Done when E1 and E2 allow the real-phone demo | Anirudh | M0           | E1, E2 for the real-phone demo |
 | [M5](milestones/m5-number-and-templates/spec.md) Number connection, templates | A client's number is connected; a template passes our checks, goes to Meta, shows approved/rejected | In progress: backend 5.1 to 5.6 built against the fake Meta server; screens not started | Anirudh (backend); screens unassigned | M3, M4 (backend started early, see the decision log) | E3; E7 for credit-line sharing |
 | [M6](milestones/m6-wallet/spec.md) Wallet and prices                          | Super admin sets prices and tops up; client sees balance and every ledger row                       | In progress: backend 6.1 to 6.6 built; screens not connected | Anirudh (backend), Suraj (screens) | M3 (started early, see the decision log) | none                           |
-| [M7](milestones/m7-campaigns/spec.md) Campaigns                               | Client uploads an audience, sees the summary, confirms, is charged, and watches messages deliver    | Not started                                                                                              | Unassigned                         | M5, M6       | none                           |
-| [M8](milestones/m8-campaign-controls/spec.md) Campaign controls and rules     | Client pauses, resumes, cancels or schedules a campaign with exact money handling; rules apply      | Not started                                                                                              | Unassigned                         | M7           | none                           |
+| [M7](milestones/m7-campaigns/spec.md) Campaigns                               | Client uploads an audience, sees the summary, confirms, is charged, and watches messages deliver    | In progress: backend 7.1 to 7.10 built; screens not started | Anirudh (backend); screens unassigned | M5, M6 (started early, see the decision log) | none                           |
+| [M8](milestones/m8-campaign-controls/spec.md) Campaign controls and rules     | Client pauses, resumes, cancels or schedules a campaign with exact money handling; rules apply      | In progress: backend 8.1 to 8.5 built; screens not started | Anirudh (backend); screens unassigned | M7 (started early, see the decision log) | none                           |
 | [M9](milestones/m9-reports/spec.md) Reports and dashboard                     | Dashboard and downloads match a hand count; super admin sees Meta cost and margin                   | Not started                                                                                              | Unassigned                         | M7           | none                           |
 | [M10](milestones/m10-cloud-deploy/spec.md) Cloud deploy                       | A merge to `main` deploys to the cloud server with HTTPS, health check, rollback and backups        | Not started                                                                                              | Unassigned                         | M0           | E4                             |
 | [M11](milestones/m11-pilot/spec.md) Pilot go-live                             | One client runs its campaigns on ReapLift for two weeks with no fallback to Dovesoft                | Not started                                                                                              | ReapLift                           | M8, M9, M10  | E1 to E7                       |
@@ -259,7 +259,9 @@ Claim a number in the pull request that opens the task, before writing the file.
 | 0007   | `0007_numbers_and_templates.sql` | M5 5.1, 5.3    | On `anirudh-e2e-setup`                                                    |
 | 0008   | `0008_client_onboarding.sql` | M3 3.1, 3.2       | On `anirudh-e2e-setup`                                                    |
 | 0009   | `0009_wallet_and_prices.sql` | M6 6.1, 6.2       | On `anirudh-e2e-setup`                                                    |
-| 0010   | next free                   |                    | Free                                                                      |
+| 0010   | `0010_campaigns.sql`        | M7 7.1 to 7.8      | On `anirudh-e2e-setup`                                                    |
+| 0011   | `0011_campaign_controls.sql` | M8 8.3, 8.4       | On `anirudh-e2e-setup`                                                    |
+| 0012   | next free                   |                    | Free                                                                      |
 
 ## Suraj's task list (screens track)
 
@@ -295,6 +297,6 @@ Do them in order; each one builds on the last. A connect task goes right after t
 
 | Person   | Milestone     | Next task                                                                                         | Waiting on |
 | -------- | ------------- | ------------------------------------------------------------------------------------------------- | ---------- |
-| Anirudh  | M7            | M7 backend, then M8 and M9; M4 real-phone demo when E1 and E2 are ready | E1, E2 for the demo |
+| Anirudh  | M9            | M9 backend; M4 real-phone demo when E1 and E2 are ready | E1, E2 for the demo |
 | Suraj    | Screens track | M3: S3 My account and forced password change, then S4 to S6, against the real routes now built     | nothing    |
 | ReapLift | none          | E3 (Business Verification, App Review); continue E7 with Meta; E1, E2, E5; answer D10 to D13      | none       |

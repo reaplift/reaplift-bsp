@@ -26,6 +26,8 @@ export async function runApi(config: Config, log: Logger) {
     metaSystemToken: config.META_SYSTEM_TOKEN,
     metaCreditLineId: config.META_CREDIT_LINE_ID,
     uploadDir: config.UPLOAD_DIR,
+    uploadMaxBytes: config.UPLOAD_MAX_BYTES,
+    listMaxRows: config.LIST_MAX_ROWS,
     // The development key is public, so a real Meta token must not be stored with it.
     ...(usesPublicKeyWithRealMeta(config)
       ? {}

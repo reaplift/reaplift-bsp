@@ -3,6 +3,8 @@ import Fastify, { type FastifyServerOptions } from 'fastify';
 import { sql, type Kysely } from 'kysely';
 import type { HealthResponse } from '@reaplift/shared';
 import type { Database } from './lib/db.js';
+import { registerCampaignControls } from './modules/campaigns/controls.js';
+import { registerCampaignRoutes } from './modules/campaigns/routes.js';
 import { registerMeRoutes } from './modules/admin/me-routes.js';
 import { registerAdminRoutes } from './modules/admin/routes.js';
 import { registerAuthRoutes } from './modules/auth/routes.js';
@@ -43,6 +45,8 @@ export interface AppDeps {
   metaSystemToken?: string;
   metaCreditLineId?: string;
   uploadDir?: string;
+  uploadMaxBytes?: number;
+  listMaxRows?: number;
 }
 
 /** Builds the HTTP app. Dependencies are passed in so tests can replace them. */
@@ -62,6 +66,8 @@ export function buildApp({
   metaSystemToken = '',
   metaCreditLineId = '',
   uploadDir = './uploads',
+  uploadMaxBytes = 50 * 1024 * 1024,
+  listMaxRows = 200_000,
 }: AppDeps) {
   const app = Fastify({ logger });
   app.decorate('routeList', []);
@@ -84,6 +90,8 @@ export function buildApp({
   registerAdminRoutes(app, { db, now, panelOrigin });
   registerMeRoutes(app, { db, now });
   registerWalletRoutes(app, { db, now });
+  registerCampaignRoutes(app, { db, now, uploadDir, uploadMaxBytes, listMaxRows });
+  registerCampaignControls(app, { db, now });
   registerAccountRoutes(app, {
     db,
     now,
