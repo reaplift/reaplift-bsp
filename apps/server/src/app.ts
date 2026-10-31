@@ -10,6 +10,7 @@ import { registerAdminRoutes } from './modules/admin/routes.js';
 import { registerAuthRoutes } from './modules/auth/routes.js';
 import { registerScope } from './modules/auth/scope.js';
 import { registerAccountRoutes } from './modules/messaging/account-routes.js';
+import { registerReportRoutes } from './modules/reports/routes.js';
 import { registerTemplateRoutes } from './modules/templates/routes.js';
 import { registerWalletRoutes } from './modules/wallet/routes.js';
 import type { MetaClient } from './lib/meta-client.js';
@@ -92,6 +93,7 @@ export function buildApp({
   registerWalletRoutes(app, { db, now });
   registerCampaignRoutes(app, { db, now, uploadDir, uploadMaxBytes, listMaxRows });
   registerCampaignControls(app, { db, now });
+  registerReportRoutes(app, { db, now });
   registerAccountRoutes(app, {
     db,
     now,

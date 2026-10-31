@@ -3,6 +3,7 @@ import path from 'node:path';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { sql, type Kysely } from 'kysely';
 import { CampaignCreate, CampaignEdit, NumberColumn, OptOutUpload, SettingWords } from '@reaplift/shared';
+import { csvLine } from '../../lib/csv.js';
 import type { Database } from '../../lib/db.js';
 import { writeAudit } from '../admin/audit.js';
 import { sendError } from '../auth/scope.js';
@@ -27,13 +28,6 @@ const CAMPAIGN = sql`
   total, blocked, sent, delivered, read, failed, scheduled_at as "scheduledAt", cancelled_at as "cancelledAt",
   created_at as "createdAt", updated_at as "updatedAt"
 `;
-
-/** A CSV cell that a spreadsheet would run as a formula is kept as text. */
-function csvCell(value: unknown): string {
-  const text = String(value ?? '');
-  const safe = /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
-  return /[",\r\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
-}
 
 export function registerCampaignRoutes(
   app: FastifyInstance,
@@ -196,16 +190,14 @@ export function registerCampaignRoutes(
       order by row_number
     `.execute(db);
     const lines = [
-      ['Row', 'Reason', ...list.columns].map(csvCell).join(','),
-      ...rows.rows.map((r) =>
-        [r.row_number, r.invalid_reason ?? `duplicate of row ${r.duplicate_of_row}`, ...r.cells].map(csvCell).join(','),
-      ),
+      csvLine(['Row', 'Reason', ...list.columns]),
+      ...rows.rows.map((r) => csvLine([r.row_number, r.invalid_reason ?? `duplicate of row ${r.duplicate_of_row}`, ...r.cells])),
     ];
     return reply
       .code(200)
       .header('content-type', 'text/csv; charset=utf-8')
       .header('content-disposition', 'attachment; filename="invalid-rows.csv"')
-      .send(`${lines.join('\r\n')}\r\n`);
+      .send(lines.join(''));
   });
 
   /** Only an approved template of this client's active number can start a campaign. */

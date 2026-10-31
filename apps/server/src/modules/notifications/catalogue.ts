@@ -171,6 +171,19 @@ export const CATALOGUE = defineCatalogue({
     channels: ['email', 'panel'],
     recipients: ['user_if_any', 'client_users', 'super_admins'],
   },
+  'billing.meta_invoice_mismatch': {
+    subject: (p) => `Meta's invoice for ${String(p.month)} differs from our records`,
+    text: (p) =>
+      `Meta's credit-line invoice for ${String(p.month)} is ₹${formatRupees(p.invoicePaise)}, and our recorded cost is ₹${formatRupees(p.recordedPaise)}. A rate may be wrong, or messages may be billed in a category we did not expect.`,
+    channels: ['email', 'panel'],
+    recipients: ['super_admins'],
+  },
+  'billing.credit_line_usage': {
+    subject: (p) => `Credit line at ${String(p.level)}% for ${String(p.month)}`,
+    text: (p) => `This month's recorded Meta cost is ${String(p.percent)}% of the credit limit. If the line runs out, every client stops sending.`,
+    channels: ['email', 'panel'],
+    recipients: ['super_admins'],
+  },
   'account.connected': {
     subject: (p) => `WhatsApp number ${String(p.number)} is connected`,
     text: (p) => `The WhatsApp number ${String(p.number)} is now connected to ReapLift.`,

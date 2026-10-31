@@ -38,3 +38,15 @@ export const Adjustment = z
   .strict();
 
 export const LowBalanceAlert = z.object({ alertPaise: Paise.nonnegative().nullable() }).strict();
+
+const Month = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);
+
+export const MetaInvoiceCreate = z
+  .object({
+    month: Month,
+    totalPaise: Paise.nonnegative(),
+    perAccount: z.record(z.string(), Paise.nonnegative()).optional(),
+  })
+  .strict();
+
+export const CreditLimit = z.object({ limitPaise: Paise.positive() }).strict();

@@ -4,6 +4,7 @@ import type { Logger } from '../../lib/logger.js';
 import { applyMessageStatusUpdate, type MessageUpdateState } from '../../lib/status-processor.js';
 import { applyReplies, type ReplyWebhook } from '../campaigns/opt-outs.js';
 import { refundFailedMessage } from '../campaigns/refunds.js';
+import { recordMetaCost } from '../reports/stats.js';
 import { applyTemplateWebhook, type TemplateWebhook } from '../templates/status.js';
 import { applyLimitWebhook, type LimitWebhook } from './quality.js';
 
@@ -16,7 +17,7 @@ interface StatusUpdate {
   status: string;
   timestamp: string;
   errors?: Array<{ code?: number; title?: string }>;
-  pricing?: { category?: string; billable?: boolean };
+  pricing?: { category?: string; billable?: boolean; type?: string };
   biz_opaque_callback_data?: string;
 }
 
@@ -194,9 +195,11 @@ async function applyStatuses(trx: Transaction<Database>, event: EventRow, now: D
         failed_at = ${next.failed_at ?? null}, failure_reason = ${next.failure_reason ?? null},
         meta_error_code = ${next.meta_error_code ?? null},
         pricing_category = coalesce(${update.pricing?.category ?? null}, pricing_category),
-        billable = coalesce(${update.pricing?.billable ?? null}, billable)
+        billable = coalesce(${update.pricing?.billable ?? null}, billable),
+        pricing_type = coalesce(${update.pricing?.type ?? null}, pricing_type)
       where id = ${current.id}
     `.execute(trx);
+    if (next.delivered_at && next.status !== 'failed') await recordMetaCost(trx, current.id, next.delivered_at);
     if (next.status === 'failed' && current.status !== 'failed') await refundFailedMessage(trx, current.id, now);
   }
   return orphans;

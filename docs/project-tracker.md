@@ -72,7 +72,7 @@ Update your row in the same pull request that changes a task's status.
 | [M6](milestones/m6-wallet/spec.md) Wallet and prices                          | Super admin sets prices and tops up; client sees balance and every ledger row                       | In progress: backend 6.1 to 6.6 built; screens not connected | Anirudh (backend), Suraj (screens) | M3 (started early, see the decision log) | none                           |
 | [M7](milestones/m7-campaigns/spec.md) Campaigns                               | Client uploads an audience, sees the summary, confirms, is charged, and watches messages deliver    | In progress: backend 7.1 to 7.10 built; screens not started | Anirudh (backend); screens unassigned | M5, M6 (started early, see the decision log) | none                           |
 | [M8](milestones/m8-campaign-controls/spec.md) Campaign controls and rules     | Client pauses, resumes, cancels or schedules a campaign with exact money handling; rules apply      | In progress: backend 8.1 to 8.5 built; screens not started | Anirudh (backend); screens unassigned | M7 (started early, see the decision log) | none                           |
-| [M9](milestones/m9-reports/spec.md) Reports and dashboard                     | Dashboard and downloads match a hand count; super admin sees Meta cost and margin                   | Not started                                                                                              | Unassigned                         | M7           | none                           |
+| [M9](milestones/m9-reports/spec.md) Reports and dashboard                     | Dashboard and downloads match a hand count; super admin sees Meta cost and margin                   | In progress: backend 9.1 to 9.8 built; screens not started | Anirudh (backend); screens unassigned | M7 (started early, see the decision log) | none                           |
 | [M10](milestones/m10-cloud-deploy/spec.md) Cloud deploy                       | A merge to `main` deploys to the cloud server with HTTPS, health check, rollback and backups        | Not started                                                                                              | Unassigned                         | M0           | E4                             |
 | [M11](milestones/m11-pilot/spec.md) Pilot go-live                             | One client runs its campaigns on ReapLift for two weeks with no fallback to Dovesoft                | Not started                                                                                              | ReapLift                           | M8, M9, M10  | E1 to E7                       |
 
@@ -261,7 +261,8 @@ Claim a number in the pull request that opens the task, before writing the file.
 | 0009   | `0009_wallet_and_prices.sql` | M6 6.1, 6.2       | On `anirudh-e2e-setup`                                                    |
 | 0010   | `0010_campaigns.sql`        | M7 7.1 to 7.8      | On `anirudh-e2e-setup`                                                    |
 | 0011   | `0011_campaign_controls.sql` | M8 8.3, 8.4       | On `anirudh-e2e-setup`                                                    |
-| 0012   | next free                   |                    | Free                                                                      |
+| 0012   | `0012_reports.sql`          | M9 9.1, 9.5, 9.7   | On `anirudh-e2e-setup`                                                    |
+| 0013   | next free                   |                    | Free                                                                      |
 
 ## Suraj's task list (screens track)
 
@@ -297,6 +298,6 @@ Do them in order; each one builds on the last. A connect task goes right after t
 
 | Person   | Milestone     | Next task                                                                                         | Waiting on |
 | -------- | ------------- | ------------------------------------------------------------------------------------------------- | ---------- |
-| Anirudh  | M9            | M9 backend; M4 real-phone demo when E1 and E2 are ready | E1, E2 for the demo |
+| Anirudh  | none          | All backend built (M1 to M9), against the fake Meta server; M4 real-phone demo when E1 and E2 are ready | E1, E2 for the demo |
 | Suraj    | Screens track | M3: S3 My account and forced password change, then S4 to S6, against the real routes now built     | nothing    |
 | ReapLift | none          | E3 (Business Verification, App Review); continue E7 with Meta; E1, E2, E5; answer D10 to D13      | none       |

@@ -99,7 +99,7 @@ Added in 0007 (M5): `validation_errors jsonb`, `submitted_at`, `submitted_by`, `
 ### Sending (M4)
 
 **`messages`** (Exists, 0002). One row per number per campaign, or per `cli` send.
-`id bigint`, `client_id`, `wa_account_id`, `campaign_id` (foreign key added in M7), `template_id`, `to_number`, `variables jsonb`, `status` (`queued` | `sending` | `sent` | `delivered` | `read` | `failed` | `blocked`), `attempts`, `next_attempt_at`, `locked_at`, `meta_message_id` (unique), `queued_at`, `sent_at`, `delivered_at`, `read_at`, `failed_at`, `block_reason`, `failure_reason`, `meta_error_code`, `pricing_category` and `billable` (from Meta's webhook), `client_price_paise` (set at confirm, M7), `meta_cost_paise` (set on delivery, M9), `source` (`panel` | `api` | `crm` | `cli`), `created_date`.
+`id bigint`, `client_id`, `wa_account_id`, `campaign_id` (foreign key added in M7), `template_id`, `to_number`, `variables jsonb`, `status` (`queued` | `sending` | `sent` | `delivered` | `read` | `failed` | `blocked`), `attempts`, `next_attempt_at`, `locked_at`, `meta_message_id` (unique), `queued_at`, `sent_at`, `delivered_at`, `read_at`, `failed_at`, `block_reason`, `failure_reason`, `meta_error_code`, `pricing_category` and `billable` (from Meta's webhook), `client_price_paise` (set at confirm, M7), `meta_cost_paise` and `meta_cost_centipaise` (set on delivery, M9), `pricing_type`, `source` (`panel` | `api` | `crm` | `cli`), `created_date`.
 There is no `cancelled` status; M8 uses `blocked` with reason `campaign_cancelled`.
 
 **`meta_events`** (Exists, 0002). Platform table: every verified webhook body, stored before processing.
@@ -146,10 +146,10 @@ Added in 0011 (M8): `scheduled_at`, `cancelled_at`, `cancelled_by`.
 
 ### Reports (M9)
 
-**`daily_stats`** (Planned, M9)
-`client_id`, `date`, `category`, `queued`, `sent`, `delivered`, `read`, `failed`, `blocked`, `client_charge_paise`, `meta_cost_paise`; primary key (`client_id`, `date`, `category`).
+**`daily_stats`** (Exists, 0012)
+`client_id`, `date`, `category`, `queued`, `sent`, `delivered`, `read`, `failed`, `blocked`, `client_charge_paise`, `meta_cost_centipaise`; primary key (`client_id`, `date`, `category`).
 
-**`meta_invoices`** (Planned, M9). Platform table.
+**`meta_invoices`** (Exists, 0012). Platform table.
 `id`, `month`, `total_paise`, `per_account jsonb`, `entered_by`, `created_at`. The credit limit is a `settings` row.
 
 ### Tables without a client
