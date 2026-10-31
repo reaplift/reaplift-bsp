@@ -12,6 +12,8 @@ export interface CreateUserInput {
   /** Required for `client` users; must be absent for `super_admin` and `staff`. */
   clientId?: string | null;
   password: string;
+  /** The user adding this one. Absent only when nobody is logged in, such as the first super admin. */
+  createdBy?: string | null;
 }
 
 export class UserInputError extends Error {}
@@ -39,8 +41,8 @@ export async function createUser(
   const passwordHash = await hashPassword(input.password);
   try {
     const result = await sql<{ id: string }>`
-      insert into users (client_id, name, email, password_hash, role)
-      values (${input.clientId ?? null}, ${name}, ${email}, ${passwordHash}, ${input.role})
+      insert into users (client_id, name, email, password_hash, role, created_by)
+      values (${input.clientId ?? null}, ${name}, ${email}, ${passwordHash}, ${input.role}, ${input.createdBy ?? null})
       returning id
     `.execute(db);
     return { id: result.rows[0]!.id };

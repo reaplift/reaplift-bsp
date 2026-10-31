@@ -22,7 +22,7 @@ export interface AppDeps {
   version: string;
   checkDb: () => Promise<boolean>;
   db: Kysely<Database>;
-  logger?: boolean;
+  logger?: boolean | { level: string };
   /** The panel's address; state-changing requests from any other origin are refused. */
   panelOrigin?: string;
   /** Secure flag on the session cookie; off only for plain-http local development. */

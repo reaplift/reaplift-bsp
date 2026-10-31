@@ -1,7 +1,7 @@
 /**
  * Operator commands: `pnpm --filter @reaplift/server cli <command> [--flag value ...]`.
  *
- *   create-user --email <e> --name <n> --role <super_admin|staff|client> [--client <client id or exact name>]
+ *   create-user --email <e> --name <n> --role <super_admin|staff|client> [--client <client id or exact name>] [--created-by <super admin email>]
  *       Prompts for the password (not echoed). Reads it from stdin when not run in a terminal.
  *   seed-dev
  *       Local development only: the clients and four users of M1's worked example, password `reaplift-dev-1`.
@@ -68,6 +68,16 @@ async function findClientId(db: Kysely<Database>, idOrName: string): Promise<str
   return rows[0]!.id;
 }
 
+async function findSuperAdminId(db: Kysely<Database>, email: string): Promise<string> {
+  const row = (
+    await sql<{ id: string }>`
+      select id from users where email = ${email.trim().toLowerCase()} and role = 'super_admin'
+    `.execute(db)
+  ).rows[0];
+  if (!row) throw new UserInputError(`no super admin has the email "${email}"`);
+  return row.id;
+}
+
 async function ensureClient(
   db: Kysely<Database>,
   name: string,
@@ -86,7 +96,7 @@ async function ensureClient(
 
 async function ensureUser(
   db: Kysely<Database>,
-  user: { email: string; name: string; role: UserRole; clientId?: string },
+  user: { email: string; name: string; role: UserRole; clientId?: string; createdBy?: string },
 ): Promise<string> {
   const existing = (
     await sql<{ id: string }>`select id from users where email = ${user.email}`.execute(db)
@@ -104,19 +114,30 @@ async function seedDev(db: Kysely<Database>, databaseUrl: string) {
   const bluebird = await ensureClient(db, 'Bluebird Retail', 'sales@bluebird.in');
   const greenleaf = await ensureClient(db, 'Greenleaf Foods', 'sales@greenleaf.in');
 
-  await ensureUser(db, { email: 'ravi@reaplift.com', name: 'Ravi', role: 'super_admin' });
-  const meera = await ensureUser(db, { email: 'meera@reaplift.com', name: 'Meera', role: 'staff' });
+  const ravi = await ensureUser(db, {
+    email: 'ravi@reaplift.com',
+    name: 'Ravi',
+    role: 'super_admin',
+  });
+  const meera = await ensureUser(db, {
+    email: 'meera@reaplift.com',
+    name: 'Meera',
+    role: 'staff',
+    createdBy: ravi,
+  });
   await ensureUser(db, {
     email: 'ops@northwind.com',
     name: 'Northwind Ops',
     role: 'client',
     clientId: northwind,
+    createdBy: ravi,
   });
   await ensureUser(db, {
     email: 'sales@greenleaf.in',
     name: 'Greenleaf Sales',
     role: 'client',
     clientId: greenleaf,
+    createdBy: ravi,
   });
 
   for (const clientId of [northwind, bluebird]) {
@@ -140,11 +161,13 @@ async function main() {
       if (!USER_ROLES.includes(role))
         throw new UserInputError(`--role must be one of ${USER_ROLES.join(', ')}`);
       const clientId = f.client ? await findClientId(db, f.client) : null;
+      const createdBy = f['created-by'] ? await findSuperAdminId(db, f['created-by']) : null;
       const { id } = await createUser(db, {
         email: f.email ?? '',
         name: f.name ?? '',
         role,
         clientId,
+        createdBy,
         password: await readPassword(),
       });
       console.log(`Created ${role} ${f.email} (${id})`);

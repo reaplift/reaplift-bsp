@@ -37,6 +37,21 @@ describe('Login page', () => {
     expect((screen.getByLabelText('Password') as HTMLInputElement).value).toBe('');
   });
 
+  it('hides the password until the eye button is pressed, without submitting the form', async () => {
+    const onLoggedIn = mount(createApi(() => createMockTransport()));
+    const password = screen.getByLabelText('Password') as HTMLInputElement;
+    await userEvent.type(password, PASSWORD);
+    expect(password.type).toBe('password');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Show password' }));
+    expect(password.type).toBe('text');
+    expect(password.value).toBe(PASSWORD);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Hide password' }));
+    expect(password.type).toBe('password');
+    expect(onLoggedIn).not.toHaveBeenCalled();
+  });
+
   it('logs in and hands over the user and workspaces', async () => {
     const mock = createMockTransport();
     const onLoggedIn = mount(createApi(() => mock));

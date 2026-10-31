@@ -8,6 +8,7 @@ export async function runApi(config: Config, log: Logger) {
   const db = createDb(pool);
   const app = buildApp({
     version: config.APP_VERSION,
+    logger: { level: config.LOG_LEVEL },
     checkDb: () => pingDb(db),
     db,
     panelOrigin: config.PANEL_ORIGIN,

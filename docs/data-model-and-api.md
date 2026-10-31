@@ -64,7 +64,7 @@ Planned: `country_calling_code text` (M3; picks Meta's rate in M6 and the valid 
 
 **`users`** (Exists, 0003)
 `id`, `client_id` (null for super admin and staff), `name`, `email` (unique), `password_hash`, `role` (`super_admin` | `staff` | `client`), `status` (`active` | `disabled`), `created_at`, `last_login_at`.
-Added in 0004 (M1): `failed_login_count int`, `first_failed_login_at timestamptz` (start of the 15-minute lockout window), `locked_until timestamptz`. Planned: `must_change_password boolean` (M3).
+Added in 0004 (M1): `failed_login_count int`, `first_failed_login_at timestamptz` (start of the 15-minute lockout window), `locked_until timestamptz`. Added in 0006: `created_by uuid` (references `users`; the user who added this one, null for the first super admin and for users added before 0006). Planned: `must_change_password boolean` (M3).
 
 **`auth_sessions`** (Exists, 0004)
 `id`, `user_id`, `client_id` (null except for client users), `token_hash` (unique), `created_at`, `last_seen_at`, `expires_at`, `revoked_at`, `user_agent`, `ip_address`.

@@ -123,6 +123,10 @@ Answered questions move here with their date, and the spec is updated in the sam
 ### 30 October 2026
 
 - **Two branches (replaces one branch per task):** all work goes on `anirudh-e2e-setup`; `main` is production and is updated only by a release pull request from that branch. Per-task and stacked branches made merging and pulling tedious, and contradicted team-workflow.md. CI now also runs on every push to `anirudh-e2e-setup`, because task pull requests no longer trigger it.
+- **Suraj's S1, S2 and C1 merged into `anirudh-e2e-setup`.** Owner tested the four logins in the real panel. M1 stays In progress until the release pull request into `main` passes CI and merges.
+- **`users.created_by` added (migration 0006):** records who added each user, so several super admins can be told apart. Blank for the first super admin and for users added before 0006. M3's create-user route takes it from the session.
+- **Also added:** a show/hide password button on the login page, and request logs from `MODE=api` (no bodies, passwords or cookies).
+- **M2 real email not tested:** `reaplift.com` mail is on Hostinger, so its SMTP could be used for a one-off test, but no credentials are configured. Rows marked `sent` so far went through the fake provider. E5 is still open.
 
 ### 29 October 2026
 
@@ -222,7 +226,7 @@ If any check fails, the task is In progress or Prototype, never Done.
 - Every table carries `client_id` and every query filters by it, except the platform tables listed in [data-model-and-api.md](data-model-and-api.md).
 - Two branches only: everyone commits to `anirudh-e2e-setup` (work), and `main` is production. No per-task branches and no pull requests between tasks. A release is one pull request from `anirudh-e2e-setup` into `main`. Never push to `main`. CI must be green. Steps are in [team-workflow.md](team-workflow.md). Where a doc says "the same pull request" about a task, read it as the same commit or push on the work branch.
 - No secrets in git. Every new setting goes in `.env.example` with a blank value.
-- Run lint, typecheck and tests before committing.
+- Run lint, typecheck and tests before committing. `pnpm test:int` drops the whole schema, so locally point `DATABASE_URL` at a separate database, or re-seed afterwards.
 
 ### Evidence pack
 
@@ -239,7 +243,8 @@ Claim a number in the pull request that opens the task, before writing the file.
 | 0003   | `0003_admin_access.sql`     | M1, M3             | Merged                                                                    |
 | 0004   | `0004_auth_sessions.sql`    | M1 1.2, 1.3        | On `anirudh-e2e-setup` (`0004_lists.sql` from `m4-skeleton` is abandoned) |
 | 0005   | `0005_notifications.sql`    | M2 2.1             | On `anirudh-e2e-setup`                                                    |
-| 0006   | next free                   |                    | Free                                                                      |
+| 0006   | `0006_users_created_by.sql` | M3 3.2             | On `anirudh-e2e-setup`                                                    |
+| 0007   | next free                   |                    | Free                                                                      |
 
 ## Suraj's task list (screens track)
 
@@ -258,9 +263,9 @@ How it works:
 
 | #   | Task (spec)                                                                                                         | What it delivers                                                                                                                                                                 | Status                                                                   |
 | --- | ------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| S1  | [M1 1.6.1](milestones/m1-login-and-access/spec.md#161-web-foundations-suraj) Web foundations                        | Component tests in `apps/web`, router, the API layer with mock mode, the contracts folder, `formatPaise` (paise to "₹1,234.50") with tests, one table of error codes to messages | Screen ready (PR #12)                                                    |
-| S2  | [M1 1.6.2](milestones/m1-login-and-access/spec.md#162-panel-shell-suraj) Panel shell                                | Login page, client picker, menu by role, "coming soon" pages, empty Dashboard, logout                                                                                            | Screen ready (`m1-1.6.2-panel-shell`)                                    |
-| C1  | [M1 1.7](milestones/m1-login-and-access/spec.md#17-connect-the-panel-to-the-real-server-suraj) Connect the M1 panel | Panel shell against the real server (backend 1.1 to 1.5 is finished): fix contract mismatches, record `frontend.md` and `e2e.md`. Makes M1 Done                                  | Demo passed (`m1-1.7-connect-real-server`); Done when merged into `main` |
+| S1  | [M1 1.6.1](milestones/m1-login-and-access/spec.md#161-web-foundations-suraj) Web foundations                        | Component tests in `apps/web`, router, the API layer with mock mode, the contracts folder, `formatPaise` (paise to "₹1,234.50") with tests, one table of error codes to messages | Screen ready (on `anirudh-e2e-setup`)                                    |
+| S2  | [M1 1.6.2](milestones/m1-login-and-access/spec.md#162-panel-shell-suraj) Panel shell                                | Login page, client picker, menu by role, "coming soon" pages, empty Dashboard, logout                                                                                            | Screen ready (on `anirudh-e2e-setup`)                                    |
+| C1  | [M1 1.7](milestones/m1-login-and-access/spec.md#17-connect-the-panel-to-the-real-server-suraj) Connect the M1 panel | Panel shell against the real server (backend 1.1 to 1.5 is finished): fix contract mismatches, record `frontend.md` and `e2e.md`. Makes M1 Done                                  | Demo passed (on `anirudh-e2e-setup`); Done when merged into `main`       |
 | S3  | [M3 screens](milestones/m3-client-onboarding/spec.md#screens-suraj) My account and forced password change           | "My account" page; the change-password screen shown when the server answers `PASSWORD_CHANGE_REQUIRED`                                                                           | Not started                                                              |
 | S4  | [M3 screens](milestones/m3-client-onboarding/spec.md#screens-suraj) Client admin                                    | Clients list, create and edit client, client detail with users and staff, create user, staff assignment, suspend and reactivate with a note, disable and enable, reset password  | Not started                                                              |
 | S5  | [M3 screens](milestones/m3-client-onboarding/spec.md#screens-suraj) Audit page                                      | Audit list with filters by client, user, action and date                                                                                                                         | Not started                                                              |

@@ -34,6 +34,7 @@ describe.sequential('migrate', () => {
     expect(result.applied).toContain('0003_admin_access.sql');
     expect(result.applied).toContain('0004_auth_sessions.sql');
     expect(result.applied).toContain('0005_notifications.sql');
+    expect(result.applied).toContain('0006_users_created_by.sql');
 
     const tables = await pool.query<{ table_name: string }>(`
       select table_name
@@ -81,5 +82,6 @@ describe.sequential('migrate', () => {
     expect(columns.rows.map((row) => row.column_name)).toContain('created_at');
     expect(columns.rows.map((row) => row.column_name)).toContain('role');
     expect(columns.rows.map((row) => row.column_name)).toContain('locked_until');
+    expect(columns.rows.map((row) => row.column_name)).toContain('created_by');
   });
 });

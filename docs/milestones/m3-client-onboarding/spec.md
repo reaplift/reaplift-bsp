@@ -77,7 +77,7 @@ Out:
 ### 3.2 Client logins and change-my-password
 
 - Super admin creates a `client` user for a client: name, email (unique), first password (at least 10 characters).
-- Data: nullable column `users.must_change_password boolean`.
+- Data: nullable column `users.must_change_password boolean`. The create-user route sets `users.created_by` (migration 0006) to the logged-in user, taken from the session and never from the request.
 - A user with `must_change_password` can call only `POST /api/me/password` and `POST /api/auth/logout`; everything else returns 403 `PASSWORD_CHANGE_REQUIRED`.
 - Every user can change their password from a "My account" menu item.
 - Tests: first login forces a change; the old password stops working; a client user cannot be created without a client.

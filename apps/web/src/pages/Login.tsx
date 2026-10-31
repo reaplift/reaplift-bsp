@@ -3,6 +3,26 @@ import { useState, type FormEvent } from 'react';
 import { errorMessage } from '../api/messages';
 import { useAuth } from '../auth/context';
 
+function EyeIcon({ crossed }: { crossed: boolean }) {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+      <circle cx="12" cy="12" r="3" />
+      {crossed && <line x1="3" y1="3" x2="21" y2="21" />}
+    </svg>
+  );
+}
+
 type LoginProps = {
   /** Called with the user and their workspaces once logged in; the caller decides where to go. */
   onLoggedIn: (me: MeResponse) => void;
@@ -12,6 +32,7 @@ export function Login({ onLoggedIn }: LoginProps) {
   const { login } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -44,7 +65,24 @@ export function Login({ onLoggedIn }: LoginProps) {
 
         <label>
           <span>Password</span>
-          <input name="password" type="password" autoComplete="current-password" required />
+          <div className="password-field">
+            <input
+              name="password"
+              type={showPassword ? 'text' : 'password'}
+              autoComplete="current-password"
+              required
+            />
+            <button
+              type="button"
+              className="password-toggle"
+              onClick={() => setShowPassword((shown) => !shown)}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              aria-pressed={showPassword}
+              title={showPassword ? 'Hide password' : 'Show password'}
+            >
+              <EyeIcon crossed={showPassword} />
+            </button>
+          </div>
         </label>
 
         {error && (
