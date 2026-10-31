@@ -66,7 +66,7 @@ Update your row in the same pull request that changes a task's status.
 | [M0](milestones/m0-foundation/spec.md) Foundation                             | Developer clones the repo, runs it locally, CI checks every pull request                            | Done                                                                                                     | repo setup                         | none         | none                           |
 | [M1](milestones/m1-login-and-access/spec.md) Login and access                 | Super admin, staff and client each log in and see only what their role and clients allow            | Done (30 October 2026, PR #15)                                                                           | Anirudh (backend), Suraj (screens) | M0           | none                           |
 | [M2](milestones/m2-notifications/spec.md) Notifications                       | A state change sends an email from `info@reaplift.com` and shows in the panel's notification list   | Built (backend 2.1 to 2.4); Done when E5 allows the real-email demo                                      | Anirudh                            | M0           | E5                             |
-| [M3](milestones/m3-client-onboarding/spec.md) Client onboarding               | Super admin creates a client, its login and its staff; they get welcome emails and can log in       | In progress (Suraj; server routes still in-memory prototype; may start before M2 is Done, see the decision log) | Suraj | M1, M2       | none                           |
+| [M3](milestones/m3-client-onboarding/spec.md) Client onboarding               | Super admin creates a client, its login and its staff; they get welcome emails and can log in       | In progress: backend 3.1 to 3.7 built; screens not connected | Anirudh (backend), Suraj (screens) | M1, M2 (started early, see the decision log) | none                           |
 | [M4](milestones/m4-send-engine/spec.md) Send engine                           | Operator queues one template message; it reaches a phone; sent, delivered and read are recorded     | Built against the fake Meta server (4.1 to 4.6, 4.7 commands); Done when E1 and E2 allow the real-phone demo | Anirudh | M0           | E1, E2 for the real-phone demo |
 | [M5](milestones/m5-number-and-templates/spec.md) Number connection, templates | A client's number is connected; a template passes our checks, goes to Meta, shows approved/rejected | In progress: backend 5.1 to 5.6 built against the fake Meta server; screens not started | Anirudh (backend); screens unassigned | M3, M4 (backend started early, see the decision log) | E3; E7 for credit-line sharing |
 | [M6](milestones/m6-wallet/spec.md) Wallet and prices                          | Super admin sets prices and tops up; client sees balance and every ledger row                       | Not started                                                                                              | Anirudh (backend), Suraj (screens) | M3           | none                           |
@@ -122,6 +122,7 @@ Answered questions move here with their date, and the spec is updated in the sam
 
 ### 31 October 2026
 
+- **Anirudh builds all remaining backend (owner):** M3, M6, M7, M8 and M9's backend, in order, each tested with integration tests against the fake Meta server, as an exception to the dependency rule. **M3's backend moves from Suraj to Anirudh; Suraj stays on screens.** No milestone is Done until its screens and demo are.
 - **M5 backend started before M3 and M4 are Done (owner).** This is an exception to the dependency rule. The backend runs against the fake Meta server and needs only the `clients` table. M5's screens and M5 being Done still wait for M3, and for M4's real-phone demo. All of M5's backend is built, including a route to replace a token and a route to retry the credit-line share, neither of which the spec named.
 - **Questions waiting on ReapLift or Meta now live in one place:** [open-questions.md](open-questions.md).
 - **Timeouts and double sends (owner):** Meta has no status lookup or idempotency key, so a send that times out may already have been accepted. M4 now waits 30 seconds instead of 15 and puts our message ID in `biz_opaque_callback_data` on every send. Before campaigns, [M7 task 7.6a](milestones/m7-campaigns/spec.md#76a-check-for-a-webhook-before-retrying-a-timeout) holds a timed-out message and checks for a webhook before retrying. `cli send-stats` reports the percent of messages sent twice, per client, from the stored webhooks.
@@ -256,11 +257,12 @@ Claim a number in the pull request that opens the task, before writing the file.
 | 0005   | `0005_notifications.sql`    | M2 2.1             | On `anirudh-e2e-setup`                                                    |
 | 0006   | `0006_users_created_by.sql` | M3 3.2             | On `anirudh-e2e-setup`                                                    |
 | 0007   | `0007_numbers_and_templates.sql` | M5 5.1, 5.3    | On `anirudh-e2e-setup`                                                    |
-| 0008   | next free                   |                    | Free                                                                      |
+| 0008   | `0008_client_onboarding.sql` | M3 3.1, 3.2       | On `anirudh-e2e-setup`                                                    |
+| 0009   | next free                   |                    | Free                                                                      |
 
 ## Suraj's task list (screens track)
 
-Suraj builds screens, and M3's backend too (decided 30 October 2026); Anirudh builds the other backend and core logic. Everything below can be done **without waiting for anyone**: no task needs a backend route, a migration, an owner decision or a review to start or to continue.
+Suraj builds screens; Anirudh builds the backend and core logic (decided 31 October 2026). Everything below can be done **without waiting for anyone**: no task needs a backend route, a migration, an owner decision or a review to start or to continue.
 
 How it works:
 
@@ -293,5 +295,5 @@ Do them in order; each one builds on the last. A connect task goes right after t
 | Person   | Milestone     | Next task                                                                                         | Waiting on |
 | -------- | ------------- | ------------------------------------------------------------------------------------------------- | ---------- |
 | Anirudh  | M6            | M6 backend (exception to the dependency rule, as M3 is not Done); M4 real-phone demo when E1 and E2 are ready | E1, E2 for the demo |
-| Suraj    | Screens track | M3: S3 My account and forced password change, then the rest of M3                                  | nothing    |
+| Suraj    | Screens track | M3: S3 My account and forced password change, then S4 to S6, against the real routes now built     | nothing    |
 | ReapLift | none          | E3 (Business Verification, App Review); continue E7 with Meta; E1, E2, E5; answer D10 to D13      | none       |

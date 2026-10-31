@@ -102,7 +102,7 @@ async function ensureClient(
   if (existing) return existing.id;
   return (
     await sql<{ id: string }>`
-      insert into clients (name, contact_email) values (${name}, ${contactEmail}) returning id
+      insert into clients (name, contact_email, country_calling_code) values (${name}, ${contactEmail}, '91') returning id
     `.execute(db)
   ).rows[0]!.id;
 }

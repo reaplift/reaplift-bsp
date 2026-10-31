@@ -30,12 +30,18 @@ export async function seedAccount(
   input: SeedAccountInput,
   encryptionKey: string,
 ): Promise<{ clientId: string; waAccountId: string }> {
+  // Client names are unique, so a second number for the same client joins it.
   const clientId =
     input.clientId ??
     (
       await sql<{ id: string }>`
-        insert into clients (name, contact_email)
-        values (${input.clientName ?? ''}, ${input.contactEmail ?? null})
+        select id from clients where lower(name) = lower(${input.clientName ?? ''})
+      `.execute(db)
+    ).rows[0]?.id ??
+    (
+      await sql<{ id: string }>`
+        insert into clients (name, contact_email, country_calling_code)
+        values (${input.clientName ?? ''}, ${input.contactEmail ?? null}, '91')
         returning id
       `.execute(db)
     ).rows[0]?.id;

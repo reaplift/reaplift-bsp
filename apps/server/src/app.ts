@@ -1,9 +1,10 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import Fastify, { type FastifyServerOptions } from 'fastify';
 import { sql, type Kysely } from 'kysely';
-import { z } from 'zod';
-import { AdminClient, type HealthResponse } from '@reaplift/shared';
+import type { HealthResponse } from '@reaplift/shared';
 import type { Database } from './lib/db.js';
+import { registerMeRoutes } from './modules/admin/me-routes.js';
+import { registerAdminRoutes } from './modules/admin/routes.js';
 import { registerAuthRoutes } from './modules/auth/routes.js';
 import { registerScope } from './modules/auth/scope.js';
 import { registerAccountRoutes } from './modules/messaging/account-routes.js';
@@ -77,26 +78,10 @@ export function buildApp({
       done(err as Error, undefined);
     }
   });
-  const adminClients: Array<z.infer<typeof AdminClient>> = [
-    {
-      id: 'cli-seed-001',
-      name: 'Northwind Labs',
-      contactEmail: 'ops@northwind.com',
-      assignedStaff: 'Aisha Shah',
-      status: 'active',
-      walletBalance: 120000,
-    },
-    {
-      id: 'cli-seed-002',
-      name: 'Bluebird Retail',
-      contactEmail: 'sales@bluebird.in',
-      assignedStaff: 'Rahul S',
-      status: 'suspended',
-      walletBalance: 25000,
-    },
-  ];
   registerScope(app, { db, now, panelOrigin });
   registerAuthRoutes(app, { db, now, cookieSecure });
+  registerAdminRoutes(app, { db, now, panelOrigin });
+  registerMeRoutes(app, { db, now });
   registerAccountRoutes(app, {
     db,
     now,
@@ -117,69 +102,6 @@ export function buildApp({
       db: dbOk ? 'ok' : 'down',
     };
     return reply.code(dbOk ? 200 : 503).send(body);
-  });
-
-  // Admin routes below are M3's prototype on in-memory data; the scope hook allows only super admins.
-  app.get('/api/admin/clients', async (_req, reply) => {
-    return reply.code(200).send(adminClients);
-  });
-
-  app.post('/api/admin/clients', async (req, reply) => {
-    const payload = req.body as unknown;
-    const parsed = AdminClient.omit({ id: true }).safeParse(payload);
-
-    if (!parsed.success) {
-      return reply.code(400).send({
-        error: 'invalid client payload',
-        details: parsed.error.flatten(),
-      });
-    }
-
-    const nextClient = {
-      ...parsed.data,
-      id: `cli-${Date.now()}`,
-    } satisfies z.infer<typeof AdminClient>;
-
-    adminClients.unshift(nextClient);
-    return reply.code(201).send(nextClient);
-  });
-
-  app.patch('/api/admin/clients/:id/status', async (req, reply) => {
-    const { id } = req.params as { id: string };
-    const payload = req.body as { status?: string };
-    const status = payload.status;
-
-    if (status !== 'active' && status !== 'suspended') {
-      return reply.code(400).send({ error: 'status must be active or suspended' });
-    }
-
-    const client = adminClients.find((entry) => entry.id === id);
-
-    if (!client) {
-      return reply.code(404).send({ error: 'client not found' });
-    }
-
-    client.status = status;
-    return reply.code(200).send(client);
-  });
-
-  app.patch('/api/admin/clients/:id/staff', async (req, reply) => {
-    const { id } = req.params as { id: string };
-    const payload = req.body as { assignedStaff?: string };
-    const assignedStaff = payload.assignedStaff?.trim();
-
-    if (!assignedStaff) {
-      return reply.code(400).send({ error: 'assignedStaff is required' });
-    }
-
-    const client = adminClients.find((entry) => entry.id === id);
-
-    if (!client) {
-      return reply.code(404).send({ error: 'client not found' });
-    }
-
-    client.assignedStaff = assignedStaff;
-    return reply.code(200).send(client);
   });
 
   app.get('/webhooks/meta', async (req, reply) => {

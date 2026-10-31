@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+export * from './contracts/admin.js';
 export * from './contracts/auth.js';
 export * from './contracts/templates.js';
 export * from './format/money.js';
@@ -56,16 +57,6 @@ export const CampaignDraft = z.object({
   template: z.string(),
 });
 export type CampaignDraft = z.infer<typeof CampaignDraft>;
-
-export const AdminClient = z.object({
-  id: z.string(),
-  name: z.string(),
-  status: z.enum(['active', 'suspended']),
-  contactEmail: z.string().nullable(),
-  walletBalance: z.number(),
-  assignedStaff: z.string(),
-});
-export type AdminClient = z.infer<typeof AdminClient>;
 
 export const TeamMember = z.object({
   id: z.string(),

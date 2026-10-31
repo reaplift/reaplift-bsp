@@ -1,7 +1,7 @@
 # M3. Client onboarding
 
-- Status: In progress (the Admin page is a placeholder; the server's admin routes keep clients in an in-memory array)
-- Owner: Suraj (screens S3 to S6 and backend; decided 30 October 2026)
+- Status: In progress. Backend 3.1 to 3.7 built on 31 October 2026; see [test-evidence.md](test-evidence.md). Screens S3 to S6 are not connected.
+- Owner: Anirudh (backend, moved from Suraj on 31 October 2026), Suraj (screens S3 to S6)
 - Starts after: M1 (logins and scope), M2 (notifications; may start while M2 is Built, using the fake provider)
 - External prerequisites: none (E5 only for real emails; the fake provider is enough for the demo)
 
@@ -166,7 +166,7 @@ Migration (claim one number in the registry): `clients.country_calling_code text
 | GET    | `/api/admin/notifications`            | super admin | Delivery log                              |
 | POST   | `/api/me/password`                    | logged in   | Change own password                       |
 | GET    | `/api/me/notifications`               | logged in   | Own panel notifications                   |
-| PATCH  | `/api/me/notifications/:id/read`      | logged in   | Mark one read                             |
+| PATCH  | `/api/me/notifications/:notificationId/read` | logged in | Mark one read                             |
 
 Errors: 400 `INVALID_REQUEST` with field details, 403 `FORBIDDEN`, 404 `NOT_FOUND`, 409 `CLIENT_NAME_TAKEN` or `EMAIL_TAKEN`, all as `{ "error", "message" }`. The full request and response for each route goes in `backend-api.md` before it is coded.
 
@@ -181,7 +181,9 @@ None open.
 ## Current reality
 
 - The panel's Admin page is a placeholder. The old `Admin.tsx` was removed in M1 1.6.2.
-- The server still has `GET/POST /api/admin/clients` and two `PATCH` routes, validated with Zod and behind the super admin check. All of it is held in an in-memory array in `app.ts`, seeded with two fake clients; a restart loses changes. "Assigned staff" is free text. No users, audit rows or notifications are written.
+- All routes in the table below are real and read PostgreSQL. The in-memory prototype is gone. `/api/auth/me` also answers `PASSWORD_CHANGE_REQUIRED` for a user with a first password, so the panel must handle that when it loads a session (S3).
+- Beyond the spec: a user cannot disable their own login (409 `CANNOT_CHANGE_SELF`), and a second suspend or reactivate answers 409 `STATUS_UNCHANGED`.
+- Changing a password logs out the user's other devices. Lists of clients and notifications return up to the limit with no next page yet.
 - `users.created_by` exists (migration 0006). The evidence files are written as the tasks finish; see [the evidence pack](../README.md#evidence-pack).
 
 ## Demo (milestone acceptance)

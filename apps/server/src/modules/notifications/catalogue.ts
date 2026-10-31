@@ -13,7 +13,7 @@ export type Channel = 'email' | 'panel';
  * - `actor`: the user who caused the event
  * - `user`: a named user (for example the user who was just created)
  * - `user_if_any`: the same, skipped when there is none (a template copied from Meta has no submitter)
- * - `address`: one email address given by the caller; only for the operator test, never for real events
+ * - `address`: one email address given by the caller: the operator test, and a new client's contact email
  */
 export type RecipientRule =
   'client_users' | 'assigned_staff' | 'super_admins' | 'actor' | 'user' | 'user_if_any' | 'address';
@@ -37,6 +37,52 @@ export const CATALOGUE = defineCatalogue({
       `This is a test email from ReapLift, sent with "cli notify-test" at ${String(p.requestedAt ?? 'an unknown time')}.\n\nNo action is needed.`,
     channels: ['email'],
     recipients: ['address'],
+  },
+  'client.created': {
+    subject: (p) => `${String(p.name)} is set up on ReapLift`,
+    text: (p) => `${String(p.name)} now has a ReapLift workspace. Your logins will be sent separately.`,
+    channels: ['email'],
+    recipients: ['address'],
+  },
+  'user.created': {
+    subject: () => 'Your ReapLift login is ready',
+    text: (p) =>
+      `Hello ${String(p.name)},\n\nYour ReapLift login is ready.\nPanel: ${String(p.panelUrl)}\nEmail: ${String(p.email)}\n\nYour first password will be given to you by ReapLift, and you will choose a new one when you first log in.`,
+    channels: ['email'],
+    recipients: ['user'],
+  },
+  'staff.assigned': {
+    subject: () => 'Your ReapLift clients have changed',
+    text: (p) => {
+      const clients = (p.clients as string[]) ?? [];
+      return clients.length > 0 ? `You are now assigned to: ${clients.join(', ')}.` : 'You are no longer assigned to any client.';
+    },
+    channels: ['email', 'panel'],
+    recipients: ['user'],
+  },
+  'client.suspended': {
+    subject: (p) => `${String(p.name)} is suspended on ReapLift`,
+    text: (p) => `The ReapLift account for ${String(p.name)} is suspended. Note: ${String(p.note)}.\n\nContact ReapLift.`,
+    channels: ['email', 'panel'],
+    recipients: ['client_users', 'assigned_staff'],
+  },
+  'client.reactivated': {
+    subject: (p) => `${String(p.name)} is active again on ReapLift`,
+    text: (p) => `The ReapLift account for ${String(p.name)} is active again.`,
+    channels: ['email', 'panel'],
+    recipients: ['client_users', 'assigned_staff'],
+  },
+  'user.password_reset': {
+    subject: () => 'Your ReapLift password was reset',
+    text: () => 'ReapLift reset your password. ReapLift will give you the new first password, and you will choose your own when you next log in.',
+    channels: ['email'],
+    recipients: ['user'],
+  },
+  'user.locked': {
+    subject: () => 'Your ReapLift login is locked for now',
+    text: (p) => `Too many wrong passwords were tried on your login, so it is locked until ${String(p.lockedUntil)}. If this was not you, tell ReapLift.`,
+    channels: ['email'],
+    recipients: ['user'],
   },
   'account.connected': {
     subject: (p) => `WhatsApp number ${String(p.number)} is connected`,

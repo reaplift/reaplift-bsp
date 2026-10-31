@@ -16,7 +16,7 @@ ReapLift's own WhatsApp Business platform (BSP), talking directly to Meta's What
 ## Where things stand
 
 - Milestones were renumbered on 29 October 2026: one milestone per flow, M0 to M11. See the tracker's roadmap and status board.
-- M0 (foundation) and M1 (login) are done. M2 (notifications) is built; only its real-email demo is left (E5). Anirudh is on M4 (send engine); Suraj is on M3 (client onboarding).
+- M0 (foundation) and M1 (login) are done. M2 (notifications) is built; only its real-email demo is left (E5). Anirudh builds the remaining backend (M3, M6 to M9) milestone by milestone; Suraj is on screens.
 - Everything runs locally. The cloud server and deploys are M10.
 
 ## Stack

@@ -5,6 +5,7 @@ import { z } from 'zod';
 import type { UserRole } from '@reaplift/shared';
 import type { Database } from '../../lib/db.js';
 import { verifyPassword } from '../../lib/auth.js';
+import { notify } from '../notifications/notify.js';
 import { listWorkspaces, sendError } from './scope.js';
 import { createSession, MAX_AGE_MS, revokeSession, SESSION_COOKIE } from './sessions.js';
 
@@ -79,11 +80,19 @@ export function registerAuthRoutes(
         `.execute(db)
       ).rows[0]!;
       if (failures >= LOCKOUT_FAILURES) {
-        await sql`
-          update users set locked_until = ${new Date(at.getTime() + LOCKOUT_WINDOW_MS)},
-                           failed_login_count = null, first_failed_login_at = null
-          where id = ${user.id}
-        `.execute(db);
+        const lockedUntil = new Date(at.getTime() + LOCKOUT_WINDOW_MS);
+        await db.transaction().execute(async (trx) => {
+          await sql`
+            update users set locked_until = ${lockedUntil}, failed_login_count = null, first_failed_login_at = null
+            where id = ${user.id}
+          `.execute(trx);
+          await notify(
+            trx,
+            'user.locked',
+            { clientId: user.client_id, userId: user.id, entityId: `${user.id}:${at.toISOString()}` },
+            { name: user.name, lockedUntil: lockedUntil.toISOString() },
+          );
+        });
       }
       return invalid();
     }

@@ -26,6 +26,9 @@ export const PUBLIC_ROUTES = ['/healthz', '/api/auth/login', '/webhooks/meta'];
 /** Routes any logged-in user may call; they act only on the caller's own session. */
 export const SESSION_ROUTES = ['/api/auth/logout', '/api/auth/me'];
 
+/** All a user with a first password may do. */
+const PASSWORD_CHANGE_ROUTES = ['/api/me/password', '/api/auth/logout'];
+
 export type RouteKind = 'public' | 'session' | 'client' | 'admin' | 'me' | 'unscoped';
 
 /** Which access rule a route pattern (as registered, e.g. `/api/clients/:clientId/x`) falls under. */
@@ -99,6 +102,10 @@ export function registerScope(
     const user = token ? await findSession(db, token, now()) : null;
     if (!user) return sendError(reply, 401, 'UNAUTHENTICATED', 'Please log in');
     req.auth = user;
+
+    if (user.mustChangePassword && !PASSWORD_CHANGE_ROUTES.includes(url)) {
+      return sendError(reply, 403, 'PASSWORD_CHANGE_REQUIRED', 'Choose a new password first');
+    }
 
     if (kind === 'admin' && user.role !== 'super_admin') {
       return sendError(reply, 403, 'FORBIDDEN', 'Only a super admin can do this');
