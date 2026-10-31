@@ -1,9 +1,8 @@
 # M3. Client onboarding
 
-- Status: In progress (prototype: the Admin page calls real routes, but clients live in an in-memory array)
-- Owner: Anirudh (backend), Suraj (screens S3 to S6)
-- Branch prefix: `m3-`
-- Starts after: M1 (logins and scope), M2 (notifications)
+- Status: In progress (the Admin page is a placeholder; the server's admin routes keep clients in an in-memory array)
+- Owner: Suraj (screens S3 to S6 and backend; decided 30 October 2026)
+- Starts after: M1 (logins and scope), M2 (notifications; may start while M2 is Built, using the fake provider)
 - External prerequisites: none (E5 only for real emails; the fake provider is enough for the demo)
 
 ## Outcome
@@ -181,9 +180,9 @@ None open.
 
 ## Current reality
 
-- Admin page (`apps/web/src/pages/Admin.tsx`) lists, creates, suspends clients and changes "assigned staff" through `GET/POST /api/admin/clients` and two `PATCH` routes, validated with Zod.
-- All of it is held in an in-memory array in `app.ts`, seeded with two fake clients; a restart loses changes. "Assigned staff" is free text. No users, audit rows or notifications are written.
-- The other files in this folder (`README.md`, `backend-api.md`, `frontend.md`, `database.md`, `e2e.md`, `test-evidence.md`) describe that prototype as of 28 October 2026. They are rewritten as this milestone's evidence when its tasks are done.
+- The panel's Admin page is a placeholder. The old `Admin.tsx` was removed in M1 1.6.2.
+- The server still has `GET/POST /api/admin/clients` and two `PATCH` routes, validated with Zod and behind the super admin check. All of it is held in an in-memory array in `app.ts`, seeded with two fake clients; a restart loses changes. "Assigned staff" is free text. No users, audit rows or notifications are written.
+- `users.created_by` exists (migration 0006). The evidence files are written as the tasks finish; see [the evidence pack](../README.md#evidence-pack).
 
 ## Demo (milestone acceptance)
 

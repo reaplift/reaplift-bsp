@@ -2,7 +2,6 @@
 
 - Status: Not started
 - Owner: Anirudh (backend), Suraj (screens S7 to S9)
-- Branch prefix: `m6-`
 - Starts after: M3 (clients and logins)
 - External prerequisites: none. D10 (markup rules) has a default, so work can start.
 

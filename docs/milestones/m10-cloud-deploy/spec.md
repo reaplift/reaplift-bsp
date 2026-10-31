@@ -2,7 +2,6 @@
 
 - Status: Not started
 - Owner: Unassigned
-- Branch prefix: `m10-`
 - Starts after: M0
 - External prerequisites: E4 (OCI account access and DNS for the final address)
 

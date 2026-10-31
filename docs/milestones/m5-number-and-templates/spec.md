@@ -2,7 +2,6 @@
 
 - Status: Not started
 - Owner: Unassigned
-- Branch prefix: `m5-`
 - Starts after: M3 (clients and logins), M4 (send engine and Meta client)
 - External prerequisites: E3 (Business Verification and App Review) before Embedded Signup works for anyone outside ReapLift. E7 (Solution Partner status and credit line) before credit-line sharing can be accepted against real Meta; everything is built and tested against the fake Meta server first. A real Embedded Signup run needs the panel on an HTTPS address registered in ReapLift's Meta app (an HTTPS tunnel during development, or M10's address).
 

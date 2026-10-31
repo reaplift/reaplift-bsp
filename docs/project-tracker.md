@@ -55,7 +55,7 @@ flowchart LR
 
 Green: Done. Yellow: in progress or prototype. Grey: not started.
 
-Lanes that can run in parallel today: **M2** (notifications), **M4** (send engine), the **screens track** (Suraj's screens for M1, M3 and M6 against a mock API; see below) and, once OCI access exists, **M10** (cloud deploy).
+Lanes that can run in parallel today: **M3** (client onboarding, Suraj), **M4** (send engine, Anirudh), the rest of the **screens track** (Suraj's M6 screens against a mock API; see below) and, once OCI access exists, **M10** (cloud deploy).
 
 ## Status board
 
@@ -66,8 +66,8 @@ Update your row in the same pull request that changes a task's status.
 | [M0](milestones/m0-foundation/spec.md) Foundation                             | Developer clones the repo, runs it locally, CI checks every pull request                            | Done                                                                                                     | repo setup                         | none         | none                           |
 | [M1](milestones/m1-login-and-access/spec.md) Login and access                 | Super admin, staff and client each log in and see only what their role and clients allow            | Done (30 October 2026, PR #15)                                                                           | Anirudh (backend), Suraj (screens) | M0           | none                           |
 | [M2](milestones/m2-notifications/spec.md) Notifications                       | A state change sends an email from `info@reaplift.com` and shows in the panel's notification list   | Built (backend 2.1 to 2.4); Done when E5 allows the real-email demo                                      | Anirudh                            | M0           | E5                             |
-| [M3](milestones/m3-client-onboarding/spec.md) Client onboarding               | Super admin creates a client, its login and its staff; they get welcome emails and can log in       | In progress (prototype: admin page on in-memory data)                                                    | Anirudh (backend), Suraj (screens) | M1, M2       | none                           |
-| [M4](milestones/m4-send-engine/spec.md) Send engine                           | Operator queues one template message; it reaches a phone; sent, delivered and read are recorded     | In progress (helper functions written; nothing sends yet)                                                | Anirudh                            | M0           | E1, E2 for the real-phone demo |
+| [M3](milestones/m3-client-onboarding/spec.md) Client onboarding               | Super admin creates a client, its login and its staff; they get welcome emails and can log in       | In progress (Suraj; server routes still in-memory prototype; may start before M2 is Done, see the decision log) | Suraj | M1, M2       | none                           |
+| [M4](milestones/m4-send-engine/spec.md) Send engine                           | Operator queues one template message; it reaches a phone; sent, delivered and read are recorded     | In progress (helper functions written; nothing sends yet)                                                | Anirudh | M0           | E1, E2 for the real-phone demo |
 | [M5](milestones/m5-number-and-templates/spec.md) Number connection, templates | A client's number is connected; a template passes our checks, goes to Meta, shows approved/rejected | Not started                                                                                              | Unassigned                         | M3, M4       | E3; E7 for credit-line sharing |
 | [M6](milestones/m6-wallet/spec.md) Wallet and prices                          | Super admin sets prices and tops up; client sees balance and every ledger row                       | Not started                                                                                              | Anirudh (backend), Suraj (screens) | M3           | none                           |
 | [M7](milestones/m7-campaigns/spec.md) Campaigns                               | Client uploads an audience, sees the summary, confirms, is charged, and watches messages deliver    | Not started                                                                                              | Unassigned                         | M5, M6       | none                           |
@@ -122,6 +122,8 @@ Answered questions move here with their date, and the spec is updated in the sam
 
 ### 30 October 2026
 
+- **Who works on what next:** Anirudh works on M4 and Suraj on M3, including M3's backend. M3 may start while M2 is still only Built, as an exception to the dependency rule: it uses the fake email provider, and M3's demo already allows that. Rule 7 of Suraj's task list does not limit M3's backend work; claim migration numbers in the registry.
+- **Docs cleaned up:** removed the old architecture overview and diagram (old milestone numbers, superseded by the HLD), the 0002 migration spec (the migration is merged) and M3's prototype evidence (it described a page that no longer exists). M4's early contracts moved to `milestones/m4-send-engine/draft-api-contracts.md`. Each milestone's `test-evidence.md` now holds the exact commands, SQL queries and real output; `database.md` is no longer a separate file.
 - **Two branches (replaces one branch per task):** all work goes on `anirudh-e2e-setup`; `main` is production and is updated only by a release pull request from that branch. Per-task and stacked branches made merging and pulling tedious, and contradicted team-workflow.md. CI now also runs on every push to `anirudh-e2e-setup`, because task pull requests no longer trigger it.
 - **Suraj's S1, S2 and C1 merged into `anirudh-e2e-setup`.** Owner tested Ravi and Meera in the real panel; the client logins have Suraj's C1 demo but no owner test yet. 
 - **M1 is Done, released to `main` in PR #15.** The route-walking test passed in CI on that pull request. It also carries M2's backend and migration 0006.
@@ -232,7 +234,7 @@ If any check fails, the task is In progress or Prototype, never Done.
 
 ### Evidence pack
 
-Each milestone folder in `docs/milestones/` holds its `spec.md` plus, by the time it is Done: `test-evidence.md` (commands and output), `frontend.md` (page actions), `backend-api.md` (routes with real request and response), `database.md` (tables and queries), `e2e.md` (the demo run from panel to server to database). See [milestones/README.md](milestones/README.md).
+Each milestone folder in `docs/milestones/` holds its `spec.md` plus, by the time it is Done: `test-evidence.md` (the exact commands and SQL queries to prove the flow, with real output), `frontend.md` (page actions), `backend-api.md` (routes with real request and response), `e2e.md` (the demo run from panel to server to database). See [milestones/README.md](milestones/README.md).
 
 ## Migration number registry
 
@@ -250,7 +252,7 @@ Claim a number in the pull request that opens the task, before writing the file.
 
 ## Suraj's task list (screens track)
 
-Suraj builds screens; Anirudh builds the backend and core logic. Everything below can be done **without waiting for anyone**: no task needs a backend route, a migration, an owner decision or a review to start or to continue.
+Suraj builds screens, and M3's backend too (decided 30 October 2026); Anirudh builds the other backend and core logic. Everything below can be done **without waiting for anyone**: no task needs a backend route, a migration, an owner decision or a review to start or to continue.
 
 How it works:
 
@@ -282,6 +284,6 @@ Do them in order; each one builds on the last. A connect task goes right after t
 
 | Person   | Milestone     | Next task                                                                                         | Waiting on |
 | -------- | ------------- | ------------------------------------------------------------------------------------------------- | ---------- |
-| Anirudh  | M4            | 4.1 seed-account command, then 4.2 real Meta call with the fake Meta server (M1 backend finished) | nothing    |
-| Suraj    | Screens track | S3 My account and forced password change (M1 is Done)                                             | nothing    |
+| Anirudh  | M4            | 4.1 seed-account command, then 4.2 real Meta call with the fake Meta server                       | nothing    |
+| Suraj    | Screens track | M3: S3 My account and forced password change, then the rest of M3                                  | nothing    |
 | ReapLift | none          | E3 (Business Verification, App Review); continue E7 with Meta; E1, E2, E5; answer D10 to D13      | none       |

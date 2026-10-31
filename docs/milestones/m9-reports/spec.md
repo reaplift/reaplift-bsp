@@ -2,7 +2,6 @@
 
 - Status: Not started
 - Owner: Unassigned
-- Branch prefix: `m9-`
 - Starts after: M7
 - External prerequisites: E7 for task 9.7 (there is no Meta credit-line invoice to check against until ReapLift has its credit line)
 

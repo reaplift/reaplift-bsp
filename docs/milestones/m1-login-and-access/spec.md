@@ -2,7 +2,6 @@
 
 - Status: Done on 30 October 2026, released to `main` in PR #15, where the route-walking test passed in CI. Evidence: `backend-api.md`, `test-evidence.md`, `frontend.md`, `e2e.md`.
 - Owner: Anirudh (backend, 1.0 to 1.5), Suraj (screens, 1.6)
-- Branch prefix: `m1-`
 - Starts after: M0
 - External prerequisites: none
 

@@ -19,7 +19,7 @@ Each milestone is one flow and has its own folder with a `spec.md`. Status, orde
 
 ## What every spec contains, in this order
 
-1. **Header:** status, owner, branch prefix, starts after, external prerequisites.
+1. **Header:** status, owner, starts after, external prerequisites.
 2. **Outcome:** what the flow achieves, in two or three sentences.
 3. **Flow diagram:** a Mermaid chart of the flow, including the failure paths. GitHub draws it; in VS Code install a Mermaid preview extension.
 4. **Worked example:** the flow told with real-looking names and numbers, so anyone can check their understanding.
@@ -35,11 +35,12 @@ Each milestone is one flow and has its own folder with a `spec.md`. Status, orde
 
 By the time a milestone is Done, its folder also holds:
 
-- `test-evidence.md`: commands run and their output
-- `frontend.md`: page actions and what each shows
-- `backend-api.md`: routes with real request and response examples
-- `database.md`: tables and the queries the flow uses
+- `test-evidence.md`: how to prove the flow works, so anyone can repeat it. It holds the setup, the exact copy-paste commands, the SQL queries that check the data, and the real output of each, plus the date and commit of the run and what was not run. See [M1's](m1-login-and-access/test-evidence.md) for the pattern.
+- `frontend.md`: page actions and what each shows, when the milestone has screens
+- `backend-api.md`: routes with real request and response examples, when the milestone has routes
 - `e2e.md`: the demo run from panel to server to database
+
+Never paste secrets or real client data into these files. Write them from a real run, not from memory.
 
 ## Running the project locally
 
@@ -48,8 +49,8 @@ cp .env.example .env
 pnpm install
 pnpm db:up
 pnpm migrate
-pnpm --filter @reaplift/server dev
-pnpm --filter @reaplift/web dev
+pnpm --filter @reaplift/server cli seed-dev
+pnpm dev
 ```
 
-Panel: http://localhost:5173. Health check: http://localhost:3000/healthz. Server logs appear in the terminal running the server.
+Panel: http://localhost:5173 (exactly this address; logins from any other are refused). Test logins and their password are in [M1's test evidence](m1-login-and-access/test-evidence.md). Health check: http://localhost:3000/healthz. Server logs appear in the terminal running the server.

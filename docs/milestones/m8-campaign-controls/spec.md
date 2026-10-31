@@ -2,7 +2,6 @@
 
 - Status: Not started
 - Owner: Unassigned
-- Branch prefix: `m8-`
 - Starts after: M7
 - External prerequisites: none. D5 (approve the cancel money flow) before task 8.2 is coded.
 

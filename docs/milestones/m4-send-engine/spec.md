@@ -1,8 +1,7 @@
 # M4. Send engine: one message end to end
 
 - Status: In progress (helper functions written and unit-tested; nothing sends or processes yet)
-- Owner: Unassigned (Suraj suggested; owner to confirm)
-- Branch prefix: `m4-`
+- Owner: Anirudh
 - Starts after: M0
 - External prerequisites: E1 (Meta app, test number, token) and E2 (app in Live mode, public HTTPS address for webhooks) for the real-phone demo. Everything else is built and tested against a fake Meta server.
 
@@ -150,7 +149,7 @@ Out:
 
 ## Data and API
 
-- Tables: from migration 0002 only (`clients`, `wa_accounts`, `templates`, `messages`, `meta_events`, `message_status_events`). M4 adds no migration. Spec: [m1-0002-migration-spec.md](../../m1-0002-migration-spec.md). Contracts drafted earlier: [m1-message-send-api-spec.md](../../m1-message-send-api-spec.md) (old numbering).
+- Tables: from migration 0002 only (`clients`, `wa_accounts`, `templates`, `messages`, `meta_events`, `message_status_events`). M4 adds no migration. Schema: `db/migrations/0002_message_platform.sql`. Early contracts: [draft-api-contracts.md](draft-api-contracts.md) (old numbering; where it differs, this spec wins).
 - Routes: `GET` and `POST /webhooks/meta` (public, signature-checked).
 - Settings: `APP_ENCRYPTION_KEY`, `META_APP_SECRET`, `META_VERIFY_TOKEN`, `META_GRAPH_VERSION`.
 - Tenant rule: every `messages` row carries `client_id`. `meta_events` has no `client_id` because Meta's webhook arrives before the client is known; the processor finds the message by the unique `meta_message_id`.

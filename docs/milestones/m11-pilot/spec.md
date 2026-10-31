@@ -2,7 +2,6 @@
 
 - Status: Not started
 - Owner: ReapLift leads; engineering supports
-- Branch prefix: `m11-`
 - Starts after: M8, M9, M10
 - External prerequisites: E1 to E7 done (E7: ReapLift is a Solution Partner with its credit line)
 

@@ -2,7 +2,6 @@
 
 - Status: Not started
 - Owner: Unassigned
-- Branch prefix: `m7-`
 - Starts after: M5 (approved templates, connected numbers), M6 (prices and wallet)
 - External prerequisites: none beyond those of M4 and M5
 

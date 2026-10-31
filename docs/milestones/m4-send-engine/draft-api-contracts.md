@@ -1,4 +1,6 @@
-# M1.3 / M1.4 / M1.5 API contract spec
+# M4 draft API contracts
+
+> Written before the 29 October 2026 renumbering, when this work was called M1.3 to M1.5. This is background only: where it differs from [spec.md](spec.md), the spec wins.
 
 This document defines the first real implementation contracts for the messaging flow. The goal is to remove ambiguity before coding the server modules, database logic, and worker behavior.
 

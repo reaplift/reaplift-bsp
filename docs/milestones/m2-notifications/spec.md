@@ -2,7 +2,6 @@
 
 - Status: Built on 29 October 2026 (2.1 to 2.4, see `test-evidence.md` and `e2e.md`). Done when E5 is met and demo step 4 sends a real email.
 - Owner: Anirudh
-- Branch prefix: `m2-`
 - Starts after: M0
 - External prerequisites: E5 (`info@reaplift.com` verified as a sender in OCI Email Delivery) for the real-email demo; everything else uses a fake provider
 

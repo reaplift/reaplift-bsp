@@ -2,7 +2,6 @@
 
 - Status: Done
 - Owner: repo setup
-- Branch prefix: `m0-`
 - Starts after: nothing
 - External prerequisites: none
 
@@ -60,8 +59,9 @@ Out: the container image, the cloud server, HTTPS, deploys and backups. These ar
 ## Current reality
 
 - All three tasks work.
-- `pnpm lint` currently fails on code added by the M1 and M3 prototypes (`app.ts` lines 111 and 223, `apps/web/src/App.tsx` line 2), so CI is red on new pull requests. Fixing this is task 1.0 in [M1](../m1-login-and-access/spec.md); it is not an M0 defect.
-- GitHub's default branch is still `m0-skeleton`. The release branch is `main` (decided 29 October 2026); the owner changes the default branch in GitHub settings.
+- `pnpm lint` is clean and CI passes.
+- GitHub's default branch is `anirudh-e2e-setup`, where all work goes. `main` is production.
+- Commands and results: [test-evidence.md](test-evidence.md).
 
 ## Demo (milestone acceptance)
 
