@@ -9,6 +9,7 @@ import { registerAuthRoutes } from './modules/auth/routes.js';
 import { registerScope } from './modules/auth/scope.js';
 import { registerAccountRoutes } from './modules/messaging/account-routes.js';
 import { registerTemplateRoutes } from './modules/templates/routes.js';
+import { registerWalletRoutes } from './modules/wallet/routes.js';
 import type { MetaClient } from './lib/meta-client.js';
 
 declare module 'fastify' {
@@ -82,6 +83,7 @@ export function buildApp({
   registerAuthRoutes(app, { db, now, cookieSecure });
   registerAdminRoutes(app, { db, now, panelOrigin });
   registerMeRoutes(app, { db, now });
+  registerWalletRoutes(app, { db, now });
   registerAccountRoutes(app, {
     db,
     now,

@@ -1,8 +1,8 @@
 # M6. Wallet and prices
 
-- Status: Not started
+- Status: In progress. Backend 6.1 to 6.6 built on 31 October 2026; see [test-evidence.md](test-evidence.md). Screens S7 to S9 are not connected.
 - Owner: Anirudh (backend), Suraj (screens S7 to S9)
-- Starts after: M3 (clients and logins)
+- Starts after: M3 (clients and logins). The backend started early (tracker, 31 October 2026).
 - External prerequisites: none. D10 (markup rules) has a default, so work can start.
 
 ## Outcome
@@ -167,7 +167,10 @@ Task 6.6.
 
 ## Current reality
 
-Nothing exists except `clients.low_balance_alert_paise` (0002). The prototype Admin page shows a plain `walletBalance` number that is not a ledger.
+- All routes below are real, except `PUT /api/admin/clients/:id/prices`, which is not built because `/api/admin/clients/:id/pricing` does the job. The pricing proposal D10 is built as the default and may change (P1 to P9 in [open-questions.md](../../open-questions.md)).
+- Beyond the spec: an adjustment that would make the balance negative is refused with 402, the same as a charge; the admin pricing view marks a price below Meta's rate as `belowCost` (P6); a `default` pricing mode returns a client to the default.
+- The ledger check runs when the scheduler starts and every 24 hours after that, not at a set time of night.
+- The CSV download is built in the browser (S7), so it has no route.
 
 ## Demo (milestone acceptance)
 

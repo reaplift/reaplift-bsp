@@ -26,7 +26,7 @@ export async function createWorld() {
     (
       await sql<{
         id: string;
-      }>`insert into clients (name, status) values (${name}, ${status}) returning id`.execute(db)
+      }>`insert into clients (name, status, country_calling_code) values (${name}, ${status}, '91') returning id`.execute(db)
     ).rows[0]!.id;
   const northwind = await client('Northwind Labs');
   const bluebird = await client('Bluebird Retail');

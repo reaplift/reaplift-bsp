@@ -27,6 +27,8 @@ export interface EventDefinition {
   recipients: RecipientRule[];
 }
 
+const formatRupees = (paise: unknown) => (Number(paise) / 100).toFixed(2);
+
 /** Keeps each event's name as a key while typing its entry as a full EventDefinition. */
 const defineCatalogue = <Name extends string>(entries: Record<Name, EventDefinition>) => entries;
 
@@ -83,6 +85,25 @@ export const CATALOGUE = defineCatalogue({
     text: (p) => `Too many wrong passwords were tried on your login, so it is locked until ${String(p.lockedUntil)}. If this was not you, tell ReapLift.`,
     channels: ['email'],
     recipients: ['user'],
+  },
+  'wallet.topped_up': {
+    subject: () => 'Your ReapLift wallet was topped up',
+    text: (p) => `₹${formatRupees(p.amountPaise)} was added to your wallet. Balance: ₹${formatRupees(p.balancePaise)}.`,
+    channels: ['email', 'panel'],
+    recipients: ['client_users', 'assigned_staff'],
+  },
+  'wallet.low_balance': {
+    subject: (p) => `Low balance for ${String(p.name)}`,
+    text: (p) => `The wallet balance for ${String(p.name)} is ₹${formatRupees(p.balancePaise)}. Top up so campaigns are not refused.`,
+    channels: ['email', 'panel'],
+    recipients: ['client_users', 'assigned_staff', 'super_admins'],
+  },
+  'wallet.reconciliation_mismatch': {
+    subject: (p) => `Ledger check failed for ${String(p.name)}`,
+    text: (p) =>
+      `The nightly ledger check failed for ${String(p.name)}: the rows add up to ₹${formatRupees(p.sumPaise)}, and the balance is ₹${formatRupees(p.balancePaise)}.`,
+    channels: ['email'],
+    recipients: ['super_admins'],
   },
   'account.connected': {
     subject: (p) => `WhatsApp number ${String(p.number)} is connected`,

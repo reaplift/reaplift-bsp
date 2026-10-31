@@ -3,6 +3,7 @@ import type { Database } from '../../lib/db.js';
 import type { MetaClient, MetaFailure, MetaTemplate } from '../../lib/meta-client.js';
 import { seedAccount, type SeedAccountInput } from '../../lib/seed-account.js';
 import { UserInputError } from '../auth/users.js';
+import { recomputePrices } from '../wallet/pricing.js';
 
 const TEMPLATE_CATEGORIES = new Set(['MARKETING', 'UTILITY', 'AUTHENTICATION']);
 
@@ -121,6 +122,8 @@ export async function connectAccount(
     { id: ids.waAccountId, clientId: ids.clientId, wabaId: input.wabaId },
     input.token,
   );
+
+  await recomputePrices(db, new Date(), ids.clientId);
 
   // So the account box is complete at once; if this fails, the hourly sync fills it in.
   const health = await meta.phoneHealth(input.phoneNumberId, input.token);

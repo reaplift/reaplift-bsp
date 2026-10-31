@@ -7,6 +7,8 @@ import { readPage, toPage } from '../../lib/pagination.js';
 import { sendError } from '../auth/scope.js';
 import { createUser, EmailTakenError } from '../auth/users.js';
 import { notify } from '../notifications/notify.js';
+import { readBalance } from '../wallet/ledger.js';
+import { recomputePrices } from '../wallet/pricing.js';
 import { writeAudit } from './audit.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -84,6 +86,7 @@ export function registerAdminRoutes(
           at: now(),
         });
         await notify(trx, 'client.created', { clientId: row.id, email: contactEmail, entityId: row.id }, { name });
+        await recomputePrices(trx, now(), row.id);
         return row;
       });
       return reply.code(201).send(client);
@@ -106,7 +109,12 @@ export function registerAdminRoutes(
       join staff_clients sc on sc.staff_user_id = u.id
       where sc.client_id = ${id} order by u.name
     `.execute(db);
-    return reply.code(200).send({ ...(client as object), users: users.rows, staff: staff.rows });
+    return reply.code(200).send({
+      ...(client as object),
+      balancePaise: await readBalance(db, id),
+      users: users.rows,
+      staff: staff.rows,
+    });
   });
 
   app.patch('/api/admin/clients/:id', async (req, reply) => {

@@ -24,7 +24,7 @@ flowchart LR
   M3["M3 Client onboarding"]:::wip
   M4["M4 Send engine:<br/>one message end to end"]:::wip
   M5["M5 Number connection<br/>and templates"]:::todo
-  M6["M6 Wallet and prices"]:::todo
+  M6["M6 Wallet and prices"]:::wip
   M7["M7 Campaigns:<br/>create, send, track"]:::todo
   M8["M8 Campaign controls<br/>and rules"]:::todo
   M9["M9 Reports and dashboard"]:::todo
@@ -69,7 +69,7 @@ Update your row in the same pull request that changes a task's status.
 | [M3](milestones/m3-client-onboarding/spec.md) Client onboarding               | Super admin creates a client, its login and its staff; they get welcome emails and can log in       | In progress: backend 3.1 to 3.7 built; screens not connected | Anirudh (backend), Suraj (screens) | M1, M2 (started early, see the decision log) | none                           |
 | [M4](milestones/m4-send-engine/spec.md) Send engine                           | Operator queues one template message; it reaches a phone; sent, delivered and read are recorded     | Built against the fake Meta server (4.1 to 4.6, 4.7 commands); Done when E1 and E2 allow the real-phone demo | Anirudh | M0           | E1, E2 for the real-phone demo |
 | [M5](milestones/m5-number-and-templates/spec.md) Number connection, templates | A client's number is connected; a template passes our checks, goes to Meta, shows approved/rejected | In progress: backend 5.1 to 5.6 built against the fake Meta server; screens not started | Anirudh (backend); screens unassigned | M3, M4 (backend started early, see the decision log) | E3; E7 for credit-line sharing |
-| [M6](milestones/m6-wallet/spec.md) Wallet and prices                          | Super admin sets prices and tops up; client sees balance and every ledger row                       | Not started                                                                                              | Anirudh (backend), Suraj (screens) | M3           | none                           |
+| [M6](milestones/m6-wallet/spec.md) Wallet and prices                          | Super admin sets prices and tops up; client sees balance and every ledger row                       | In progress: backend 6.1 to 6.6 built; screens not connected | Anirudh (backend), Suraj (screens) | M3 (started early, see the decision log) | none                           |
 | [M7](milestones/m7-campaigns/spec.md) Campaigns                               | Client uploads an audience, sees the summary, confirms, is charged, and watches messages deliver    | Not started                                                                                              | Unassigned                         | M5, M6       | none                           |
 | [M8](milestones/m8-campaign-controls/spec.md) Campaign controls and rules     | Client pauses, resumes, cancels or schedules a campaign with exact money handling; rules apply      | Not started                                                                                              | Unassigned                         | M7           | none                           |
 | [M9](milestones/m9-reports/spec.md) Reports and dashboard                     | Dashboard and downloads match a hand count; super admin sees Meta cost and margin                   | Not started                                                                                              | Unassigned                         | M7           | none                           |
@@ -258,7 +258,8 @@ Claim a number in the pull request that opens the task, before writing the file.
 | 0006   | `0006_users_created_by.sql` | M3 3.2             | On `anirudh-e2e-setup`                                                    |
 | 0007   | `0007_numbers_and_templates.sql` | M5 5.1, 5.3    | On `anirudh-e2e-setup`                                                    |
 | 0008   | `0008_client_onboarding.sql` | M3 3.1, 3.2       | On `anirudh-e2e-setup`                                                    |
-| 0009   | next free                   |                    | Free                                                                      |
+| 0009   | `0009_wallet_and_prices.sql` | M6 6.1, 6.2       | On `anirudh-e2e-setup`                                                    |
+| 0010   | next free                   |                    | Free                                                                      |
 
 ## Suraj's task list (screens track)
 
@@ -294,6 +295,6 @@ Do them in order; each one builds on the last. A connect task goes right after t
 
 | Person   | Milestone     | Next task                                                                                         | Waiting on |
 | -------- | ------------- | ------------------------------------------------------------------------------------------------- | ---------- |
-| Anirudh  | M6            | M6 backend (exception to the dependency rule, as M3 is not Done); M4 real-phone demo when E1 and E2 are ready | E1, E2 for the demo |
+| Anirudh  | M7            | M7 backend, then M8 and M9; M4 real-phone demo when E1 and E2 are ready | E1, E2 for the demo |
 | Suraj    | Screens track | M3: S3 My account and forced password change, then S4 to S6, against the real routes now built     | nothing    |
 | ReapLift | none          | E3 (Business Verification, App Review); continue E7 with Meta; E1, E2, E5; answer D10 to D13      | none       |

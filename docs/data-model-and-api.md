@@ -110,20 +110,20 @@ There is no `cancelled` status; M8 uses `blocked` with reason `campaign_cancelle
 
 ### Money (M6)
 
-**`meta_rates`** (Planned, M6). Platform table.
+**`meta_rates`** (Exists, 0009). Platform table.
 `id`, `category`, `country_calling_code`, `rate_centipaise bigint`, `valid_from`, `entered_by`, `created_at`.
 
-**`pricing`** (Planned, M6). `client_id` null is the default for all clients.
+**`pricing`** (Exists, 0009). `client_id` null is the default for all clients.
 `id`, `client_id`, `mode` (`markup` | `fixed`), `markup_marketing_bp`, `markup_utility_bp`, `markup_authentication_bp` (`int`, 2500 = 25%), `fixed_marketing_paise`, `fixed_utility_paise`, `fixed_authentication_paise`, `valid_from`, `updated_by`.
 
-**`price_lists`** (Planned, M6). The resulting price each client pays.
+**`price_lists`** (Exists, 0009). The resulting price each client pays.
 `id`, `client_id`, `category`, `country_calling_code`, `price_paise bigint`, `source` (`markup` | `fixed`), `meta_rate_id`, `valid_from`.
 Markup price = ceiling of `rate_centipaise × (10000 + that category's markup) ÷ 1,000,000`, in whole-number arithmetic. Example: 8631 × 12000 ÷ 1,000,000 = 103.572, so 104 paise.
 
-**`charge_policy`** (Planned, M6). `client_id` null is the default for all clients.
+**`charge_policy`** (Exists, 0009). `client_id` null is the default for all clients.
 `id`, `client_id`, `outcome` (`blocked`, `sent_not_delivered`, `delivered`, `failed`, and D6's `invalid`, `duplicate`), `charged boolean`.
 
-**`wallet_ledger`** (Planned, M6). Append-only; a trigger refuses update and delete.
+**`wallet_ledger`** (Exists, 0009). Append-only; a trigger refuses update and delete.
 `id bigint`, `client_id`, `kind` (`topup` | `adjustment` | `charge` | `refund`), `amount_paise bigint`, `balance_after_paise bigint`, `campaign_id`, `message_id`, `note`, `created_by`, `created_at`; unique (`message_id`) where `kind = 'refund'`.
 
 ### Campaigns (M7, M8)

@@ -29,6 +29,7 @@ export const ERROR_MESSAGES: Record<string, string> = {
   CANNOT_CHANGE_SELF: 'You cannot disable your own login.',
   NOT_STAFF: 'Only staff are assigned clients.',
   PASSWORD_CHANGE_REQUIRED: 'Choose a new password first.',
+  INSUFFICIENT_BALANCE: 'The wallet balance is not enough for this.',
   NETWORK_ERROR: 'Cannot reach the server. Check your connection and try again.',
   BAD_RESPONSE: 'The server sent something unexpected. Please try again.',
   UNEXPECTED_ERROR: 'Something went wrong. Please try again.',
