@@ -18,6 +18,7 @@ export interface CampaignRow {
   status: string;
   created_by: string;
   scheduled_at?: Date | null;
+  confirmed_at?: Date | null;
 }
 
 export interface RowBlock {

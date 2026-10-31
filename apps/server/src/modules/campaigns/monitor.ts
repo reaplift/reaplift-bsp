@@ -20,6 +20,7 @@ interface Running {
   read: number;
   failed: number;
   account_status: string;
+  client_status: string;
   account_reason: string | null;
   waba_id: string;
   daily_send_limit: number | null;
@@ -35,12 +36,13 @@ export async function watchCampaigns(db: Kysely<Database>, now: Date = new Date(
   const running = (
     await sql<Running>`
       select k.id, k.client_id, k.name, k.created_by, k.total, k.blocked, k.sent, k.delivered, k.read, k.failed, k.confirmed_at,
-        a.status as account_status, a.paused_reason as account_reason, a.waba_id, a.daily_send_limit, a.messaging_limit,
+        a.status as account_status, c.status as client_status, a.paused_reason as account_reason, a.waba_id, a.daily_send_limit, a.messaging_limit,
         (select count(*)::int from messages m where m.campaign_id = k.id and m.status in ('queued', 'sending')) as waiting,
         (select count(*)::int from messages m where m.campaign_id = k.id and m.status = 'queued') as queued,
         (select max(m.sent_at) from messages m where m.campaign_id = k.id and m.status <> 'queued') as last_sent_at
       from campaigns k
       join wa_accounts a on a.id = k.wa_account_id and a.client_id = k.client_id
+      join clients c on c.id = k.client_id
       where k.status = 'running'
     `.execute(db)
   ).rows;
@@ -58,6 +60,9 @@ export async function watchCampaigns(db: Kysely<Database>, now: Date = new Date(
         if (Number(done.numAffectedRows ?? 0) > 0) await notify(trx, 'campaign.completed', scope, totals);
       }
 
+      if (campaign.client_status !== 'active') {
+        return; // Suspended by ReapLift, so it is waiting on purpose.
+      }
       if (campaign.account_status !== 'active') {
         await notify(trx, 'campaign.account_paused', scope, { name: campaign.name, reason: campaign.account_reason });
       } else if (atDailyLimit) {

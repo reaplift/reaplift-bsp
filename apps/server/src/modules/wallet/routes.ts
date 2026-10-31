@@ -315,6 +315,10 @@ export function registerWalletRoutes(app: FastifyInstance, deps: { db: Kysely<Da
     const parsed = ChargePolicyUpdate.safeParse(req.body);
     if (!parsed.success) return invalid(reply, parsed.error.flatten());
     const { clientId, outcome, charged } = parsed.data;
+    // Nothing yet decides when a sent message counts as never delivered, so this switch could not take effect.
+    if (outcome === 'sent_not_delivered' && !charged) {
+      return sendError(reply, 400, 'NOT_SUPPORTED', 'Not charging for sent but undelivered messages is not built yet');
+    }
     if (clientId && !(await clientExists(clientId))) return notFound(reply);
     await db.transaction().execute(async (trx) => {
       if (clientId) {

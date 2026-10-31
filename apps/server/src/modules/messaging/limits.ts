@@ -2,6 +2,8 @@ import { sql, type Kysely } from 'kysely';
 import type { Database } from '../../lib/db.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+/** The worker's rounds took it to about 91% of its setting: 20,000 at 50 a second took 438 s, not 400. */
+const ESTIMATE_SPEED_FACTOR = 0.9;
 
 const META_TIER_PER_DAY: Record<string, number> = {
   TIER_50: 50,
@@ -153,7 +155,7 @@ export async function estimateDelivery(
   ).rows[0]!.n;
 
   const total = messagesAhead + count;
-  const sendingSeconds = Math.ceil(total / account.send_rate_per_sec);
+  const sendingSeconds = Math.ceil(total / (account.send_rate_per_sec * ESTIMATE_SPEED_FACTOR));
   const remaining = await dailyRemaining(db, account, at);
   const limit = effectiveDailyLimit(account.daily_send_limit, account.messaging_limit);
   const waitsForDailyLimit = remaining !== null && total > remaining;

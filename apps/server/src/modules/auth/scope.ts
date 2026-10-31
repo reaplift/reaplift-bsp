@@ -123,7 +123,8 @@ export function registerScope(
       if (!client || !(await canAccessClient(db, user, clientId))) {
         return sendError(reply, 404, 'NOT_FOUND', 'Not found');
       }
-      if (client.status === 'suspended') {
+      // ReapLift's own admin still needs to see its wallet and stop its campaigns.
+      if (client.status === 'suspended' && user.role !== 'super_admin') {
         return sendError(reply, 403, 'CLIENT_SUSPENDED', 'This client is suspended');
       }
       req.scope = { userId: user.userId, role: user.role, clientId };

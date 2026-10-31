@@ -13,6 +13,8 @@ A client's own WhatsApp number is connected to its workspace. The client (or its
 
 ReapLift works as a white-label provider, as Dovesoft does today:
 
+Checked on 31 October 2026 against one Dovesoft client's Meta Business Suite: the client's own portfolio assigns its WhatsApp account to Dove Soft as a partner, with partial access to phone numbers and templates. So each client has its own Meta limit, and none is shared between clients. Only that one client was checked.
+
 - Each client owns its WhatsApp account and connects it itself through Meta's **Embedded Signup** in Settings (task 5.2). Staff or the super admin can sit with the client and do it for them.
 - During that onboarding, ReapLift **shares its credit line** with the client's account. Meta then bills ReapLift for the client's messages, and ReapLift charges the client's prepaid wallet at Meta's rate plus markup (M6).
 - `wa_accounts.meta_payer` is `reaplift_credit_line` for client accounts. `reaplift_card` is used only for ReapLift's own test numbers.
@@ -151,7 +153,7 @@ Who can do what: client users and their assigned staff run Embedded Signup and c
 - Quality Low sets `status = 'paused'` with a reason; M4's worker stops claiming its messages. Only the super admin can resume (button in Admin), and resuming is audited.
 - Meta's messaging limits are set per business portfolio and shared by its numbers (checked 31 October 2026). The value is copied to each number for the account box. The limit is read from `whatsapp_business_manager_messaging_limit`, as `messaging_limit_tier` is deprecated.
 - **Limits per number (owner, 31 October 2026):** the super admin sets a speed (`send_rate_per_sec`, 1 to 1000, default 50) and a daily limit (`daily_send_limit`) with `PATCH /api/admin/wa-accounts/:id/limits`, needing no restart. The tighter of that daily limit and Meta's applies, counting unique numbers in a moving 24 hours across the WhatsApp account. At the limit, messages wait in the queue and resume on their own; nothing fails, and people are told once a day (`campaign.daily_limit_reached`). The summary warns if a campaign exceeds the limit, and does not block it. The money is charged at confirm, so it can sit charged while a campaign waits.
-- `GET /api/admin/limits-usage` gives the super admin, per number and overall: the limits, unique customers messaged in 24 hours, what is left, messages waiting, and the speed over the last minute. Numbers on one WhatsApp account share a daily count.
+- `GET /api/admin/limits-usage` gives the super admin, per number and overall: the limits, unique customers messaged in 24 hours, what is left, messages waiting, and the speed over the last minute. Numbers on one WhatsApp account share a daily count. There is no ReapLift-wide limit, as each client's portfolio has its own.
 - Pausing happens only on the change to Low, so an account the super admin resumed while still Low stays resumed.
 - Tests: Medium to Low pauses; back to Medium does not resume on its own; resume needs the super admin.
 - Acceptance: step 7 of the worked example on the fake server.

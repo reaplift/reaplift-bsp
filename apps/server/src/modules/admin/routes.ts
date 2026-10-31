@@ -59,7 +59,12 @@ export function registerAdminRoutes(
   const { db, now, panelOrigin } = deps;
 
   app.get('/api/admin/clients', async (_req, reply) => {
-    const rows = await sql`select ${CLIENT} from clients order by name limit 500`.execute(db);
+    const rows = await sql`
+      select ${CLIENT},
+        coalesce((select l.balance_after_paise from wallet_ledger l where l.client_id = clients.id order by l.id desc limit 1), 0) as "balancePaise",
+        coalesce((select sum(h.amount_paise) from wallet_holds h where h.client_id = clients.id and h.released_at is null), 0)::bigint as "onHoldPaise"
+      from clients order by name limit 500
+    `.execute(db);
     return reply.code(200).send({ items: rows.rows, nextCursor: null });
   });
 
@@ -194,6 +199,23 @@ export function registerAdminRoutes(
       return reply.code(200).send({ status: to });
     });
   }
+
+  app.get('/api/admin/users', async (req, reply) => {
+    const { role, clientId } = req.query as { role?: string; clientId?: string };
+    if ((role && !['super_admin', 'staff', 'client'].includes(role)) || (clientId && !UUID.test(clientId))) {
+      return invalid(reply, {}, 'Bad filter');
+    }
+    const rows = await sql`
+      select u.id, u.name, u.email, u.role, u.status, u.client_id as "clientId", u.last_login_at as "lastLoginAt",
+        coalesce((
+          select jsonb_agg(sc.client_id) from staff_clients sc where sc.staff_user_id = u.id
+        ), '[]'::jsonb) as "assignedClientIds"
+      from users u
+      where ${role ? sql`u.role = ${role}` : sql`true`} and ${clientId ? sql`u.client_id = ${clientId}` : sql`true`}
+      order by u.name limit 500
+    `.execute(db);
+    return reply.code(200).send({ items: rows.rows, nextCursor: null });
+  });
 
   app.post('/api/admin/users', async (req, reply) => {
     const parsed = UserCreate.safeParse(req.body);

@@ -50,7 +50,7 @@ export async function readSendStats(db: Kysely<Database>, since: Date): Promise<
         count(*) filter (where m.attempts > 1)::int as retried,
         count(*) filter (where s.wamids > 1)::int as duplicated,
         coalesce(sum(s.wamids - 1), 0)::int as extra_sends,
-        count(*) filter (where m.status = 'failed' and s.message_id is not null)::int as failed_but_sent
+        count(*) filter (where m.status in ('failed', 'blocked') and s.message_id is not null)::int as failed_but_sent
       from messages m
       join clients c on c.id = m.client_id
       left join sends s on s.message_id = m.id

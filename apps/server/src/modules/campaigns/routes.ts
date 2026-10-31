@@ -388,6 +388,39 @@ export function registerCampaignRoutes(
     return reply.code(200).send({ added, invalid: results.length - results.filter((r) => 'number' in r).length });
   });
 
+  app.get('/api/admin/clients/:id/opt-outs', async (req, reply) => {
+    const { id } = req.params as { id: string };
+    if (!UUID.test(id) || !(await sql`select 1 from clients where id = ${id}`.execute(db)).rows[0]) return notFound(reply);
+    const rows = await sql`
+      select number, source, created_at as "createdAt" from opt_outs where client_id = ${id} order by created_at desc, number limit 500
+    `.execute(db);
+    return reply.code(200).send({ items: rows.rows, nextCursor: null });
+  });
+
+  // For a number added by mistake. Meta's policy requires honouring a real opt-out, so this is audited.
+  app.delete('/api/admin/clients/:id/opt-outs/:number', async (req, reply) => {
+    const { id, number } = req.params as { id: string; number: string };
+    if (!UUID.test(id)) return notFound(reply);
+    const removed = await db.transaction().execute(async (trx) => {
+      const gone = (
+        await sql<{ source: string }>`delete from opt_outs where client_id = ${id} and number = ${number} returning source`.execute(trx)
+      ).rows[0];
+      if (!gone) return false;
+      await writeAudit(trx, {
+        clientId: id,
+        userId: req.auth!.userId,
+        action: 'opt_out.removed',
+        entityType: 'opt_out',
+        entityId: number,
+        before: { source: gone.source },
+        at: now(),
+      });
+      return true;
+    });
+    if (!removed) return notFound(reply);
+    return reply.code(200).send({ removed: true });
+  });
+
   app.get('/api/admin/settings/:key', async (req, reply) => {
     const { key } = req.params as { key: string };
     if (!EDITABLE_SETTINGS.has(key)) return notFound(reply);

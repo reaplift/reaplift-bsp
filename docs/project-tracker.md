@@ -114,7 +114,6 @@ Each has a default, so work does not stop; the default is built unless the owner
 | D10 | Client pricing: rates per client and per message type, as a fixed price or a percentage on Meta's rate. Proposed by Anirudh; to discuss with ReapLift. Questions P1 to P9 in [open-questions.md](open-questions.md). | As proposed; a client with none set uses a 25% markup | M6 task 6.1 | [M6](milestones/m6-wallet/spec.md) |
 | D11 | Who issues GST invoices to clients, and per top-up or monthly? No milestone builds invoices today.                                                                                                                                                               | Outside the platform at launch; M6's Wallet page exports each client's monthly statement as CSV for ReapLift's accountant                                     | M6 task 6.4                | [M6](milestones/m6-wallet/spec.md)            |
 | D12 | In which currency does Meta invoice ReapLift's credit line? If dollars, the markup also has to cover exchange-rate changes. Ask Meta during E7.                                                                                                                  | Rupees                                                                                                                                                        | M6 task 6.1                | [M6](milestones/m6-wallet/spec.md)            |
-| D13 | Do ReapLift's clients own their WhatsApp accounts on Dovesoft, or does Dovesoft own them? If clients own them, they may bring the whole account to ReapLift through Embedded Signup (keeping templates and quality) instead of moving each number. Ask Dovesoft. | Assume numbers are moved and templates re-submitted                                                                                                           | M5 task 5.2, M11 task 11.2 | [M11](milestones/m11-pilot/spec.md)           |
 
 ## Decision log
 
@@ -122,6 +121,26 @@ Answered questions move here with their date, and the spec is updated in the sam
 
 ### 31 October 2026
 
+**How clients, limits and money work (summary of 31 October).** ReapLift is building what Dovesoft does for its clients today, and will replace Dovesoft.
+
+| Topic | Where it stands | Status |
+| --- | --- | --- |
+| Who owns the WhatsApp account | The client's own business portfolio; the provider is a partner with access | Seen on one Dovesoft client's screen. Confirm with Dovesoft that all are the same |
+| Meta's daily limit | Per client's portfolio: unique customers in a moving 24 hours. Levels 250, 2,000, 10,000, 100,000, unlimited | From Meta's page; not yet seen on a real ReapLift number |
+| Shared limit or shares between clients | Not built, as the point above makes them unnecessary | Decided, unless the first point turns out differently |
+| Speed | Per number, set by the super admin, default 50 a second (Meta's default is 80) | Built |
+| Our own daily limit | Optional per number, set by the super admin; the tighter of it and Meta's applies. At the limit, messages wait and resume | Built |
+| Who pays Meta | ReapLift's credit line, shared across clients; clients prepay a wallet | Decided 29 October; needs E7 |
+| Credit line | Alerts at 80% and 95%. A hard stop on new campaigns is proposed, not built | Open: owner to confirm |
+| Client prices | Per client and message type, markup or fixed | Proposal built as the default; ReapLift to agree (P1 to P9) |
+| Campaign size | At most 20,000 rows and 10 MB | Built; ReapLift to confirm 10,000 or 20,000 (P10) |
+| Scheduled campaigns | Money on hold until start; wallet shows balance, on hold, available | Built |
+| Too fast at Meta | The number waits 30 seconds; the message uses no attempt and never fails for this | Built |
+| Queue | PostgreSQL only; no Kafka, SQS or Redis (owner) | Built |
+| Order | Each number has its own queue; on one number, first in first out; retries go first. All clients equal; paid priority is for later | Built |
+| Support | Super admin sees why a campaign is not moving, and limits used per number and overall | Built |
+
+- **Each client owns its WhatsApp account; limits are not shared (owner, 31 October 2026):** this confirms the 29 October model. An owner screenshot of a Dovesoft client's Meta Business Suite shows the client's own portfolio assigning its WhatsApp account to Dove Soft as a partner, with partial access to phone numbers and templates. So each client has its own Meta limit, and no shares are built. What is shared across clients is ReapLift's credit line. A brief note earlier that day recorded the opposite, on an assumption the screenshot disproved.
 - **Per-second and per-day limits are admin settings (owner):** set per number by the super admin. At the daily limit, messages wait and resume rather than fail. Details in [M5](milestones/m5-number-and-templates/spec.md).
 - **Retries go first (owner):** a message that fails with a temporary error is retried at the front of the next round, ahead of the new batch.
 - **A campaign is at most 20,000 rows (owner):** this replaces 200,000 per campaign, and the server enforces it. The file limit drops from 50 MB to 10 MB. Both are settings. The figure, 10,000 or 20,000, is to confirm with ReapLift (P10 in [open-questions.md](open-questions.md)).
@@ -306,4 +325,4 @@ Do them in order; each one builds on the last. A connect task goes right after t
 | -------- | ------------- | ------------------------------------------------------------------------------------------------- | ---------- |
 | Anirudh  | none          | All backend built (M1 to M9), against the fake Meta server; M4 real-phone demo when E1 and E2 are ready | E1, E2 for the demo |
 | Suraj    | Screens track | M3: S3 My account and forced password change, then S4 to S6, against the real routes now built     | nothing    |
-| ReapLift | none          | E3 (Business Verification, App Review); continue E7 with Meta; E1, E2, E5; answer D10 to D13      | none       |
+| ReapLift | none          | E3 (Business Verification, App Review); continue E7 with Meta; E1, E2, E5; answer D10 to D12      | none       |

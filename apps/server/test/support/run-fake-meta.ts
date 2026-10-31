@@ -3,6 +3,7 @@
  * META_API_BASE_URL. After accepting a message, it posts signed sent, delivered and read webhooks to WEBHOOK_URL.
  * FAKE_META_FAIL_CODE makes every send fail with that Meta error code. FAKE_META_LATE_FIRST_MS accepts the first
  * send but answers only after that long, as when the worker times out on a message Meta did take.
+ * FAKE_META_FAIL_EVERY fails every Nth send with 131026. FAKE_META_LIMIT sets the messaging limit it reports.
  *
  *   pnpm --filter @reaplift/server fake-meta
  */
@@ -24,17 +25,19 @@ async function post(metaMessageId: string, status: string, callbackData?: string
     headers: { 'content-type': 'application/json', 'x-hub-signature-256': signWebhook(body, secret) },
     body,
   });
-  console.log(`webhook ${status} for ${metaMessageId}: ${res.status}`);
+  if (res.status !== 200) console.log(`webhook ${status} for ${metaMessageId}: ${res.status}`);
 }
 
 const fake = new FakeMeta({
   onAccepted(id, to, callbackData) {
-    console.log(`accepted a message to ${to}: ${id}`);
+    if (!process.env.FAKE_META_QUIET) console.log(`accepted a message to ${to}: ${id}`);
     ['sent', 'delivered', 'read'].forEach((status, i) => {
       setTimeout(() => void post(id, status, callbackData), (i + 1) * 1000);
     });
   },
 });
+fake.failEvery = Number(process.env.FAKE_META_FAIL_EVERY ?? 0);
+fake.messagingLimit = process.env.FAKE_META_LIMIT ?? fake.messagingLimit;
 if (lateMs) fake.queueSendResponses({ status: 200, delayMs: lateMs, acceptFirst: true });
 if (failCode) {
   fake.queueSendResponses(...Array.from({ length: 1000 }, () => metaError(400, failCode)));

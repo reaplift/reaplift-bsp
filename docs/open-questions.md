@@ -24,6 +24,7 @@ Proposed by Anirudh on 31 October 2026, and **not agreed yet**. Nothing is built
 | P6 | Fixed prices do not follow Meta's rate. What if Meta's rate rises above the fixed price? | ReapLift would lose money on each message | The admin screen warns; sending is not blocked |
 | P7 | Do clients send outside India? Meta's rates differ by country, but a fixed price here is one number per type. | A cheap fixed price could lose money on another country | India only for fixed prices |
 | P8 | If Meta bills a message in a different category from its template, who absorbs the difference? | Utility template billed as marketing, or a free message inside a 24-hour reply window | The client pays by template category; ReapLift takes the gain or loss |
+| P12 | Should a sent message that is never delivered still be charged? If not, after how long does it count as undelivered? | The design charges it. Turning the switch off is refused until this is decided and built | Charged |
 | P11 | Later, should clients be able to pay for higher priority? | Not built. Clients on their own numbers do not compete today, except on one shared WhatsApp account's daily limit | Everyone equal |
 | P10 | Is 10,000 or 20,000 rows the right limit per campaign? Does any client send more in one go today? | A larger audience must be split into several campaigns | 20,000; a setting, so changing it needs no code |
 | P9 | Who may change a client's rates later, and do changes affect campaigns already confirmed? | A rate change during a running campaign | Super admin only; confirmed campaigns keep their price |
@@ -41,7 +42,7 @@ Docs last checked: 31 October 2026, Graph API v26.0.
 | 1 | What does ReapLift need to become a Solution Partner with a credit line (E7), and how long does it take? | Clients stay on Dovesoft until this is done | Tech Provider first, then Solution Partner | Ask |
 | 2 | In which currency does Meta invoice the credit line (D12)? | If dollars, the markup must also cover exchange-rate changes | Rupees | Ask |
 | 3 | Meta says new credit-sharing steps are being tested and will replace `whatsapp_credit_sharing_and_attach`. When, and do we need to change? | M5 task 5.2 is built on the current call | The current call keeps working | Ask |
-| 4 | If a client's WhatsApp account is on Dovesoft, can it come to ReapLift through Embedded Signup and keep its templates and quality (D13)? This one is also for Dovesoft: who owns the accounts? | Decides whether numbers must be moved and templates submitted again | Numbers are moved and templates submitted again | Ask |
+| 4 | A client's account can have several partners, as this one has Dove Soft and Haptik. Can it add ReapLift and keep its number, templates and quality? Meta's page says a credit line cannot be changed once attached, so can it move from Dovesoft's credit line to ReapLift's, or does it need a new account? | Decides how clients move from Dovesoft (M11) | They may need a new account, with templates submitted again | Ask |
 | 5 | Now that `pricing.billable` is deprecated, which webhook fields show what Meta bills ReapLift for each message? | Clients pay the rates set per client (D10), by the template's category. This field shows ReapLift's own cost, so M9 can work out margin and spot messages Meta bills in a dearer category | `pricing.type` and `pricing.category`, not yet stored in full | Ask, Test |
 | 6 | If the same template goes out twice to one person after a timeout, does Meta bill twice? | Sets the real cost of a double send | Yes, billed twice | Ask |
 
@@ -76,4 +77,5 @@ Docs last checked: 31 October 2026, Graph API v26.0.
 
 ## Answered
 
+- **D13 and whether limits are shared, 31 October 2026, owner's screenshot of a Dovesoft client's Business Suite:** the client's portfolio assigns its WhatsApp account to Dove Soft as a partner, so the client owns it. Each client has its own Meta limit. One client's account was checked; confirm with Dovesoft that all are the same.
 - **Question 10, 31 October 2026, Meta's throughput page:** Meta retries failed webhooks for up to 7 days with exponential backoff, so a short planned stop is safe. It also says to size webhook handling for 3 times outgoing traffic.

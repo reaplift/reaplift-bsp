@@ -87,6 +87,7 @@ Replaced by `auth_sessions`, because its `client_id` is `not null` and a super a
 
 **`wa_accounts`** (Exists, 0002). One row per connected phone number.
 `id`, `client_id`, `waba_id`, `phone_number_id` (unique), `display_phone`, `display_name`, `access_token_enc bytea` (a business token from Embedded Signup for clients; a system user token for ReapLift's own test numbers), `quality_rating`, `messaging_limit`, `meta_payer` (`reaplift_credit_line` for clients; `reaplift_card` for ReapLift's test numbers; `partner_credit_line` is in the check but unused), `send_rate_per_sec`, `status` (`active` | `paused`), `paused_reason`, `created_at`.
+Added in 0014 (M5): `daily_send_limit int`, the super admin's optional limit per number; `send_rate_per_sec` now starts at 50 for a new number.
 Added in 0007 (M5): `onboarded_via text` (`manual` | `embedded_signup`), `credit_share_ref text` (what Meta returns when ReapLift's credit line is shared), `connected_by uuid`, `connected_at timestamptz`.
 
 **`templates`** (Exists, 0002)
@@ -206,6 +207,12 @@ Who: **SA** super admin; **C** client user of that client; **S** staff assigned 
 | POST       | `/api/admin/clients/:id/opt-outs`                                  | SA                          | M7        |
 | POST       | `/api/clients/:clientId/campaigns/:id/pause`, `/resume`, `/cancel` | C, S, SA                    | M8        |
 | POST       | `/api/clients/:clientId/campaigns/:id/schedule`, `/unschedule`     | C, S, SA                    | M8        |
+| GET        | `/api/admin/users` | SA | M3 |
+| GET, DELETE | `/api/admin/clients/:id/opt-outs (DELETE takes /:number)` | SA | M7 |
+| PATCH      | `/api/admin/wa-accounts/:id/limits` | SA | M5 |
+| GET        | `/api/admin/limits-usage` | SA | M5 |
+| GET        | `/api/admin/campaigns` | SA | M8 |
+| GET        | `/api/admin/campaigns/:id/diagnosis` | SA | M8 |
 | GET, PUT   | `/api/admin/rules`                                                 | SA                          | M8        |
 | GET        | `/api/clients/:clientId/dashboard`, `/reports/monthly`             | C, S, SA                    | M9        |
 | GET        | `/api/clients/:clientId/campaigns/:id/report`                      | C, S, SA                    | M9        |

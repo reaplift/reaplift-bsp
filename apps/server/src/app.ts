@@ -4,6 +4,7 @@ import { sql, type Kysely } from 'kysely';
 import type { HealthResponse } from '@reaplift/shared';
 import type { Database } from './lib/db.js';
 import { registerCampaignControls } from './modules/campaigns/controls.js';
+import { registerCampaignDiagnosis } from './modules/campaigns/diagnosis.js';
 import { registerCampaignRoutes } from './modules/campaigns/routes.js';
 import { registerMeRoutes } from './modules/admin/me-routes.js';
 import { registerAdminRoutes } from './modules/admin/routes.js';
@@ -93,6 +94,7 @@ export function buildApp({
   registerWalletRoutes(app, { db, now });
   registerCampaignRoutes(app, { db, now, uploadDir, uploadMaxBytes, listMaxRows });
   registerCampaignControls(app, { db, now });
+  registerCampaignDiagnosis(app, { db, now });
   registerReportRoutes(app, { db, now });
   registerAccountRoutes(app, {
     db,

@@ -27,6 +27,8 @@ flowchart TD
   J -- "no go" --> L["Back to Dovesoft for this client;<br/>findings recorded"]
 ```
 
+> Checked on 31 October 2026: a Dovesoft client's own portfolio holds its WhatsApp account, with Dove Soft as a partner, so a client may be able to add ReapLift as a partner rather than release its number. A search result quoting Meta's docs says a credit line cannot be changed once attached to an account, so it may still need a new account. This is question 4 in [open-questions.md](../../open-questions.md); the runbook depends on the answer.
+
 ## Worked example
 
 1. In a drill, the team stops the worker, fills a test disk to 85%, and revokes a test token. Within 5 minutes Ravi gets the "sends stuck", "disk over 80%" and "account paused" alerts.

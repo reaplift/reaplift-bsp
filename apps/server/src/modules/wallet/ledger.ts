@@ -172,6 +172,28 @@ export async function checkLedgers(db: Kysely<Database>, now: Date = new Date(),
     `.execute(db)
   ).rows;
   campaigns.push(...strayHolds);
+
+  // Each confirmed campaign's totals equal a count of its messages. Compared as text, so any bucket differing shows.
+  const countsOff = (
+    await sql<{ id: string; client_id: string; name: string; net_paise: number; expected_paise: number }>`
+      select k.id, k.client_id, k.name, 0::bigint as net_paise, 0::bigint as expected_paise
+      from campaigns k
+      left join lateral (
+        select count(*)::int as total,
+          count(*) filter (where m.status = 'sent')::int as sent,
+          count(*) filter (where m.status = 'delivered')::int as delivered,
+          count(*) filter (where m.status = 'read')::int as read,
+          count(*) filter (where m.status = 'failed')::int as failed,
+          count(*) filter (where m.status = 'blocked')::int as blocked
+        from messages m where m.campaign_id = k.id
+      ) c on true
+      where k.confirmed_at is not null and (
+        k.total <> c.total or k.sent <> c.sent or k.delivered <> c.delivered
+        or k.read <> c.read or k.failed <> c.failed or k.blocked <> c.blocked
+      )
+    `.execute(db)
+  ).rows;
+  campaigns.push(...countsOff);
   const overHeld = (
     await sql<{ client_id: string; name: string; held: number; balance: number }>`
       select c.id as client_id, c.name, sum(h.amount_paise)::bigint as held,

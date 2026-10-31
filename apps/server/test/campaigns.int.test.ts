@@ -580,23 +580,23 @@ describe('per-second and per-day limits', () => {
       await topup(1000000);
       await limits({ sendRatePerSec: 70 });
       const first = await readyCampaign({}, list(700));
-      expect(await estimate(first)).toMatchObject({ messagesAhead: 0, seconds: 10, waitsForDailyLimit: false });
-      expect(new Date((await estimate(first)).finishesAt).getTime()).toBe(CLOCK.getTime() + 10_000);
+      expect(await estimate(first)).toMatchObject({ messagesAhead: 0, seconds: 12, waitsForDailyLimit: false });
+      expect(new Date((await estimate(first)).finishesAt).getTime()).toBe(CLOCK.getTime() + 12_000);
 
       await confirm(first);
-      expect((await campaign(first)).estimate).toMatchObject({ messagesAhead: 700, seconds: 10 });
+      expect((await campaign(first)).estimate).toMatchObject({ messagesAhead: 700, seconds: 12 });
       const lines = ['Name,Mobile', ...Array.from({ length: 700 }, (_, i) => `A,${9100000000 + i}`)];
       const second = await readyCampaign({}, lines.join('\n'));
-      expect(await estimate(second)).toMatchObject({ messagesAhead: 700, seconds: 20 });
+      expect(await estimate(second)).toMatchObject({ messagesAhead: 700, seconds: 23 });
       await limits({ sendRatePerSec: 500 });
     });
 
     it('adds a day for each day the limit makes it wait', async () => {
       await limits({ sendRatePerSec: 10, dailySendLimit: 100 });
       const DAY = 24 * 60 * 60;
-      expect(await estimate(await readyCampaign({}, list(100)))).toMatchObject({ seconds: 10, waitsForDailyLimit: false });
-      expect(await estimate(await readyCampaign({}, list(150)))).toMatchObject({ seconds: 15 + DAY, waitsForDailyLimit: true });
-      expect(await estimate(await readyCampaign({}, list(350)))).toMatchObject({ seconds: 35 + 3 * DAY, waitsForDailyLimit: true });
+      expect(await estimate(await readyCampaign({}, list(100)))).toMatchObject({ seconds: 12, waitsForDailyLimit: false });
+      expect(await estimate(await readyCampaign({}, list(150)))).toMatchObject({ seconds: 17 + DAY, waitsForDailyLimit: true });
+      expect(await estimate(await readyCampaign({}, list(350)))).toMatchObject({ seconds: 39 + 3 * DAY, waitsForDailyLimit: true });
       await limits({ sendRatePerSec: 500, dailySendLimit: null });
     });
 

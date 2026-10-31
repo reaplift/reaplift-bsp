@@ -159,6 +159,10 @@ Task 8.5.
 - **Money on hold (owner, 31 October 2026).** Scheduling sets the campaign's charge aside in `wallet_holds`, so no other campaign or correction can spend it. Example: with ₹1,000, a campaign of 1,000 messages at ₹1 is scheduled, so balance ₹1,000, on hold ₹1,000, available ₹0, and a new 500-message campaign is refused as ₹500 short. At the scheduled time the hold becomes the actual charge in one transaction. Unscheduling or cancelling gives it back. The Wallet route returns `balancePaise`, `onHoldPaise`, `availablePaise` and the list of holds.
 - The charge is worked out again at start, as prices and opt-outs can change. If it now exceeds what is available, the hold is released and the campaign returns to draft, as it does for any other problem at start, such as a paused number.
 
+## Answering "why is my campaign not moving?" (owner, 31 October 2026)
+
+`GET /api/admin/campaigns` lists every client's campaigns, filtered by client and status. `GET /api/admin/campaigns/:id/diagnosis` (super admin only) returns a plain `headline`, every `reasons` entry with a code and message, the queue (waiting, sending, ahead on the number), the limits (speed, daily limit, remaining today), the estimate and failures by code. It reports: short balance with amounts, no valid numbers, unapproved template, paused number with its reason, suspended client, paused or scheduled campaign, daily limit reached, messages ahead, Meta's rate limit, a send waiting for Meta's answer, retries, and a stall with no explanation. For a draft it runs the same checks as confirm.
+
 ## Demo (milestone acceptance)
 
 1. On the fake Meta server with a 10,000-message campaign: pause, resume, then cancel midway. Record the counts, the ledger rows, and the nightly check.

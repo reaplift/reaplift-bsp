@@ -103,6 +103,7 @@ Out: log cleanup and archiving after 180 days (phase 2 in the HLD; D8 sets the r
 - One credit line pays for every client, so if it runs out, every client stops at once. The super admin enters the credit limit Meta grants; the view shows this month's recorded Meta cost against it.
 - Event `billing.credit_line_usage` notifies super admins at 80% and again at 95%, once each per month.
 - Clients' prepaid balances protect ReapLift from unpaid bills, but not from hitting Meta's limit, which is why this alert exists.
+- Proposed, not built (31 October 2026): refuse new campaigns once recorded cost plus queued messages would pass a limit the super admin sets. The credit line is the one thing every client shares. Owner to confirm.
 - Tests: crossing 80% notifies once.
 - Acceptance: a planted month-to-date cost at 81% of the limit sends the alert.
 
