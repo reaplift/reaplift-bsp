@@ -5,6 +5,13 @@
  *       Prompts for the password (not echoed). Reads it from stdin when not run in a terminal.
  *   seed-dev
  *       Local development only: the clients and four users of M1's worked example, password `reaplift-dev-1`.
+ *   seed-account --waba-id <id> --phone-number-id <id> [--client-name <name>]
+ *       Prompts for the Meta token (not echoed, so it is not in shell history), tests it against Meta,
+ *       saves the account with the token encrypted, and copies its templates.
+ *   send-test --to <number> --template <name> --lang <code> [--var value ...] [--phone-number-id <id>]
+ *       Queues one template message; the worker sends it.
+ *   show-message <id>
+ *       Prints one message and every status Meta reported.
  *   notify-test --email <address>
  *       Writes one test notification; the worker's delivery loop sends it.
  *   show-notifications [--status pending|sent|failed|read] [--limit <n>]
@@ -15,9 +22,11 @@ import { createInterface } from 'node:readline';
 import { Writable } from 'node:stream';
 import { sql, type Kysely } from 'kysely';
 import { USER_ROLES, type UserRole } from '@reaplift/shared';
-import { loadConfig } from './config.js';
+import { DEV_ENCRYPTION_KEY, loadConfig, META_API_URL, type Config } from './config.js';
 import { createDb, createPool, type Database } from './lib/db.js';
+import { MetaClient } from './lib/meta-client.js';
 import { createUser, UserInputError } from './modules/auth/users.js';
+import { connectAccount, queueTestMessage, readMessage } from './modules/messaging/account.js';
 import { notify } from './modules/notifications/notify.js';
 
 const DEV_PASSWORD = 'reaplift-dev-1';
@@ -33,7 +42,8 @@ function flags(args: string[]): Record<string, string> {
   return out;
 }
 
-async function readPassword(): Promise<string> {
+/** Reads a secret without echoing it, asking twice in a terminal when `confirm` is set. */
+async function readSecret(label: string, confirm: boolean): Promise<string> {
   let muted = false;
   const output = new Writable({
     write(chunk, _enc, cb) {
@@ -50,11 +60,11 @@ async function readPassword(): Promise<string> {
       });
       muted = true;
     });
-  const first = await ask('Password: ');
+  const first = await ask(`${label}: `);
   muted = false;
-  const second = process.stdin.isTTY ? await ask('Repeat password: ') : first;
+  const second = confirm && process.stdin.isTTY ? await ask(`Repeat ${label.toLowerCase()}: `) : first;
   rl.close();
-  if (first !== second) throw new UserInputError('passwords do not match');
+  if (first !== second) throw new UserInputError(`${label.toLowerCase()}s do not match`);
   return first;
 }
 
@@ -149,6 +159,28 @@ async function seedDev(db: Kysely<Database>, databaseUrl: string) {
   console.log(`Seeded 3 clients and 4 users. Password for every seeded user: ${DEV_PASSWORD}`);
 }
 
+/** The development key is public, so a real Meta token must not be stored with it. */
+function requireRealKey(config: Config) {
+  if (config.META_API_BASE_URL === META_API_URL && config.APP_ENCRYPTION_KEY === DEV_ENCRYPTION_KEY) {
+    throw new UserInputError(
+      'set APP_ENCRYPTION_KEY in .env first (32 characters, from `openssl rand -base64 24`)',
+    );
+  }
+}
+
+/** Takes every `--var value` out of the arguments; a flag may repeat only here. */
+function splitVars(args: string[]): { vars: string[]; rest: string[] } {
+  const vars: string[] = [];
+  const rest: string[] = [];
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--var') {
+      if (args[i + 1] === undefined) throw new UserInputError('--var needs a value');
+      vars.push(args[++i]!);
+    } else rest.push(args[i]!);
+  }
+  return { vars, rest };
+}
+
 async function main() {
   const [command, ...rest] = process.argv.slice(2);
   const config = loadConfig(process.env, []);
@@ -168,11 +200,53 @@ async function main() {
         role,
         clientId,
         createdBy,
-        password: await readPassword(),
+        password: await readSecret('Password', true),
       });
       console.log(`Created ${role} ${f.email} (${id})`);
     } else if (command === 'seed-dev') {
       await seedDev(db, config.DATABASE_URL);
+    } else if (command === 'seed-account') {
+      requireRealKey(config);
+      const f = flags(rest);
+      if (!f['waba-id'] || !f['phone-number-id']) {
+        throw new UserInputError('--waba-id and --phone-number-id are required');
+      }
+      const result = await connectAccount(
+        db,
+        new MetaClient({ baseUrl: config.META_API_BASE_URL, version: config.META_GRAPH_VERSION }),
+        {
+          clientName: f['client-name'] ?? 'ReapLift Internal Test',
+          wabaId: f['waba-id'],
+          phoneNumberId: f['phone-number-id'],
+          token: (await readSecret('Meta token', false)).trim(),
+        },
+        config.APP_ENCRYPTION_KEY,
+      );
+      console.log(`Connected account ${result.waAccountId}; copied ${result.templates.saved} templates.`);
+      if (result.templates.skipped.length > 0) {
+        console.log(`Skipped, unknown category: ${result.templates.skipped.join(', ')}`);
+      }
+    } else if (command === 'send-test') {
+      const { vars, rest: others } = splitVars(rest);
+      const f = flags(others);
+      if (!f.to || !f.template || !f.lang) {
+        throw new UserInputError('--to, --template and --lang are required');
+      }
+      const id = await queueTestMessage(db, {
+        to: f.to,
+        template: f.template,
+        language: f.lang,
+        variables: vars,
+        phoneNumberId: f['phone-number-id'],
+      });
+      console.log(`queued message ${id}`);
+    } else if (command === 'show-message') {
+      const id = Number(rest[0]);
+      if (!Number.isSafeInteger(id) || id < 1) throw new UserInputError('usage: show-message <id>');
+      const found = await readMessage(db, id);
+      if (!found) throw new UserInputError(`no message ${id}`);
+      console.log(found.message);
+      console.table(found.statuses);
     } else if (command === 'notify-test') {
       const { email } = flags(rest);
       if (!email?.includes('@')) throw new UserInputError('--email <address> is required');
@@ -204,7 +278,9 @@ async function main() {
       ).rows;
       console.table(rows);
     } else {
-      throw new UserInputError('commands: create-user, seed-dev, notify-test, show-notifications');
+      throw new UserInputError(
+        'commands: create-user, seed-dev, seed-account, send-test, show-message, notify-test, show-notifications',
+      );
     }
   } catch (err) {
     if (!(err instanceof UserInputError)) throw err;

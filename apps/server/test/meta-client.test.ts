@@ -13,6 +13,29 @@ describe('meta client', () => {
     expect(classifyMetaError(131049)).toMatchObject({ category: 'permanent', retryable: false });
   });
 
+  it('classifies the codes checked against Meta on 30 October 2026', () => {
+    for (const code of [190, 0, 3, 10, 200, 299, 368, 131005, 131031, 131042, 133010]) {
+      expect(classifyMetaError(code).category, String(code)).toBe('account');
+    }
+    for (const code of [100, 131008, 131009, 131026, 131047, 131048, 131049, 131050, 132000, 132001, 132015]) {
+      expect(classifyMetaError(code).category, String(code)).toBe('permanent');
+    }
+    for (const code of [1, 2, 4, 80007, 130429, 131000, 131016, 131056, 133004]) {
+      expect(classifyMetaError(code).category, String(code)).toBe('transient');
+    }
+  });
+
+  it('sends no components for a template without variables', () => {
+    const payload = buildTemplateMessagePayload({
+      to: '919812345678',
+      templateName: 'hello_world',
+      language: 'en_US',
+      variables: [],
+    });
+
+    expect(payload.template).toEqual({ name: 'hello_world', language: { code: 'en_US' } });
+  });
+
   it('marks transient HTTP and rate-limit failures as retryable', () => {
     expect(isRetryableMetaError(500)).toBe(true);
     expect(isRetryableMetaError(130429)).toBe(true);

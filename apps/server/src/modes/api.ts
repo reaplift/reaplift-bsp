@@ -8,7 +8,13 @@ export async function runApi(config: Config, log: Logger) {
   const db = createDb(pool);
   const app = buildApp({
     version: config.APP_VERSION,
-    logger: { level: config.LOG_LEVEL },
+    logger: {
+      level: config.LOG_LEVEL,
+      // Meta's webhook check carries the verify token in the query string, so it stays out of the log.
+      serializers: {
+        req: (req) => ({ method: req.method, url: req.url.split('?')[0], remoteAddress: req.ip }),
+      },
+    },
     checkDb: () => pingDb(db),
     db,
     panelOrigin: config.PANEL_ORIGIN,

@@ -1,19 +1,15 @@
 import type { Config } from '../config.js';
 import { createDb, createPool } from '../lib/db.js';
 import type { Logger } from '../lib/logger.js';
+import { MetaClient } from '../lib/meta-client.js';
+import { AccountPacer, reportStuck, sendDue } from '../modules/messaging/sender.js';
 import { deliverDue } from '../modules/notifications/delivery.js';
 import {
   FakeEmailProvider,
   SmtpEmailProvider,
   type EmailProvider,
 } from '../modules/notifications/email.js';
-
-/** Background loops the worker runs. M4's message sending is added here as another loop. */
-interface Loop {
-  name: string;
-  everyMs: number;
-  run: () => Promise<unknown>;
-}
+import { runLoops, type Loop } from './loops.js';
 
 export function createEmailProvider(config: Config, log: Logger): EmailProvider {
   if (config.EMAIL_PROVIDER === 'fake')
@@ -32,34 +28,23 @@ export function createEmailProvider(config: Config, log: Logger): EmailProvider 
 export async function runWorker(config: Config, log: Logger) {
   const db = createDb(createPool(config.DATABASE_URL));
   const provider = createEmailProvider(config, log);
+  const meta = new MetaClient({ baseUrl: config.META_API_BASE_URL, version: config.META_GRAPH_VERSION });
+  const pacer = new AccountPacer();
   const loops: Loop[] = [
     { name: 'notifications', everyMs: 2_000, run: () => deliverDue(db, provider, new Date(), log) },
+    {
+      name: 'messages',
+      everyMs: 500,
+      run: () => sendDue({ db, meta, encryptionKey: config.APP_ENCRYPTION_KEY, pacer, log }),
+    },
+    { name: 'stuck-messages', everyMs: 60_000, run: () => reportStuck(db, log) },
   ];
 
-  let stopping = false;
-  const stop = () => {
-    stopping = true;
-  };
-  process.on('SIGTERM', stop);
-  process.on('SIGINT', stop);
   log.info(
     { loops: loops.map((l) => l.name), emailProvider: config.EMAIL_PROVIDER },
     'worker started',
   );
-
-  // Each loop waits for its own run to finish before the next, so one loop never overlaps itself.
-  await Promise.all(
-    loops.map(async (loop) => {
-      while (!stopping) {
-        try {
-          await loop.run();
-        } catch (err) {
-          log.error({ loop: loop.name, err }, 'loop run failed; trying again next tick');
-        }
-        await new Promise((resolve) => setTimeout(resolve, loop.everyMs));
-      }
-    }),
-  );
+  await runLoops(loops, log);
   await db.destroy();
   log.info('worker stopped');
 }

@@ -1,7 +1,9 @@
 import { z } from 'zod';
 import { MODES } from '@reaplift/shared';
 
-const DEV_ENCRYPTION_KEY = '12345678901234567890123456789012';
+export const DEV_ENCRYPTION_KEY = '12345678901234567890123456789012';
+
+export const META_API_URL = 'https://graph.facebook.com';
 
 const blankToUndefined = (value: unknown) =>
   typeof value === 'string' && value.trim() === '' ? undefined : value;
@@ -13,6 +15,10 @@ const Env = z.object({
   DATABASE_URL: z.string().url(),
   META_VERIFY_TOKEN: z.string().default(''),
   META_APP_SECRET: z.string().default(''),
+  /** Latest stable when M4 was built (checked 30 October 2026). */
+  META_GRAPH_VERSION: z.preprocess(blankToUndefined, z.string().default('v26.0')),
+  /** Only changed to point at the fake Meta server. */
+  META_API_BASE_URL: z.preprocess(blankToUndefined, z.string().url().default(META_API_URL)),
   /** The panel's address; state-changing requests must come from it. */
   PANEL_ORIGIN: z.preprocess(blankToUndefined, z.string().url().default('http://localhost:5173')),
   /** Secure flag on the session cookie. Blank means on; set `false` only for plain-http local development. */

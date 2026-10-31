@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import Fastify from 'fastify';
-import type { Kysely } from 'kysely';
+import Fastify, { type FastifyServerOptions } from 'fastify';
+import { sql, type Kysely } from 'kysely';
 import { z } from 'zod';
 import { AdminClient, type HealthResponse } from '@reaplift/shared';
 import type { Database } from './lib/db.js';
@@ -22,7 +22,7 @@ export interface AppDeps {
   version: string;
   checkDb: () => Promise<boolean>;
   db: Kysely<Database>;
-  logger?: boolean | { level: string };
+  logger?: FastifyServerOptions['logger'];
   /** The panel's address; state-changing requests from any other origin are refused. */
   panelOrigin?: string;
   /** Secure flag on the session cookie; off only for plain-http local development. */
@@ -161,7 +161,7 @@ export function buildApp({
     const challenge = query['hub.challenge'];
     const verifyToken = query['hub.verify_token'];
 
-    if (mode !== 'subscribe' || !challenge || verifyToken !== metaVerifyToken) {
+    if (mode !== 'subscribe' || !challenge || !metaVerifyToken || verifyToken !== metaVerifyToken) {
       return reply.code(403).send({ error: 'invalid verify token' });
     }
 
@@ -185,6 +185,8 @@ export function buildApp({
       return reply.code(401).send({ error: 'invalid signature' });
     }
 
+    // Only store: no other work here, so Meta never times out. The processor does the rest.
+    await sql`insert into meta_events (body) values (${rawBody}::jsonb)`.execute(db);
     return reply.code(200).send({ ok: true });
   });
 
