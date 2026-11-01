@@ -20,14 +20,14 @@ Arrows mean "must be Done before the next one starts". Milestones with no arrow 
 flowchart LR
   M0["M0 Foundation"]:::done
   M1["M1 Login and access"]:::done
-  M2["M2 Notifications"]:::wip
-  M3["M3 Client onboarding"]:::wip
-  M4["M4 Send engine:<br/>one message end to end"]:::wip
-  M5["M5 Number connection<br/>and templates"]:::todo
-  M6["M6 Wallet and prices"]:::wip
-  M7["M7 Campaigns:<br/>create, send, track"]:::todo
-  M8["M8 Campaign controls<br/>and rules"]:::todo
-  M9["M9 Reports and dashboard"]:::todo
+  M2["M2 Notifications<br/>waits on real email (E5)"]:::waiting
+  M3["M3 Client onboarding<br/>backend and screens built"]:::review
+  M4["M4 Send engine<br/>waits on real phone (E1, E2)"]:::waiting
+  M5["M5 Number connection<br/>and templates"]:::backend
+  M6["M6 Wallet, prices, GST"]:::backend
+  M7["M7 Campaigns:<br/>create, send, track"]:::backend
+  M8["M8 Campaign controls<br/>and rules"]:::backend
+  M9["M9 Reports and dashboard"]:::backend
   M10["M10 Cloud deploy"]:::todo
   M11["M11 Pilot go-live"]:::todo
 
@@ -49,13 +49,25 @@ flowchart LR
   M10 --> M11
 
   classDef done fill:#d4f7dc,stroke:#2e7d32,color:#000
-  classDef wip fill:#fff3c4,stroke:#b58900,color:#000
+  classDef review fill:#c8e6ff,stroke:#1565c0,color:#000
+  classDef waiting fill:#e6d4f7,stroke:#6a1b9a,color:#000
+  classDef backend fill:#fff3c4,stroke:#b58900,color:#000
   classDef todo fill:#eeeeee,stroke:#888,color:#000
 ```
 
-Green: Done. Yellow: in progress or prototype. Grey: not started.
+As of 2 November 2026:
 
-Lanes that can run in parallel today: **M3** (client onboarding, Suraj), the rest of the **screens track** (Suraj's M6 screens against a mock API; see below) and, once OCI access exists, **M10** (cloud deploy).
+| Colour | Meaning | Milestones |
+| --- | --- | --- |
+| Green | Done | M0, M1 |
+| Blue | Backend and screens built and tested; waits on the owner's review | M3 |
+| Purple | Backend built and tested against fakes; has no screens of its own to wait for, and waits on an outside prerequisite | M2, M4 |
+| Yellow | Backend built and tested against the fake Meta server; screens not built | M5, M6, M7, M8, M9 |
+| Grey | Not started | M10, M11 |
+
+Only Done means finished. M5, M7 and M9 also need real Meta access or a real invoice before they can be Done.
+
+Next in order: M6's screens, then M5, M7, M8 and M9's (Anirudh; owner decided 2 November 2026). M10 needs Oracle access (E4), and M11 needs everything before it.
 
 ## Status board
 
