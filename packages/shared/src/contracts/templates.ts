@@ -72,3 +72,76 @@ export const ReplaceToken = z.object({ token: z.string().min(1) }).strict();
 export const ConnectAccount = z
   .object({ wabaId: z.string().min(1), phoneNumberId: z.string().min(1), token: z.string().min(1) })
   .strict();
+
+// Responses. Not strict, so a field the server adds later does not break the panel.
+export const WaAccount = z.object({
+  id: z.string(),
+  clientId: z.string(),
+  wabaId: z.string(),
+  phoneNumberId: z.string(),
+  displayPhone: z.string(),
+  displayName: z.string().nullable(),
+  qualityRating: z.string().nullable(),
+  messagingLimit: z.string().nullable(),
+  sendRatePerSec: z.number(),
+  dailySendLimit: z.number().nullable(),
+  metaPayer: z.string(),
+  status: z.enum(['active', 'paused']),
+  pausedReason: z.string().nullable(),
+  onboardedVia: z.string().nullable(),
+  connectedAt: z.string().nullable(),
+});
+export type WaAccount = z.infer<typeof WaAccount>;
+
+export const WaAccountList = z.object({ items: z.array(WaAccount), nextCursor: z.string().nullable() });
+
+export const LimitUsageRow = z.object({
+  waAccountId: z.string(),
+  clientId: z.string(),
+  clientName: z.string(),
+  displayPhone: z.string(),
+  wabaId: z.string(),
+  status: z.string(),
+  sendRatePerSec: z.number(),
+  sentPerSecLastMinute: z.number(),
+  dailySendLimit: z.number().nullable(),
+  metaLimit: z.string().nullable(),
+  effectiveDailyLimit: z.number().nullable(),
+  usedLast24Hours: z.number(),
+  remaining: z.number().nullable(),
+  usedPercent: z.number().nullable(),
+  waiting: z.number(),
+});
+
+export const LimitUsage = z.object({
+  items: z.array(LimitUsageRow),
+  overall: z.object({
+    numbers: z.number(),
+    pausedNumbers: z.number(),
+    usedLast24Hours: z.number(),
+    waiting: z.number(),
+    sentPerSecLastMinute: z.number(),
+    numbersAtDailyLimit: z.number(),
+  }),
+});
+
+export const TemplateView = z.object({
+  id: z.string(),
+  waAccountId: z.string(),
+  metaTemplateId: z.string().nullable(),
+  name: z.string(),
+  language: z.string(),
+  category: TemplateCategory,
+  components: z.array(TemplateComponent),
+  status: z.string(),
+  validationErrors: z.array(TemplateFailure).nullable(),
+  rejectionReason: z.string().nullable(),
+  metaRecommendation: z.string().nullable(),
+  rejectionExplanation: z.string().nullable(),
+  updatedAt: z.string(),
+});
+export type TemplateView = z.infer<typeof TemplateView>;
+
+export const TemplateList = z.object({ items: z.array(TemplateView), nextCursor: z.string().nullable() });
+
+export const WordSetting = z.object({ key: z.string(), value: z.array(z.string()) });

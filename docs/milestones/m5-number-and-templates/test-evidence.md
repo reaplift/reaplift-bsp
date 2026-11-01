@@ -2,7 +2,7 @@
 
 The commands and output that prove M5's backend. Run on 31 October 2026 as separate real processes (fake Meta, API, worker, receiver, scheduler) over real HTTP and PostgreSQL 16.
 
-**Everything here uses the fake Meta server, and there are no screens yet.** M5 is In progress: all backend tasks are built, and the screens are not started. The hand run below covers 5.1, 5.3 and 5.4; 5.2, media upload and token replacement are proved by the integration tests only. The questions only Meta can settle are in [open-questions.md](../../open-questions.md).
+**Everything here uses the fake Meta server. The screens were added on 2 November 2026; see the last section.** M5 is In progress: all backend tasks are built, and the screens are not started. The hand run below covers 5.1, 5.3 and 5.4; 5.2, media upload and token replacement are proved by the integration tests only. The questions only Meta can settle are in [open-questions.md](../../open-questions.md).
 
 ## Set up
 
@@ -82,3 +82,34 @@ M1's route-walking test also covers the new routes.
 
 - Quality dropping to Low is proved only in the automated tests, not by hand, as the scheduler reads it hourly.
 - The demo in the spec needs real Meta (E1 to E3), the screens, and M3's Admin page.
+
+## Screens in a real browser (2 November 2026)
+
+Real API, worker, receiver and scheduler, the fake Meta server and the Vite panel on a throwaway database, driven by Chrome through Playwright. Template answers from Meta are signed webhooks sent to the real receiver. Real Meta was not called.
+
+```text
+ok   Generate password fills a 14-character password and shows it
+ok   a token Meta refuses shows: Meta refused these details. Check the IDs and token, then try again.
+ok   number connected on the real server; token not on the page
+ok   speed 20 and daily 500 survive a reload
+ok   token replaced
+ok   Numbers and limits lists the number
+ok   promo words saved
+ok   client Settings shows the number with no limit controls
+ok   promo word in Utility stopped: The body contains promotional words ('flat 20% off'). UTILITY templates cannot advertise. Change the category to MARKETING...
+ok   fixed and submitted; the worker sent it and the page moved to Pending by itself
+ok   rejection webhook reaches the open page, with an explanation
+ok   rejected template edited and resubmitted
+ok   approved: no Edit button
+ok   copied into a new draft
+ok   picture uploaded through Meta
+ok   the client sees why it is suspended
+ok   Disable asks first: Disable Asha? They are logged out at once and cannot log in.
+ok   Reset password asks first: Reset the password for Asha? They are logged out at once and must choose a new one.
+browser errors: 0 []
+server errors: 0
+```
+
+Automated tests after these screens: integration 271, shared 33, server unit 88, web 144, all passing.
+
+Not proved here: Embedded Signup's button (needs a real Meta app), Resume and Share credit line in the browser (covered by web tests with a stubbed server and by the backend's integration tests), and anything against real Meta.

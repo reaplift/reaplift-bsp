@@ -11,6 +11,7 @@ Built on 2 November 2026 by Anirudh (owner moved these from Suraj's task list). 
 
 Choices made while building:
 
+- The client's Wallet is split into tabs: Balance, Prices, Ledger and Monthly statement (owner, 2 November 2026). A ledger filter and the chosen month stay when moving between them.
 - Adding a client opens its page, where Money and Prices are, so rates are set at registration.
 - The ledger CSV holds every row the filter matches, not only those on screen, and is made in the browser.
 - The switch for sent but undelivered messages is shown locked, as turning it off is not built (P12).

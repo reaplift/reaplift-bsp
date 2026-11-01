@@ -132,20 +132,25 @@ export function registerScope(
   });
 }
 
+const WORKSPACE = sql`
+  c.id, c.name, c.status,
+  case when c.status = 'suspended' then (
+    select a.details->>'note' from audit_logs a
+    where a.client_id = c.id and a.action = 'client.suspended' order by a.id desc limit 1
+  ) end as reason
+`;
+
 /** The client workspaces a user can open: their own, their assigned ones, or all of them. */
 export async function listWorkspaces(db: Kysely<Database>, user: SessionUser) {
+  type Row = { id: string; name: string; status: string; reason: string | null };
   const rows =
     user.role === 'client'
-      ? await sql<{ id: string; name: string; status: string }>`
-          select id, name, status from clients where id = ${user.clientId} order by name`.execute(
-          db,
-        )
+      ? await sql<Row>`select ${WORKSPACE} from clients c where c.id = ${user.clientId} order by c.name`.execute(db)
       : user.role === 'staff'
-        ? await sql<{ id: string; name: string; status: string }>`
-            select c.id, c.name, c.status from clients c
+        ? await sql<Row>`
+            select ${WORKSPACE} from clients c
             join staff_clients sc on sc.client_id = c.id
             where sc.staff_user_id = ${user.userId} order by c.name`.execute(db)
-        : await sql<{ id: string; name: string; status: string }>`
-            select id, name, status from clients order by name`.execute(db);
-  return rows.rows.map((r) => ({ clientId: r.id, name: r.name, status: r.status }));
+        : await sql<Row>`select ${WORKSPACE} from clients c order by c.name`.execute(db);
+  return rows.rows.map((r) => ({ clientId: r.id, name: r.name, status: r.status, suspendedReason: r.reason }));
 }

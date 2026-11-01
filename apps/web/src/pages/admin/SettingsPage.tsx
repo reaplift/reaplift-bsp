@@ -271,6 +271,44 @@ function ChargingDefaults() {
   );
 }
 
+function PromoWords() {
+  const { api } = useAuth();
+  const words = useLoad(() => api.wordSetting('promo_words'), [api]);
+  const action = useAction();
+  const [message, setMessage] = useState<string | null>(null);
+
+  const save = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const text = String(new FormData(event.currentTarget).get('words'));
+    const value = text.split(/[,\n]/).map((word) => word.trim()).filter(Boolean);
+    setMessage(null);
+    if (await action.run(() => api.setWordSetting('promo_words', value))) {
+      words.reload();
+      setMessage('Saved. It applies from the next template submitted.');
+    }
+  };
+
+  return (
+    <Panel title="Promotional words" hint="A Utility or Authentication template containing one of these is stopped before it goes to Meta, as it looks like Marketing. This is ReapLift's own check, to save a rejection; Meta decides in the end.">
+      <ErrorNote message={words.error ?? action.error} />
+      {message && <p className="form-success">{message}</p>}
+      {words.data && (
+        <form className="form-grid" onSubmit={save} key={words.data.value.join()}>
+          <label>
+            Words, separated by commas
+            <textarea name="words" rows={3} defaultValue={words.data.value.join(', ')} />
+          </label>
+          <div className="form-actions">
+            <button type="submit" className="primary-button" disabled={action.busy}>
+              Save words
+            </button>
+          </div>
+        </form>
+      )}
+    </Panel>
+  );
+}
+
 /** ReapLift-wide controls. Each client's own prices and money are on its page. */
 export function SettingsPage() {
   return (
@@ -279,6 +317,7 @@ export function SettingsPage() {
       <MetaRates />
       <DefaultMarkup />
       <ChargingDefaults />
+      <PromoWords />
     </div>
   );
 }

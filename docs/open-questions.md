@@ -92,6 +92,13 @@ Docs last checked: 31 October 2026, Graph API v26.0.
 | 25 | Does Meta refuse a template send with an empty variable? | A blank cell in a client's sheet would fail and be refunded | Refused | Test |
 | 20 | Are Meta's messaging limits per business portfolio for all of ReapLift's client accounts? If clients own their accounts, whose portfolio counts? | The limit decides how much a client can send | Each client's own portfolio; we copy the value to each number | Ask |
 
+## For ReapLift: daily limits
+
+Asked on 2 November 2026; nothing is decided until ReapLift answers.
+
+- **Should our own daily limit count customers or messages?** Built as customers, which matches how Meta counts, so the two can be compared directly. It cannot cap message volume: 500 customers can receive more than 500 messages. Change it if ReapLift wants a cap for cost control.
+- **Do marketing, utility and authentication all count towards Meta's daily limit in the same way?** Meta's page gives one limit and does not say. Built as one count for all three. Confirm with Meta or Dovesoft.
+
 ## Answered
 
 - **D13 and whether limits are shared, 31 October 2026, owner's screenshot of a Dovesoft client's Business Suite:** the client's portfolio assigns its WhatsApp account to Dove Soft as a partner, so the client owns it. Each client has its own Meta limit. One client's account was checked; confirm with Dovesoft that all are the same.

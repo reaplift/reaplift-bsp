@@ -23,7 +23,7 @@ flowchart LR
   M2["M2 Notifications<br/>waits on real email (E5)"]:::waiting
   M3["M3 Client onboarding<br/>backend and screens built"]:::review
   M4["M4 Send engine<br/>waits on real phone (E1, E2)"]:::waiting
-  M5["M5 Number connection<br/>and templates"]:::backend
+  M5["M5 Number connection<br/>and templates, backend and<br/>screens built"]:::review
   M6["M6 Wallet, prices, GST<br/>backend and screens built"]:::review
   M7["M7 Campaigns:<br/>create, send, track"]:::backend
   M8["M8 Campaign controls<br/>and rules"]:::backend
@@ -60,14 +60,14 @@ As of 2 November 2026:
 | Colour | Meaning | Milestones |
 | --- | --- | --- |
 | Green | Done | M0, M1 |
-| Blue | Backend and screens built and tested; waits on the owner's review | M3, M6 |
+| Blue | Backend and screens built and tested; waits on the owner's review | M3, M5, M6 |
 | Purple | Backend built and tested against fakes; has no screens of its own to wait for, and waits on an outside prerequisite | M2, M4 |
-| Yellow | Backend built and tested against the fake Meta server; screens not built | M5, M7, M8, M9 |
+| Yellow | Backend built and tested against the fake Meta server; screens not built | M7, M8, M9 |
 | Grey | Not started | M10, M11 |
 
 Only Done means finished. M5, M7 and M9 also need real Meta access or a real invoice before they can be Done.
 
-Next in order: M5's screens, then M7, M8 and M9's (Anirudh; owner decided 2 November 2026). M10 needs Oracle access (E4), and M11 needs everything before it.
+Next in order: M7's screens, then M8 and M9's (Anirudh; owner decided 2 November 2026). M10 needs Oracle access (E4), and M11 needs everything before it.
 
 ## Status board
 
@@ -80,7 +80,7 @@ Update your row in the same pull request that changes a task's status.
 | [M2](milestones/m2-notifications/spec.md) Notifications                       | A state change sends an email from `info@reaplift.com` and shows in the panel's notification list   | Built (backend 2.1 to 2.4); Done when E5 allows the real-email demo                                      | Anirudh                            | M0           | E5                             |
 | [M3](milestones/m3-client-onboarding/spec.md) Client onboarding               | Super admin creates a client, its login and its staff; they get welcome emails and can log in       | Backend and screens built; worked example passes in a real browser; server-restart step of the demo and owner review left | Anirudh | M1, M2 (started early, see the decision log) | none                           |
 | [M4](milestones/m4-send-engine/spec.md) Send engine                           | Operator queues one template message; it reaches a phone; sent, delivered and read are recorded     | Built against the fake Meta server (4.1 to 4.6, 4.7 commands); Done when E1 and E2 allow the real-phone demo | Anirudh | M0           | E1, E2 for the real-phone demo |
-| [M5](milestones/m5-number-and-templates/spec.md) Number connection, templates | A client's number is connected; a template passes our checks, goes to Meta, shows approved/rejected | In progress: backend 5.1 to 5.6 built against the fake Meta server; screens not started | Anirudh (backend); screens unassigned | M3, M4 (backend started early, see the decision log) | E3; E7 for credit-line sharing |
+| [M5](milestones/m5-number-and-templates/spec.md) Number connection, templates | A client's number is connected; a template passes our checks, goes to Meta, shows approved/rejected | In progress: backend 5.1 to 5.6 built against the fake Meta server; screens built and tested in a browser ([frontend.md](milestones/m5-number-and-templates/frontend.md)), except the Embedded Signup button, which needs a real Meta app (E3); waits on the owner's review | Anirudh | M3, M4 (backend started early, see the decision log) | E3; E7 for credit-line sharing |
 | [M6](milestones/m6-wallet/spec.md) Wallet and prices                          | Super admin sets prices and tops up; client sees balance and every ledger row                       | Backend and screens built, including GST; worked example passes in a real browser; owner review and ReapLift's pricing and GST answers left | Anirudh | M3 (started early, see the decision log) | none                           |
 | [M7](milestones/m7-campaigns/spec.md) Campaigns                               | Client uploads an audience, sees the summary, confirms, is charged, and watches messages deliver    | In progress: backend 7.1 to 7.10 built; screens not started | Anirudh (backend); screens unassigned | M5, M6 (started early, see the decision log) | none                           |
 | [M8](milestones/m8-campaign-controls/spec.md) Campaign controls and rules     | Client pauses, resumes, cancels or schedules a campaign with exact money handling; rules apply      | In progress: backend 8.1 to 8.5 built; screens not started | Anirudh (backend); screens unassigned | M7 (started early, see the decision log) | none                           |
@@ -349,6 +349,6 @@ Do them in order; each one builds on the last. A connect task goes right after t
 
 | Person   | Milestone     | Next task                                                                                         | Waiting on |
 | -------- | ------------- | ------------------------------------------------------------------------------------------------- | ---------- |
-| Anirudh  | Screens       | M5 screens, then M7, M8, M9; M4 real-phone demo when E1 and E2 are ready                      | E1, E2 for the demo |
+| Anirudh  | Screens       | M7 screens, then M8, M9; M4 real-phone demo when E1 and E2 are ready                      | E1, E2 for the demo |
 | Suraj    | To decide     | Owner to confirm; M3 screens are done by Anirudh                                                   | owner      |
 | ReapLift | none          | E3 (Business Verification, App Review); continue E7 with Meta; E1, E2, E5; answer D10 to D12      | none       |

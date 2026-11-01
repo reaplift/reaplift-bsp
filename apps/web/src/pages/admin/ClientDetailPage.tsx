@@ -6,11 +6,13 @@ import { Breadcrumbs, ErrorNote, formatDateTime, Panel, StatusPill } from '../..
 import { useAction, useLoad } from '../../hooks/useLoad';
 import { workspacePath } from '../../paths';
 import { ClientMoney, ClientPrices } from './ClientMoney';
+import { ClientNumber } from './ClientNumber';
 import { ClientStaff } from './ClientStaff';
 
 const TABS = [
   { key: 'overview', label: 'Overview' },
   { key: 'money', label: 'Money and prices' },
+  { key: 'number', label: 'WhatsApp number' },
   { key: 'logins', label: 'Logins' },
   { key: 'staff', label: 'Staff' },
 ] as const;
@@ -77,13 +79,15 @@ export function ClientDetailPage() {
     }
   };
 
-  const toggleUser = async (userId: string, current: string) => {
+  const toggleUser = async (userId: string, current: string, name: string) => {
+    if (current === 'active' && !window.confirm(`Disable ${name}? They are logged out at once and cannot log in.`)) return;
     if (await userAction.run(() => api.setUserStatus(userId, current === 'active' ? 'disabled' : 'active'))) reload();
   };
 
   const resetPassword = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
+    if (!window.confirm(`Reset the password for ${resetName}? They are logged out at once and must choose a new one.`)) return;
     const done = await userAction.run(() => api.resetPassword(resetFor!, String(form.get('password'))));
     if (done) {
       setResetFor(null);
@@ -191,6 +195,8 @@ export function ClientDetailPage() {
         </>
       )}
 
+      {tab === 'number' && <ClientNumber clientId={id} />}
+
       {tab === 'logins' && (
       <Panel title="Logins" hint="The people at this client who can log in. Disabling logs them out at once. Resetting a password logs them out and makes them choose a new one.">
         <ErrorNote message={userAction.error} />
@@ -216,7 +222,7 @@ export function ClientDetailPage() {
                       <StatusPill status={user.status} />
                     </td>
                     <td className="row-actions">
-                      <button type="button" className="small-button" onClick={() => void toggleUser(user.id, user.status)}>
+                      <button type="button" className="small-button" onClick={() => void toggleUser(user.id, user.status, user.name)}>
                         {user.status === 'active' ? 'Disable' : 'Enable'}
                       </button>
                       <button type="button" className="small-button" onClick={() => setResetFor(user.id)}>
@@ -236,6 +242,7 @@ export function ClientDetailPage() {
               name="password"
               autoComplete="new-password"
               minLength={10}
+              canGenerate
               hint="At least 10 characters. Letters, numbers and symbols are all allowed. Tell the person by phone; the email does not contain it."
             />
             <button type="submit" className="primary-button" disabled={userAction.busy}>
@@ -262,6 +269,7 @@ export function ClientDetailPage() {
             name="password"
             autoComplete="new-password"
             minLength={10}
+            canGenerate
             hint="At least 10 characters. Letters, numbers and symbols are all allowed. Tell the person by phone; the email does not contain it."
           />
           <ErrorNote message={addUser.error} />

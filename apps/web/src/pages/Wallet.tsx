@@ -1,6 +1,6 @@
 import { formatPaise, formatPercent, type LedgerRow } from '@reaplift/shared';
 import { useState, type FormEvent } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../auth/context';
 import { ErrorNote, formatDateTime, Hint, Panel } from '../components/ui';
 import { useAction, useLoad } from '../hooks/useLoad';
@@ -48,10 +48,19 @@ export function MoneyTiles({ balancePaise, onHoldPaise, availablePaise }: { bala
   );
 }
 
+const TABS = [
+  { key: 'balance', label: 'Balance' },
+  { key: 'prices', label: 'Prices' },
+  { key: 'ledger', label: 'Ledger' },
+  { key: 'statement', label: 'Monthly statement' },
+] as const;
+
 /** The client's money. Prices include GST; Meta's rate and the markup are never shown here. */
 export function Wallet() {
   const { clientId = '' } = useParams();
   const { api } = useAuth();
+  const [params] = useSearchParams();
+  const tab = TABS.find((t) => t.key === params.get('tab'))?.key ?? 'balance';
   const wallet = useLoad(() => api.wallet(clientId), [api, clientId]);
   const prices = useLoad(() => api.prices(clientId), [api, clientId]);
   const [filter, setFilter] = useState<{ kind?: string; from?: string; to?: string }>({});
@@ -110,6 +119,16 @@ export function Wallet() {
 
   return (
     <div className="page-stack">
+      <nav className="tabs" aria-label="Wallet sections">
+        {TABS.map(({ key, label }) => (
+          <Link key={key} to={`?tab=${key}`} className={tab === key ? 'tab active' : 'tab'} aria-current={tab === key ? 'page' : undefined}>
+            {label}
+          </Link>
+        ))}
+      </nav>
+
+      {/* Hidden, not removed, so a ledger filter and the chosen month are still there on coming back. */}
+      <div hidden={tab !== 'balance'}>
       <Panel title="Wallet" hint="Your prepaid balance. Campaigns are charged from it when they start, and failed messages are refunded to it. ReapLift adds money when you pay.">
         <ErrorNote message={wallet.error} />
         {wallet.data && <MoneyTiles {...wallet.data} />}
@@ -127,6 +146,9 @@ export function Wallet() {
         )}
       </Panel>
 
+      </div>
+
+      <div hidden={tab !== 'prices'}>
       <Panel title="Your prices" hint="What one message costs you, by message type. WhatsApp decides a template's type when it approves it.">
         <ErrorNote message={prices.error} />
         {prices.data && (
@@ -155,6 +177,9 @@ export function Wallet() {
         )}
       </Panel>
 
+      </div>
+
+      <div hidden={tab !== 'ledger'}>
       <Panel title="Ledger" hint="Every movement of money in this wallet. Rows can never be changed or deleted; a mistake is put right with a new row.">
         <form className="filter-row" onSubmit={submit}>
           <label>
@@ -233,6 +258,9 @@ export function Wallet() {
         )}
       </Panel>
 
+      </div>
+
+      <div hidden={tab !== 'statement'}>
       <Panel title="Monthly statement" hint="Campaign charges less refunds for the month, split into the amount without GST and the GST. Top-ups are not included, because they are not sales.">
         <div className="filter-row">
           <label>
@@ -271,6 +299,7 @@ export function Wallet() {
           </div>
         )}
       </Panel>
+      </div>
     </div>
   );
 }

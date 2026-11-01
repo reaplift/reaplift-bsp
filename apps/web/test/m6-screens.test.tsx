@@ -94,7 +94,7 @@ describe('the client’s Wallet', () => {
   });
 
   it('shows and filters the ledger, pages it, and splits the month’s GST', async () => {
-    const calls = open('/clients/c1/wallet', 'client', routes);
+    const calls = open('/clients/c1/wallet?tab=ledger', 'client', routes);
     await screen.findByText('-₹104.00');
     expect(screen.getByRole('button', { name: 'Show more' })).toBeTruthy();
     expect(await screen.findByText('₹100.00')).toBeTruthy();
@@ -255,5 +255,34 @@ describe('Admin Settings', () => {
     const calls = open('/admin/settings', 'staff', routes);
     await screen.findByRole('navigation');
     expect(calls.some((c) => c.path.startsWith('/api/admin'))).toBe(false);
+  });
+});
+
+describe('the Wallet’s tabs', () => {
+  const routes = {
+    'GET /api/clients/c1/wallet': () => ok(WALLET),
+    'GET /api/clients/c1/prices': () => ok(PRICES),
+    'GET /api/clients/c1/wallet/ledger': () => ok({ items: [ROW], nextCursor: null }),
+    'GET /api/clients/c1/wallet/statement': () => ok({ month: '2026-11', lines: [] }),
+  };
+  const shown = (name: string) => screen.queryByRole('heading', { name }) !== null;
+
+  it('opens on the balance and shows one section at a time', async () => {
+    open('/clients/c1/wallet', 'client', routes);
+    await screen.findByRole('heading', { name: 'Wallet' });
+    expect(shown('Ledger')).toBe(false);
+    await userEvent.click(screen.getByRole('link', { name: 'Ledger' }));
+    await screen.findByRole('heading', { name: 'Ledger' });
+    expect(shown('Wallet')).toBe(false);
+    expect(shown('Your prices')).toBe(false);
+  });
+
+  it('a ledger filter is still there after visiting another tab', async () => {
+    open('/clients/c1/wallet?tab=ledger', 'client', routes);
+    await userEvent.selectOptions(await screen.findByLabelText('Type'), 'charge');
+    await userEvent.click(screen.getByRole('link', { name: 'Prices' }));
+    await screen.findByRole('heading', { name: 'Your prices' });
+    await userEvent.click(screen.getByRole('link', { name: 'Ledger' }));
+    expect((await screen.findByLabelText('Type') as HTMLSelectElement).value).toBe('charge');
   });
 });

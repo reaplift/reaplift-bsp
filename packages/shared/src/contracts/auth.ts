@@ -35,6 +35,8 @@ export const Workspace = z.object({
   clientId: z.string().min(1),
   name: z.string(),
   status: z.enum(['active', 'suspended']),
+  /** Why, when suspended. The same note the client was emailed. */
+  suspendedReason: z.string().nullable().optional(),
 });
 export type Workspace = z.infer<typeof Workspace>;
 

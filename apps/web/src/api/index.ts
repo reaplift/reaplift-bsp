@@ -11,12 +11,19 @@ import {
   GstRateList,
   GstReport,
   LedgerPage,
+  LimitUsage,
   LoginResponse,
   MetaRateList,
   MeResponse,
   MyNotifications,
   PriceList,
   StatementView,
+  TemplateList,
+  TemplateView,
+  WaAccount,
+  WaAccountList,
+  WordSetting,
+  type TemplateComponent,
   WalletView,
   type LoginRequest,
 } from '@reaplift/shared';
@@ -48,6 +55,7 @@ function getTransport(): Promise<Transport> {
   return transport;
 }
 
+type TemplateInput = { name: string; language: string; category: string; components: TemplateComponent[] };
 type PerCategory = { marketing: number; utility: number; authentication: number };
 
 function query(params: Record<string, string | undefined>): string {
@@ -99,6 +107,34 @@ export function createApi(transport: () => Transport | Promise<Transport>) {
       send({ method: 'POST', path: `/api/admin/users/${id}/reset-password`, body: { password } }, null),
     setStaffClients: (id: string, clientIds: string[]) =>
       send({ method: 'PUT', path: `/api/admin/users/${id}/clients`, body: { clientIds } }, null),
+
+    waAccounts: (clientId: string) => send({ method: 'GET', path: `/api/clients/${clientId}/wa-accounts` }, WaAccountList),
+    connectNumber: (clientId: string, body: { wabaId: string; phoneNumberId: string; token: string }) =>
+      send({ method: 'POST', path: `/api/admin/clients/${clientId}/wa-accounts`, body }, WaAccount),
+    setNumberLimits: (id: string, body: { sendRatePerSec?: number; dailySendLimit?: number | null }) =>
+      send({ method: 'PATCH', path: `/api/admin/wa-accounts/${id}/limits`, body }, null),
+    resumeNumber: (id: string) => send({ method: 'POST', path: `/api/admin/wa-accounts/${id}/resume` }, null),
+    shareCredit: (id: string) => send({ method: 'POST', path: `/api/admin/wa-accounts/${id}/share-credit` }, null),
+    replaceToken: (id: string, token: string) =>
+      send({ method: 'POST', path: `/api/admin/wa-accounts/${id}/token`, body: { token } }, null),
+    limitUsage: () => send({ method: 'GET', path: '/api/admin/limits-usage' }, LimitUsage),
+    wordSetting: (key: string) => send({ method: 'GET', path: `/api/admin/settings/${key}` }, WordSetting),
+    setWordSetting: (key: string, value: string[]) =>
+      send({ method: 'PUT', path: `/api/admin/settings/${key}`, body: { value } }, null),
+
+    templates: (clientId: string) => send({ method: 'GET', path: `/api/clients/${clientId}/templates` }, TemplateList),
+    template: (clientId: string, id: string) =>
+      send({ method: 'GET', path: `/api/clients/${clientId}/templates/${id}` }, TemplateView),
+    createTemplate: (clientId: string, body: TemplateInput & { waAccountId: string }) =>
+      send({ method: 'POST', path: `/api/clients/${clientId}/templates`, body }, TemplateView),
+    editTemplate: (clientId: string, id: string, body: TemplateInput) =>
+      send({ method: 'PUT', path: `/api/clients/${clientId}/templates/${id}`, body }, TemplateView),
+    submitTemplate: (clientId: string, id: string) =>
+      send({ method: 'POST', path: `/api/clients/${clientId}/templates/${id}/submit` }, TemplateView),
+    copyTemplate: (clientId: string, id: string, name: string) =>
+      send({ method: 'POST', path: `/api/clients/${clientId}/templates/${id}/copy`, body: { name } }, TemplateView),
+    uploadTemplateMedia: (clientId: string, id: string, file: File) =>
+      send({ method: 'POST', path: `/api/clients/${clientId}/templates/${id}/media`, file }, TemplateView),
 
     wallet: (clientId: string) => send({ method: 'GET', path: `/api/clients/${clientId}/wallet` }, WalletView),
     ledger: (clientId: string, filter: { kind?: string; from?: string; to?: string; cursor?: string; limit?: string }) =>

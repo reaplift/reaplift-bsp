@@ -8,13 +8,16 @@ import { AuditPageView } from './pages/admin/AuditPage';
 import { ClientDetailPage } from './pages/admin/ClientDetailPage';
 import { ClientsPage } from './pages/admin/ClientsPage';
 import { DeliveryLogPage } from './pages/admin/DeliveryLogPage';
+import { NumbersPage } from './pages/admin/NumbersPage';
 import { SettingsPage } from './pages/admin/SettingsPage';
 import { StaffPage } from './pages/admin/StaffPage';
 import { ForcedPasswordChange, MyAccount } from './pages/Account';
 import { Dashboard } from './pages/Dashboard';
 import { Login } from './pages/Login';
 import { PushCampaign } from './pages/PushCampaign';
+import { Templates } from './pages/Templates';
 import { Wallet } from './pages/Wallet';
+import { WorkspaceSettings } from './pages/WorkspaceSettings';
 import { WorkspacePicker } from './pages/WorkspacePicker';
 import { homePath, WORKSPACE_PAGES, workspacePath, type WorkspacePage } from './paths';
 import './styles.css';
@@ -24,6 +27,7 @@ const adminNav = (me: MeResponse): NavItem[] =>
     ? [
         { to: '/admin/clients', label: 'Clients' },
         { to: '/admin/staff', label: 'Staff' },
+        { to: '/admin/numbers', label: 'Numbers and limits' },
         { to: '/admin/settings', label: 'Settings' },
         { to: '/admin/audit', label: 'Audit log' },
         { to: '/admin/delivery-log', label: 'Delivery log' },
@@ -36,10 +40,10 @@ const canSwitch = (me: MeResponse) => homePath(me) === '/workspaces';
 const pageElement: Record<WorkspacePage, ReactNode> = {
   dashboard: <Dashboard />,
   campaign: <PushCampaign />,
-  templates: <ComingSoon title="Templates" />,
+  templates: <Templates />,
   reports: <ComingSoon title="Reports" />,
   wallet: <Wallet />,
-  settings: <ComingSoon title="Settings" />,
+  settings: <WorkspaceSettings />,
 };
 
 /** `/clients/:clientId/...`: only a client in the user's own list opens; any other goes to the picker. */
@@ -140,6 +144,7 @@ export function App() {
                 <Route path="clients" element={<ClientsPage />} />
                 <Route path="clients/:id" element={<ClientDetailPage />} />
                 <Route path="staff" element={<StaffPage />} />
+                <Route path="numbers" element={<NumbersPage />} />
                 <Route path="settings" element={<SettingsPage />} />
                 <Route path="audit" element={<AuditPageView />} />
                 <Route path="delivery-log" element={<DeliveryLogPage />} />

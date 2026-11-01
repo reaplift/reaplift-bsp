@@ -376,6 +376,10 @@ describe('what an admin needs and could not do', () => {
     const notifiedBefore = (await rows(`select count(*)::int as n from notifications where event = 'campaign.stalled'`))[0].n;
     await call(ADMIN, 'POST', `/api/admin/clients/${w.ids.northwind}/suspend`, { note: 'unpaid' });
     expect((await call(ASHA, 'GET', `${base()}/wallet`)).json().error).toBe('CLIENT_SUSPENDED');
+    const reasonFor = async (session: Parameters<typeof call>[0]) =>
+      (await call(session, 'GET', '/api/auth/me')).json().workspaces.find((x: { clientId: string }) => x.clientId === w.ids.northwind).suspendedReason;
+    expect(await reasonFor(ASHA)).toBe('unpaid');
+    expect(await reasonFor(MEERA)).toBe('unpaid');
     expect((await call(MEERA, 'GET', `${base()}/wallet`)).json().error).toBe('CLIENT_SUSPENDED');
     expect((await call(ADMIN, 'GET', `${base()}/wallet/ledger`)).statusCode).toBe(200);
 

@@ -13,7 +13,7 @@ const PASSWORD = 'reaplift-dev-1';
 const NORTHWIND = '/clients/client-northwind';
 const BLUEBIRD = '/clients/client-bluebird';
 const GREENLEAF = '/clients/client-greenleaf';
-const ADMIN_MENU = ['Clients', 'Staff', 'Settings', 'Audit log', 'Delivery log'];
+const ADMIN_MENU = ['Clients', 'Staff', 'Numbers and limits', 'Settings', 'Audit log', 'Delivery log'];
 const WORKSPACE_MENU = ['Dashboard', 'Push Campaign', 'Templates', 'Reports', 'Wallet', 'Settings'];
 
 /** Shows the current address, so a test can check where a redirect landed. */
@@ -51,7 +51,9 @@ function withGreenleafSuspended(): Transport {
     const res = await mock(req);
     if (req.path === '/api/auth/me' && res.status === 200) {
       const body = res.body as { workspaces: { name: string; status: string }[] };
-      for (const w of body.workspaces) if (w.name === 'Greenleaf Foods') w.status = 'suspended';
+      for (const w of body.workspaces) {
+        if (w.name === 'Greenleaf Foods') Object.assign(w, { status: 'suspended', suspendedReason: 'Payment overdue' });
+      }
     }
     return res;
   };
@@ -184,9 +186,7 @@ describe('workspace pages', () => {
   it.each([
     ['dashboard', 'Dashboard', 'No campaign activity yet. Figures appear here once campaigns are sent.'],
     ['campaign', 'Push Campaign', 'No campaigns yet. Creating campaigns is coming soon.'],
-    ['templates', 'Templates', 'This page is coming soon.'],
     ['reports', 'Reports', 'This page is coming soon.'],
-    ['settings', 'Settings', 'This page is coming soon.'],
   ])('%s shows "%s" and its empty or coming-soon text, and is marked active', async (page, title, text) => {
     open(`${NORTHWIND}/${page}`, await loggedInAs('ops@northwind.com'));
     expect(await screen.findByRole('heading', { level: 2, name: title })).toBeDefined();
@@ -247,7 +247,7 @@ describe('a client the user may not open', () => {
   it('its own user sees a suspended client in the picker but cannot open it', async () => {
     open('/', await loggedInAs('sales@greenleaf.in', withGreenleafSuspended()));
     await landsOn('/workspaces');
-    expect(pickerNames()).toEqual(['Greenleaf Foods Suspended']);
+    expect(pickerNames()).toEqual(['Greenleaf Foods SuspendedThis account is suspended: Payment overdue. Contact ReapLift.']);
     expect(screen.queryByRole('link', { name: /Greenleaf/ })).toBeNull();
   });
 

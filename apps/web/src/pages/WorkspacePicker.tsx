@@ -32,6 +32,9 @@ export function WorkspacePicker({ workspaces, showAdmin }: WorkspacePickerProps)
               <li key={w.clientId}>
                 <span className="workspace-item disabled" aria-disabled="true">
                   {w.name} <span className="status-pill status-suspended">Suspended</span>
+                  <small className="form-note suspended-reason">
+                    This account is suspended{w.suspendedReason ? `: ${w.suspendedReason}` : ''}. Contact ReapLift.
+                  </small>
                 </span>
               </li>
             ),

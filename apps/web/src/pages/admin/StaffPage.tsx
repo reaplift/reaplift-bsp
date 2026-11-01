@@ -66,6 +66,7 @@ export function StaffPage() {
   const resetPassword = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
+    if (!window.confirm(`Reset the password for ${resetName}? They are logged out at once and must choose a new one.`)) return;
     if (await action.run(() => api.resetPassword(resetFor!, String(form.get('password'))))) {
       setResetFor(null);
       setMessage('Password reset. They must choose a new one at next login.');
@@ -165,6 +166,7 @@ export function StaffPage() {
                         className="small-button"
                         onClick={async () => {
                           const next = person.status === 'active' ? 'disabled' : 'active';
+                          if (next === 'disabled' && !window.confirm(`Disable ${person.name}? They are logged out at once and cannot log in.`)) return;
                           if (await action.run(() => api.setUserStatus(person.id, next))) staff.reload();
                         }}
                       >
@@ -187,6 +189,7 @@ export function StaffPage() {
               name="password"
               autoComplete="new-password"
               minLength={10}
+              canGenerate
               hint="At least 10 characters. Letters, numbers and symbols are all allowed. Tell the person by phone; the email does not contain it."
             />
             <button type="submit" className="primary-button" disabled={action.busy}>
@@ -214,6 +217,7 @@ export function StaffPage() {
             name="password"
             autoComplete="new-password"
             minLength={10}
+            canGenerate
             hint="At least 10 characters. Letters, numbers and symbols are all allowed. Tell the person by phone; the email does not contain it."
           />
           <fieldset>
