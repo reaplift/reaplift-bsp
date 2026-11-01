@@ -2,6 +2,8 @@
 
 Questions that are waiting on ReapLift or Meta. Add new ones here. When one is answered, move it to "Answered" with the date, the source, and the code or spec it changed.
 
+**Plan (owner, 2 November 2026):** once the product is built, demo it to ReapLift and go through this document. Everything here must be closed or consciously accepted before launch. Each question says what the product assumes today, so the demo shows that assumption working. The GST questions (G1 to G7) and pricing questions (P1 to P12) are the ones to settle in that meeting; the rest go to Meta or Dovesoft.
+
 ## For ReapLift: client pricing (D10) and campaign size
 
 Proposed by Anirudh on 31 October 2026, and **not agreed yet**. Nothing is built, so changing it costs nothing today. M6 builds it.
@@ -28,6 +30,20 @@ Proposed by Anirudh on 31 October 2026, and **not agreed yet**. Nothing is built
 | P11 | Later, should clients be able to pay for higher priority? | Not built. Clients on their own numbers do not compete today, except on one shared WhatsApp account's daily limit | Everyone equal |
 | P10 | Is 10,000 or 20,000 rows the right limit per campaign? Does any client send more in one go today? | A larger audience must be split into several campaigns | 20,000; a setting, so changing it needs no code |
 | P9 | Who may change a client's rates later, and do changes affect campaigns already confirmed? | A rate change during a running campaign | Super admin only; confirmed campaigns keep their price |
+
+## For ReapLift's accountant: GST
+
+GST is built as a setting, default 18%, charged with each message and included in what clients pay. These answers may change that method, so please have a chartered accountant confirm them before real clients are charged.
+
+| # | Question | Why it matters | What we assume until answered |
+| --- | --- | --- | --- |
+| G1 | Is GST due when a client tops up the wallet, or when messages are sent? Many prepaid services charge GST on the top-up, so ₹1,000 costs ₹1,180 and messages then deduct without GST | It changes the whole money flow, and what the wallet balance means | When messages are charged, as the owner described |
+| G2 | Can ReapLift claim the GST it pays Meta as input tax credit? | If yes, ReapLift's real cost is 86 paise, not ₹1.01, and the margin is much higher | Not counted either way |
+| G3 | Does Meta bill ReapLift with Indian GST, or from abroad under reverse charge? | Decides what ReapLift pays and how it is recorded | Ask Meta during E7 too |
+| G4 | Is a price including GST, rounded up to a whole paisa, with GST worked backwards on the statement, acceptable? | Rounding GST separately on each message would make it not exactly 18% | Yes |
+| G5 | Who issues tax invoices, and when? Do we need each client's GSTIN and state, for CGST and SGST or IGST? (D11) | Clients may need invoices to claim their own credit; we hold neither field today | Outside the platform at launch, with a monthly statement |
+| G6 | Is GST refunded in full with a failed message? Is a credit note needed? | Refunds are frequent | Refunded in full, with no credit note |
+| G7 | The client's message says a marketing message will cost ₹1.03 with GST. 86 paise + 18% is ₹1.0148, and 88 paise + 18% is ₹1.0384. Which price and margin does ReapLift intend? | Sets what clients are charged; ₹1.03 leaves about 1.5 paise a message | Prices are set per client by the super admin |
 
 ## For Meta
 

@@ -1,7 +1,7 @@
 # M3. Client onboarding
 
-- Status: In progress. Backend 3.1 to 3.7 built on 31 October 2026; see [test-evidence.md](test-evidence.md). Screens S3 to S6 are not connected.
-- Owner: Anirudh (backend, moved from Suraj on 31 October 2026), Suraj (screens S3 to S6)
+- Status: Built. Backend 3.1 to 3.7 and screens S3 to S6 work together in a real browser; see [test-evidence.md](test-evidence.md) and [frontend.md](frontend.md). Left for Done: the demo's server restart, and the owner's review.
+- Owner: Anirudh (backend and screens, moved from Suraj on 31 October and 2 November 2026)
 - Starts after: M1 (logins and scope), M2 (notifications; may start while M2 is Built, using the fake provider)
 - External prerequisites: none (E5 only for real emails; the fake provider is enough for the demo)
 
@@ -180,7 +180,6 @@ None open.
 
 ## Current reality
 
-- The panel's Admin page is a placeholder. The old `Admin.tsx` was removed in M1 1.6.2.
 - All routes in the table below are real and read PostgreSQL. The in-memory prototype is gone. `/api/auth/me` also answers `PASSWORD_CHANGE_REQUIRED` for a user with a first password, so the panel must handle that when it loads a session (S3).
 - Beyond the spec: a user cannot disable their own login (409 `CANNOT_CHANGE_SELF`), and a second suspend or reactivate answers 409 `STATUS_UNCHANGED`.
 - Changing a password logs out the user's other devices. Lists of clients and notifications return up to the limit with no next page yet.

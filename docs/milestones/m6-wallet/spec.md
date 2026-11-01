@@ -74,6 +74,25 @@ Out:
 - Tests: the worked example's rounding (103.57 becomes 104); a client markup overrides the default; a fixed price overrides the markup; a new Meta rate changes prices only from its start date; a client-level switch overrides the global one; a price change does not change an already-confirmed campaign's price.
 - Acceptance: step 1 of the worked example with no code change.
 
+### 6.1a GST (owner, 2 November 2026; backend built, screens not)
+
+India's GST on these messages is 18% today and can change, so it is a setting, not a fixed number.
+
+- The super admin sets the GST rate in Admin Settings, default 18%, with the date it applies from. A new rate is a new row, so history stays, and a confirmed campaign keeps the rate it was charged at. Stored in basis points (1800 = 18%), like markups.
+- Every price a client sees and pays includes GST, and the screens show both parts: for example, "₹0.88 + 18% GST = ₹1.04".
+- Proposed method, for the accountant to confirm (G1 to G6 in [open-questions.md](../../open-questions.md)): the price per message including GST is rounded up to a whole paisa, and that is what the ledger charges and refunds, so money stays in whole paise. A statement works backwards: GST = total × 18 ÷ 118, so the split is exactly 18%. A refund returns the full price including GST.
+- Margin in M9 uses the price without GST, as GST collected is not ReapLift's income.
+- Each charge, refund, message and campaign records the rate used. Routes: `GET`, `POST /api/admin/gst-rates`; `GET /api/admin/gst-report?month=` for the accountant, per client and rate; `GET /api/clients/:clientId/wallet/statement?month=` for the client. Top-ups and adjustments carry no GST and are left out of these. A correction to a charge made as an adjustment would need the accountant's advice.
+- ReapLift's own cost and the credit line stop still use Meta's rate without GST, until G2 and G3 are answered.
+
+Example at 18%, with Meta's marketing rate of 86 paise:
+
+| | Price without GST | GST | Client pays per message |
+| --- | --- | --- | --- |
+| At Meta's rate, no margin | 86.00 paise | 15.48 paise | ₹1.02 (101.48, rounded up) |
+| Fixed price, as Dovesoft charges today | 88.00 paise | 15.84 paise | ₹1.04 (103.84, rounded up) |
+| 25% markup | 107.50, rounded up to 108 paise | 19.44 paise | ₹1.28 (127.44, rounded up) |
+
 ### 6.2 Ledger and balance safety
 
 - `wallet_ledger`: `id`, `client_id`, `kind` (`topup`, `adjustment`, `charge`, `refund`), `amount_paise bigint` (positive adds, negative takes), `balance_after_paise bigint`, `campaign_id null`, `message_id null`, `note`, `created_by`, `created_at`.

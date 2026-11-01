@@ -66,7 +66,7 @@ Update your row in the same pull request that changes a task's status.
 | [M0](milestones/m0-foundation/spec.md) Foundation                             | Developer clones the repo, runs it locally, CI checks every pull request                            | Done                                                                                                     | repo setup                         | none         | none                           |
 | [M1](milestones/m1-login-and-access/spec.md) Login and access                 | Super admin, staff and client each log in and see only what their role and clients allow            | Done (30 October 2026, PR #15)                                                                           | Anirudh (backend), Suraj (screens) | M0           | none                           |
 | [M2](milestones/m2-notifications/spec.md) Notifications                       | A state change sends an email from `info@reaplift.com` and shows in the panel's notification list   | Built (backend 2.1 to 2.4); Done when E5 allows the real-email demo                                      | Anirudh                            | M0           | E5                             |
-| [M3](milestones/m3-client-onboarding/spec.md) Client onboarding               | Super admin creates a client, its login and its staff; they get welcome emails and can log in       | In progress: backend 3.1 to 3.7 built; screens not connected | Anirudh (backend), Suraj (screens) | M1, M2 (started early, see the decision log) | none                           |
+| [M3](milestones/m3-client-onboarding/spec.md) Client onboarding               | Super admin creates a client, its login and its staff; they get welcome emails and can log in       | Backend and screens built; worked example passes in a real browser; server-restart step of the demo and owner review left | Anirudh | M1, M2 (started early, see the decision log) | none                           |
 | [M4](milestones/m4-send-engine/spec.md) Send engine                           | Operator queues one template message; it reaches a phone; sent, delivered and read are recorded     | Built against the fake Meta server (4.1 to 4.6, 4.7 commands); Done when E1 and E2 allow the real-phone demo | Anirudh | M0           | E1, E2 for the real-phone demo |
 | [M5](milestones/m5-number-and-templates/spec.md) Number connection, templates | A client's number is connected; a template passes our checks, goes to Meta, shows approved/rejected | In progress: backend 5.1 to 5.6 built against the fake Meta server; screens not started | Anirudh (backend); screens unassigned | M3, M4 (backend started early, see the decision log) | E3; E7 for credit-line sharing |
 | [M6](milestones/m6-wallet/spec.md) Wallet and prices                          | Super admin sets prices and tops up; client sees balance and every ledger row                       | In progress: backend 6.1 to 6.6 built; screens not connected | Anirudh (backend), Suraj (screens) | M3 (started early, see the decision log) | none                           |
@@ -118,6 +118,12 @@ Each has a default, so work does not stop; the default is built unless the owner
 ## Decision log
 
 Answered questions move here with their date, and the spec is updated in the same pull request.
+
+### 2 November 2026
+
+- **Open questions close at a demo (owner):** after everything is built, demo to ReapLift and go through [open-questions.md](open-questions.md), closing each before launch.
+- **GST (owner):** a setting in Admin Settings, default 18%, changeable with a start date, and included in what clients pay. Backend built on the owner's instruction, charging GST with each message; design in [M6 task 6.1a](milestones/m6-wallet/spec.md). G1 to G6 are still for the accountant, and G1 could change the method before real money moves.
+- **Anirudh builds the screens too, in milestone order (owner), so milestones do not wait on Suraj.** M3's screens S3 to S6 are built and pass the worked example in a real browser. Suraj's task list no longer covers them; the owner is to tell Suraj what to take instead, so the two do not build the same screen.
 
 ### 31 October 2026
 
@@ -287,7 +293,8 @@ Claim a number in the pull request that opens the task, before writing the file.
 | 0012   | `0012_reports.sql`          | M9 9.1, 9.5, 9.7   | On `anirudh-e2e-setup`                                                    |
 | 0013   | `0013_wallet_holds.sql`     | M8 8.3             | On `anirudh-e2e-setup`                                                    |
 | 0014   | `0014_send_limits.sql`      | M5 limits          | On `anirudh-e2e-setup`                                                    |
-| 0015   | next free                   |                    | Free                                                                      |
+| 0015   | `0015_gst.sql`              | M6 6.1a            | On `anirudh-e2e-setup`                                                    |
+| 0016   | next free                   |                    | Free                                                                      |
 
 ## Suraj's task list (screens track)
 
@@ -323,6 +330,6 @@ Do them in order; each one builds on the last. A connect task goes right after t
 
 | Person   | Milestone     | Next task                                                                                         | Waiting on |
 | -------- | ------------- | ------------------------------------------------------------------------------------------------- | ---------- |
-| Anirudh  | none          | All backend built (M1 to M9), against the fake Meta server; M4 real-phone demo when E1 and E2 are ready | E1, E2 for the demo |
-| Suraj    | Screens track | M3: S3 My account and forced password change, then S4 to S6, against the real routes now built     | nothing    |
+| Anirudh  | Screens       | M5 screens, then M6, M7, M8, M9; M4 real-phone demo when E1 and E2 are ready                      | E1, E2 for the demo |
+| Suraj    | To decide     | Owner to confirm; M3 screens are done by Anirudh                                                   | owner      |
 | ReapLift | none          | E3 (Business Verification, App Review); continue E7 with Meta; E1, E2, E5; answer D10 to D12      | none       |

@@ -154,6 +154,7 @@ export function registerCampaignControls(app: FastifyInstance, deps: { db: Kysel
             kind: 'refund',
             amountPaise: cancelled.refund,
             campaignId: id,
+            gstBp: campaign.gst_bp,
             note: `${cancelled.cancelled} messages cancelled`,
             createdBy: scope.userId,
             at,

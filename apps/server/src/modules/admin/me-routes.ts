@@ -5,6 +5,7 @@ import { hashPassword, verifyPassword } from '../../lib/auth.js';
 import type { Database } from '../../lib/db.js';
 import { readPage } from '../../lib/pagination.js';
 import { sendError } from '../auth/scope.js';
+import { CATALOGUE, isEventName, type Payload } from '../notifications/catalogue.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -43,7 +44,7 @@ export function registerMeRoutes(app: FastifyInstance, deps: { db: Kysely<Databa
   app.get('/api/me/notifications', async (req, reply) => {
     const { limit } = readPage(req.query);
     const { userId } = req.auth!;
-    const rows = await sql`
+    const rows = await sql<{ event: string; payload: Payload }>`
       select id, client_id as "clientId", event, payload, status, read_at as "readAt", created_at as "createdAt"
       from notifications
       where user_id = ${userId} and channel = 'panel'
@@ -54,7 +55,12 @@ export function registerMeRoutes(app: FastifyInstance, deps: { db: Kysely<Databa
       select count(*)::int as count from notifications
       where user_id = ${userId} and channel = 'panel' and read_at is null
     `.execute(db);
-    return reply.code(200).send({ items: rows.rows, nextCursor: null, unreadCount: unread.rows[0]!.count });
+    // The words live with the events, so the panel shows what the email says.
+    const items = rows.rows.map((row) => {
+      const definition = isEventName(row.event) ? CATALOGUE[row.event] : null;
+      return { ...row, subject: definition?.subject(row.payload) ?? row.event, text: definition?.text(row.payload) ?? '' };
+    });
+    return reply.code(200).send({ items, nextCursor: null, unreadCount: unread.rows[0]!.count });
   });
 
   app.patch('/api/me/notifications/:notificationId/read', async (req, reply) => {

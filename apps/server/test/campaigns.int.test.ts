@@ -246,6 +246,8 @@ describe('7.4 summary and 7.5 confirm', () => {
       invalid: { total: 4, byReason: { not_mobile: 1, too_short: 1, wrong_country: 1, scientific_notation: 1 } },
       duplicate: 1,
       pricePaise: 95,
+      gstBp: 0,
+      priceWithGstPaise: 95,
       chargePaise: 285,
       availablePaise: 200000,
       balancePaise: 200000,

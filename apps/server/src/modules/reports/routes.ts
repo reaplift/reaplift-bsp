@@ -8,6 +8,7 @@ import type { Database } from '../../lib/db.js';
 import { writeAudit } from '../admin/audit.js';
 import { sendError } from '../auth/scope.js';
 import { notify } from '../notifications/notify.js';
+import { readGstLines } from '../wallet/gst.js';
 import { CREDIT_LIMIT_KEY, monthMetaCost, monthOf, TIME_ZONE } from './stats.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -264,13 +265,8 @@ export function registerReportRoutes(app: FastifyInstance, deps: { db: Kysely<Da
     const { month = monthOf(now()) } = req.query as { month?: string };
     if (!MONTH.test(month)) return badMonth(reply);
     const rows = (
-      await sql<{ id: string; name: string; billed: number; cost: number }>`
+      await sql<{ id: string; name: string; cost: number }>`
         select c.id, c.name,
-          coalesce((
-            select -sum(l.amount_paise) from wallet_ledger l
-            where l.client_id = c.id and l.kind in ('charge', 'refund')
-              and to_char(l.created_at at time zone ${TIME_ZONE}, 'YYYY-MM') = ${month}
-          ), 0)::bigint as billed,
           coalesce((
             select sum(m.meta_cost_centipaise) from messages m
             where m.client_id = c.id and to_char(m.delivered_at at time zone ${TIME_ZONE}, 'YYYY-MM') = ${month}
@@ -291,14 +287,20 @@ export function registerReportRoutes(app: FastifyInstance, deps: { db: Kysely<Da
     const limit = (await sql<{ value: number }>`select value from settings where key = ${CREDIT_LIMIT_KEY}`.execute(db)).rows[0];
     const used = toPaise(await monthMetaCost(db, month));
 
+    const gst = await readGstLines(db, month);
+    const sum = (clientId: string, field: 'taxablePaise' | 'gstPaise') =>
+      gst.filter((line) => line.clientId === clientId).reduce((total, line) => total + line[field], 0);
+
     return reply.code(200).send({
       month,
       clients: rows.map((r) => ({
         clientId: r.id,
         name: r.name,
-        billedPaise: r.billed,
+        // GST collected is not ReapLift's income, so billed and margin are without it.
+        billedPaise: sum(r.id, 'taxablePaise'),
+        gstPaise: sum(r.id, 'gstPaise'),
         metaCostPaise: toPaise(r.cost),
-        marginPaise: r.billed - toPaise(r.cost),
+        marginPaise: sum(r.id, 'taxablePaise') - toPaise(r.cost),
         accounts: accounts.rows.filter((a) => a.clientId === r.id),
       })),
       errors: errors.rows,

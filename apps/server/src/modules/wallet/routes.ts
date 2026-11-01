@@ -1,15 +1,26 @@
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { sql, type Kysely } from 'kysely';
-import { Adjustment, ChargePolicyUpdate, ClientPricing, DefaultPricing, LowBalanceAlert, MetaRateCreate, TopUp } from '@reaplift/shared';
+import {
+  Adjustment,
+  ChargePolicyUpdate,
+  ClientPricing,
+  DefaultPricing,
+  GstRateCreate,
+  LowBalanceAlert,
+  MetaRateCreate,
+  TopUp,
+} from '@reaplift/shared';
 import type { Database } from '../../lib/db.js';
 import { readPage, toPage } from '../../lib/pagination.js';
 import { writeAudit } from '../admin/audit.js';
 import { sendError } from '../auth/scope.js';
 import { notify } from '../notifications/notify.js';
 import { applyLedgerEntry, InsufficientBalanceError, readBalance, readOnHold, type LedgerKind } from './ledger.js';
+import { gstRateAt, priceWithGst, readGstLines } from './gst.js';
 import { CATEGORIES, chargePolicyFor, priceAt, recomputePrices } from './pricing.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
 const KINDS = new Set(['topup', 'adjustment', 'charge', 'refund']);
 const notFound = (reply: FastifyReply) => sendError(reply, 404, 'NOT_FOUND', 'Not found');
 const invalid = (reply: FastifyReply, details: unknown) =>
@@ -23,8 +34,12 @@ export function registerWalletRoutes(app: FastifyInstance, deps: { db: Kysely<Da
 
   const pricesOf = async (clientId: string) => {
     const at = now();
+    const gstBp = await gstRateAt(db, at);
     return Promise.all(
-      CATEGORIES.map(async (category) => ({ category, pricePaise: await priceAt(db, clientId, category, at) })),
+      CATEGORIES.map(async (category) => {
+        const pricePaise = await priceAt(db, clientId, category, at);
+        return { category, pricePaise, gstBp, priceWithGstPaise: pricePaise === null ? null : priceWithGst(pricePaise, gstBp) };
+      }),
     );
   };
 
@@ -84,6 +99,75 @@ export function registerWalletRoutes(app: FastifyInstance, deps: { db: Kysely<Da
 
   app.get('/api/clients/:clientId/prices', async (req, reply) => {
     return reply.code(200).send({ items: await pricesOf(req.scope!.clientId) });
+  });
+
+  app.get('/api/clients/:clientId/wallet/statement', async (req, reply) => {
+    const { clientId } = req.scope!;
+    const { month } = req.query as { month?: string };
+    if (!month || !MONTH.test(month)) return sendError(reply, 400, 'INVALID_REQUEST', 'Send month as YYYY-MM');
+    const lines = (await readGstLines(db, month, clientId)).map(({ gstBp, chargedPaise, refundedPaise, netPaise, taxablePaise, gstPaise }) => ({
+      gstBp,
+      chargedPaise,
+      refundedPaise,
+      netPaise,
+      taxablePaise,
+      gstPaise,
+    }));
+    return reply.code(200).send({ month, lines });
+  });
+
+  // Super admin: GST.
+  app.get('/api/admin/gst-rates', async (_req, reply) => {
+    const at = now();
+    const rows = await sql`
+      select id, rate_bp as "rateBp", valid_from as "validFrom", created_at as "createdAt"
+      from gst_rates order by valid_from desc, seq desc limit 100
+    `.execute(db);
+    return reply.code(200).send({ currentBp: await gstRateAt(db, at), items: rows.rows, nextCursor: null });
+  });
+
+  app.post('/api/admin/gst-rates', async (req, reply) => {
+    const parsed = GstRateCreate.safeParse(req.body);
+    if (!parsed.success) return invalid(reply, parsed.error.flatten());
+    const { rateBp, validFrom } = parsed.data;
+    const at = now();
+    const id = await db.transaction().execute(async (trx) => {
+      const before = await gstRateAt(trx, at);
+      const row = (
+        await sql<{ id: string }>`
+          insert into gst_rates (rate_bp, valid_from, entered_by, created_at)
+          values (${rateBp}, ${new Date(validFrom)}, ${req.auth!.userId}, ${at})
+          returning id
+        `.execute(trx)
+      ).rows[0]!;
+      await writeAudit(trx, {
+        userId: req.auth!.userId,
+        action: 'gst_rate.added',
+        entityType: 'gst_rate',
+        entityId: row.id,
+        before: { currentBp: before },
+        after: { rateBp, validFrom },
+        at,
+      });
+      return row.id;
+    });
+    return reply.code(201).send({ id });
+  });
+
+  // For the accountant: what was sold and the GST on it, per client, for one month.
+  app.get('/api/admin/gst-report', async (req, reply) => {
+    const { month } = req.query as { month?: string };
+    if (!month || !MONTH.test(month)) return sendError(reply, 400, 'INVALID_REQUEST', 'Send month as YYYY-MM');
+    const lines = await readGstLines(db, month);
+    return reply.code(200).send({
+      month,
+      lines,
+      totals: {
+        netPaise: lines.reduce((sum, l) => sum + l.netPaise, 0),
+        taxablePaise: lines.reduce((sum, l) => sum + l.taxablePaise, 0),
+        gstPaise: lines.reduce((sum, l) => sum + l.gstPaise, 0),
+      },
+    });
   });
 
   // Super admin: money in and out.
@@ -240,6 +324,7 @@ export function registerWalletRoutes(app: FastifyInstance, deps: { db: Kysely<Da
     const prices = await Promise.all(
       CATEGORIES.map(async (category) => {
         const pricePaise = await priceAt(db, id, category, at);
+        const gstBp = await gstRateAt(db, at);
         const rate = (
           await sql<{ rate_centipaise: number }>`
             select r.rate_centipaise from meta_rates r
@@ -252,6 +337,8 @@ export function registerWalletRoutes(app: FastifyInstance, deps: { db: Kysely<Da
         return {
           category,
           pricePaise,
+          gstBp,
+          priceWithGstPaise: pricePaise === null ? null : priceWithGst(pricePaise, gstBp),
           metaRateCentipaise: rateCentipaise,
           // A fixed price does not follow Meta's rate, so it can fall below cost (question P6).
           belowCost: pricePaise !== null && rateCentipaise !== null && pricePaise * 100 < rateCentipaise,

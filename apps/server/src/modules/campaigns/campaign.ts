@@ -3,6 +3,7 @@ import type { VariableMap } from '@reaplift/shared';
 import type { Database } from '../../lib/db.js';
 import { notify } from '../notifications/notify.js';
 import { applyLedgerEntry, readBalance, readOnHold, releaseHold } from '../wallet/ledger.js';
+import { gstRateAt, priceWithGst } from '../wallet/gst.js';
 import { chargePolicyFor, priceAt } from '../wallet/pricing.js';
 import { effectiveDailyLimit, estimateDelivery, type DeliveryEstimate } from '../messaging/limits.js';
 import { monthOf, TIME_ZONE } from '../reports/stats.js';
@@ -20,6 +21,7 @@ export interface CampaignRow {
   created_by: string;
   scheduled_at?: Date | null;
   confirmed_at?: Date | null;
+  gst_bp?: number | null;
 }
 
 export interface RowBlock {
@@ -110,7 +112,11 @@ export interface Summary {
   blocked: { total: number; byReason: Record<string, number> };
   invalid: { total: number; byReason: Record<string, number> };
   duplicate: number;
+  /** The client's price for one message, without GST. */
   pricePaise: number;
+  gstBp: number;
+  /** What one message costs the client, rounded up to a whole paisa. */
+  priceWithGstPaise: number;
   chargePaise: number;
   /** What the client can spend: its balance, less money on hold for scheduled campaigns. */
   availablePaise: number;
@@ -205,13 +211,15 @@ export async function computeSummary(db: Kysely<Database>, campaign: CampaignRow
 
   const willSend = eligible - blocks.length;
   const policy = await chargePolicyFor(db, campaign.client_id);
-  const sendPricePaise = policy.delivered ? price : 0;
-  const blockedPricePaise = policy.blocked ? price : 0;
+  const gstBp = await gstRateAt(db, at);
+  const priceWithGstPaise = priceWithGst(price, gstBp);
+  const sendPricePaise = policy.delivered ? priceWithGstPaise : 0;
+  const blockedPricePaise = policy.blocked ? priceWithGstPaise : 0;
   const chargePaise =
     willSend * sendPricePaise +
     blocks.length * blockedPricePaise +
-    (policy.invalid ? invalidTotal * price : 0) +
-    (policy.duplicate ? duplicate * price : 0);
+    (policy.invalid ? invalidTotal * priceWithGstPaise : 0) +
+    (policy.duplicate ? duplicate * priceWithGstPaise : 0);
   await refuseIfOverCreditLine(db, facts.templateCategory, willSend, at);
 
   const balancePaise = await readBalance(db, campaign.client_id);
@@ -225,6 +233,8 @@ export async function computeSummary(db: Kysely<Database>, campaign: CampaignRow
     invalid: { total: invalidTotal, byReason: invalid },
     duplicate,
     pricePaise: price,
+    gstBp,
+    priceWithGstPaise,
     chargePaise,
     availablePaise,
     balancePaise,
@@ -281,6 +291,7 @@ export async function confirmCampaign(
       kind: 'charge',
       amountPaise: -summary.chargePaise,
       campaignId,
+      gstBp: summary.gstBp,
       note: `Campaign: ${campaign.name}`,
       createdBy: userId,
       at,
@@ -300,13 +311,13 @@ export async function confirmCampaign(
   await sql`
     insert into messages (
       client_id, wa_account_id, campaign_id, template_id, to_number, variables, status, block_reason,
-      client_price_paise, source, next_attempt_at, queued_at
+      client_price_paise, gst_bp, source, next_attempt_at, queued_at
     )
     select
       lc.client_id, ${campaign.wa_account_id}::uuid, ${campaignId}::uuid, ${campaign.template_id}::uuid, lc.number, ${variablesSql},
       case when b.reason is null then 'queued' else 'blocked' end, b.reason,
       case when b.reason is null then ${summary.sendPricePaise}::bigint else ${summary.blockedPricePaise}::bigint end,
-      'panel', ${at}, ${at}
+      ${summary.gstBp}::int, 'panel', ${at}, ${at}
     from list_contacts lc
     left join unnest(${blockRows}::int[], ${blockReasons}::text[]) as b(row_number, reason) on b.row_number = lc.row_number
     where lc.list_id = ${campaign.list_id} and lc.client_id = ${clientId}
@@ -319,7 +330,7 @@ export async function confirmCampaign(
     update campaigns
     set status = ${nothingToSend ? 'completed' : 'running'}, confirmed_by = ${userId}, confirmed_at = ${at}, updated_at = ${at},
       total = ${summary.willSend + summary.blocked.total}, blocked = ${summary.blocked.total},
-      sent = 0, delivered = 0, read = 0, failed = 0,
+      sent = 0, delivered = 0, read = 0, failed = 0, gst_bp = ${summary.gstBp},
       other_charged_paise = ${summary.chargePaise - summary.willSend * summary.sendPricePaise - summary.blocked.total * summary.blockedPricePaise}
     where id = ${campaignId} and client_id = ${clientId}
   `.execute(trx);

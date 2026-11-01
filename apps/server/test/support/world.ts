@@ -22,6 +22,9 @@ export async function createWorld() {
   await pool.query('create schema public');
   await migrate(pool, migrationsDir());
 
+  // Most tests are about other things and use round prices. test/gst.int.test.ts sets a real rate.
+  await pool.query(`insert into gst_rates (rate_bp, valid_from) values (0, '2018-01-01T00:00:00Z')`);
+
   const client = async (name: string, status = 'active') =>
     (
       await sql<{

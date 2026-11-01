@@ -50,3 +50,8 @@ export const MetaInvoiceCreate = z
   .strict();
 
 export const CreditLimit = z.object({ limitPaise: Paise.positive() }).strict();
+
+/** GST in basis points (1800 = 18%), from a date. */
+export const GstRateCreate = z
+  .object({ rateBp: z.number().int().min(0).max(5000), validFrom: z.string().datetime({ offset: true }) })
+  .strict();

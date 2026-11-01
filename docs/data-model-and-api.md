@@ -130,6 +130,9 @@ Markup price = ceiling of `rate_centipaise × (10000 + that category's markup) �
 **`wallet_holds`** (Exists, 0013). Money set aside for a scheduled campaign; not in the ledger.
 `id`, `client_id`, `campaign_id`, `amount_paise`, `created_by`, `created_at`, `released_at`, `released_because` (`started` | `unscheduled` | `cancelled` | `not_started`); one active hold per campaign. Available = balance − active holds.
 
+**`gst_rates`** (Exists, 0015). Platform table.
+`id`, `seq`, `rate_bp` (1800 = 18%), `valid_from`, `entered_by`, `created_at`; the newest row in force applies. `wallet_ledger`, `messages` and `campaigns` each have `gst_bp`, the rate included in their amounts.
+
 ### Campaigns (M7, M8)
 
 **`lists`** (Exists, 0010)
@@ -158,7 +161,7 @@ Added in 0011 (M8): `scheduled_at`, `cancelled_at`, `cancelled_by`.
 
 ### Tables without a client
 
-These are platform-level and are the only exceptions to the tenant-column rule: `meta_events`, `message_status_events`, `settings`, `meta_rates`, `meta_invoices`. The tables where `client_id` may be null mean "platform" or "all clients" when it is: `users`, `auth_sessions`, `audit_logs`, `notifications`, `pricing`, `charge_policy`, `rules`. Client users and staff never reach any of them except through routes that filter by their own scope.
+These are platform-level and are the only exceptions to the tenant-column rule: `meta_events`, `message_status_events`, `settings`, `meta_rates`, `meta_invoices`, `gst_rates`. The tables where `client_id` may be null mean "platform" or "all clients" when it is: `users`, `auth_sessions`, `audit_logs`, `notifications`, `pricing`, `charge_policy`, `rules`. Client users and staff never reach any of them except through routes that filter by their own scope.
 
 ## API
 
@@ -213,6 +216,9 @@ Who: **SA** super admin; **C** client user of that client; **S** staff assigned 
 | GET        | `/api/admin/limits-usage` | SA | M5 |
 | GET        | `/api/admin/campaigns` | SA | M8 |
 | GET        | `/api/admin/campaigns/:id/diagnosis` | SA | M8 |
+| GET, POST  | `/api/admin/gst-rates` | SA | M6 |
+| GET        | `/api/admin/gst-report` | SA | M6 |
+| GET        | `/api/clients/:clientId/wallet/statement` | C, S, SA | M6 |
 | GET, PUT   | `/api/admin/rules`                                                 | SA                          | M8        |
 | GET        | `/api/clients/:clientId/dashboard`, `/reports/monthly`             | C, S, SA                    | M9        |
 | GET        | `/api/clients/:clientId/campaigns/:id/report`                      | C, S, SA                    | M9        |

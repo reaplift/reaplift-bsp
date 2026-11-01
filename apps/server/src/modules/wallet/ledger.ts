@@ -12,6 +12,8 @@ export interface LedgerEntry {
   amountPaise: number;
   campaignId?: string | null;
   messageId?: number | null;
+  /** On charges and refunds: the GST rate included in this amount. */
+  gstBp?: number | null;
   note?: string | null;
   createdBy?: string | null;
   at: Date;
@@ -118,10 +120,10 @@ export async function applyLedgerEntry(trx: Transaction<Database>, entry: Ledger
 
   const inserted = (
     await sql<{ id: number }>`
-      insert into wallet_ledger (client_id, kind, amount_paise, balance_after_paise, campaign_id, message_id, note, created_by, created_at)
+      insert into wallet_ledger (client_id, kind, amount_paise, balance_after_paise, campaign_id, message_id, gst_bp, note, created_by, created_at)
       values (
         ${entry.clientId}, ${entry.kind}, ${entry.amountPaise}, ${after}, ${entry.campaignId ?? null},
-        ${entry.messageId ?? null}, ${entry.note ?? null}, ${entry.createdBy ?? null}, ${entry.at}
+        ${entry.messageId ?? null}, ${entry.gstBp ?? null}, ${entry.note ?? null}, ${entry.createdBy ?? null}, ${entry.at}
       )
       on conflict (message_id) where kind = 'refund' do nothing
       returning id

@@ -18,6 +18,7 @@ export function AuthProvider({ children, api = defaultApi }: { children: ReactNo
       (err: unknown) => {
         if (!current) return;
         if (err instanceof ApiError && err.code === 'UNAUTHENTICATED') setState({ status: 'logged-out' });
+        else if (err instanceof ApiError && err.code === 'PASSWORD_CHANGE_REQUIRED') setState({ status: 'password-change' });
         else setState({ status: 'error', message: errorMessage(err) });
       },
     );
@@ -29,9 +30,17 @@ export function AuthProvider({ children, api = defaultApi }: { children: ReactNo
   const login = useCallback(
     async (email: string, password: string) => {
       await api.login({ email, password });
-      const me = await api.me();
-      setState({ status: 'logged-in', user: me.user, workspaces: me.workspaces });
-      return me;
+      try {
+        const me = await api.me();
+        setState({ status: 'logged-in', user: me.user, workspaces: me.workspaces });
+        return me;
+      } catch (err) {
+        if (err instanceof ApiError && err.code === 'PASSWORD_CHANGE_REQUIRED') {
+          setState({ status: 'password-change' });
+          return null;
+        }
+        throw err;
+      }
     },
     [api],
   );
@@ -51,6 +60,14 @@ export function AuthProvider({ children, api = defaultApi }: { children: ReactNo
     setAttempt((n) => n + 1);
   }, []);
 
-  const value = useMemo(() => ({ state, login, logout, reload }), [state, login, logout, reload]);
+  const refresh = useCallback(async () => {
+    const me = await api.me();
+    setState({ status: 'logged-in', user: me.user, workspaces: me.workspaces });
+  }, [api]);
+
+  const value = useMemo(
+    () => ({ state, login, logout, reload, refresh, api }),
+    [state, login, logout, reload, refresh, api],
+  );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

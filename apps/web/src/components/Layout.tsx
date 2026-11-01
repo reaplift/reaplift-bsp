@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import { errorMessage } from '../api/messages';
 import { useAuth } from '../auth/context';
+import { NotificationBell } from './NotificationBell';
 
 /** React Router v7 behaviour, switched on now; without it v6 warns on every page load. */
 export const ROUTER_FUTURE = { v7_startTransition: true, v7_relativeSplatPath: true } as const;
@@ -76,6 +77,10 @@ export function Layout({ children, nav, eyebrow, title, canSwitch }: LayoutProps
                 <small>{user.email}</small>
               </span>
             )}
+            <NotificationBell />
+            <Link className="link-button" to="/account">
+              My account
+            </Link>
             <button type="button" className="primary-button" onClick={handleLogout}>
               Log out
             </button>

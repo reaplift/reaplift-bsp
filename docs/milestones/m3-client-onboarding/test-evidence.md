@@ -27,3 +27,32 @@ Each worked-example step, through the HTTP routes:
 Also: disabling revokes sessions at once; a user sees and marks only their own notifications; client and staff get 403 on the delivery log; a login locked by wrong passwords tells its owner.
 
 Not run: the restart step of the demo and the panel steps, which need the screens.
+
+## The screens, in a real browser
+
+Run on 2 November 2026: Google Chrome driven by Playwright through the panel at `http://localhost:5173`, against the real API, worker, receiver and scheduler on real PostgreSQL, with the fake email provider. Output of the run:
+
+```
+ok   super admin reaches Clients
+ok   step 1: client created, opens its page
+ok   duplicate name refused in words
+ok   step 2: login created
+ok   step 3: first password forces a change, even after reload
+ok   step 3: password changed, her own workspace opens
+ok   client user sent away from Admin
+ok   step 4: staff picker shows exactly the two clients
+ok   step 4: bell showed "Notifications1", clicking marks it read
+ok   step 5: suspended client closed to staff; the other still opens
+ok   step 5: super admin can still open it
+ok   step 6: reset logs Asha out
+ok   step 6: she must choose a new one
+ok   she can log out from there
+ok   disabled login is refused
+ok   step 7: audit filtered to Northwind
+ok   delivery log shows the emails
+ok   My account: wrong current password refused
+browser errors: none
+server errors: 0
+```
+
+`apps/web/test/m3-screens.test.tsx` holds the component tests. Not run: the demo's server restart after step 4. The email text was checked by the backend tests, not read from the fake provider's log in this run.

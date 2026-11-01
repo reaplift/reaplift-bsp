@@ -477,3 +477,173 @@ button {
   margin: 0;
   color: #6b7280;
 }
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.form-note {
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+.form-success {
+  color: #047857;
+}
+
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+  margin-bottom: 16px;
+}
+
+.filter-row label,
+.check-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.875rem;
+}
+
+.check-row {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+input,
+select,
+textarea {
+  padding: 8px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.small-button {
+  padding: 4px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 0.875rem;
+}
+
+.small-button:hover {
+  background: #f3f4f6;
+}
+
+.bell {
+  position: relative;
+}
+
+.bell-count {
+  margin-left: 4px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #dc2626;
+  color: #fff;
+  font-size: 0.75rem;
+}
+
+.bell-panel {
+  position: absolute;
+  right: 0;
+  z-index: 10;
+  width: 340px;
+  max-height: 420px;
+  overflow-y: auto;
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
+}
+
+.bell-item {
+  display: block;
+  width: 100%;
+  padding: 8px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  text-align: left;
+}
+
+.bell-item:hover {
+  background: #f3f4f6;
+}
+
+.bell-item.unread strong::before {
+  content: '• ';
+  color: #dc2626;
+}
+
+.bell-item small {
+  display: block;
+  color: #6b7280;
+}
+
+.audit-details {
+  max-width: 420px;
+  overflow-wrap: anywhere;
+  font-size: 0.8rem;
+  color: #4b5563;
+}
+
+.panel-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hint {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid #9ca3af;
+  border-radius: 50%;
+  color: #6b7280;
+  font-size: 0.75rem;
+  font-style: italic;
+  cursor: help;
+}
+
+.hint-text {
+  position: absolute;
+  top: 24px;
+  left: 0;
+  z-index: 10;
+  display: none;
+  width: 320px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #1f2937;
+  color: #fff;
+  font-size: 0.8125rem;
+  font-style: normal;
+  line-height: 1.4;
+}
+
+.hint:hover .hint-text,
+.hint:focus .hint-text {
+  display: block;
+}
+
+.bell-icon {
+  margin-right: 4px;
+  vertical-align: -3px;
+}
