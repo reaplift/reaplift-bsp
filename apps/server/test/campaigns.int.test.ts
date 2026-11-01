@@ -640,6 +640,48 @@ describe('per-second and per-day limits', () => {
   };
 });
 
+describe('sending only inside the client’s country', () => {
+  it('an upload marks other countries invalid: not queued, not charged, shown with the reason', async () => {
+    await topup(100000);
+    const csv = 'Name,Mobile\nA,9000005001\nUK,+447911123456\nUS,+14155550100\nAE,00971501234567\n';
+    const id = await readyCampaign({}, csv);
+    const summary = (await call(ASHA, 'GET', `${base()}/campaigns/${id}/summary`)).json();
+    expect(summary).toMatchObject({ willSend: 1, chargePaise: 95, invalid: { total: 3, byReason: { wrong_country: 3 } } });
+    await confirm(id);
+    expect((await rows('select to_number from messages where campaign_id = $1', [id])).map((r) => r.to_number)).toEqual(['919000005001']);
+    await send();
+    expect(fake.sends().map((r) => (r.body as { to: string }).to)).toEqual(['919000005001']);
+  });
+
+  it('whatever put it in the queue, a number outside the country never reaches Meta, and is refunded', async () => {
+    await topup(100000);
+    const id = await readyCampaign({}, 'Name,Mobile\nA,9000005002\n');
+    await confirm(id);
+    await w.pool.query(`update messages set to_number = '447911123456' where campaign_id = $1`, [id]);
+    const before = await balance();
+    fake.requests.length = 0;
+    await send();
+    expect(fake.sends()).toEqual([]);
+    expect((await rows('select status, failure_reason from messages where campaign_id = $1', [id]))[0]).toEqual({ status: 'failed', failure_reason: 'wrong_country' });
+    expect(await balance()).toBe(before + 95);
+  });
+
+  it('a client with no country sends nothing and cannot clean a list', async () => {
+    await topup(100000);
+    const id = await readyCampaign({}, 'Name,Mobile\nA,9000005003\n');
+    await confirm(id);
+    await w.pool.query(`update clients set country_calling_code = null where id = $1`, [w.ids.northwind]);
+    fake.requests.length = 0;
+    await send();
+    expect(fake.sends()).toEqual([]);
+    const list = (await upload('Name,Mobile\nA,9000005004\n')).json().id;
+    const res = await call(ASHA, 'PUT', `${base()}/lists/${list}/number-column`, { column: 1 });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toBe('COUNTRY_NOT_SUPPORTED');
+    await w.pool.query(`update clients set country_calling_code = '91' where id = $1`, [w.ids.northwind]);
+  });
+});
+
 describe('7.8 opt-outs', () => {
   const reply = (text: string, from = '919812345678', phoneNumberId = 'phone-1') =>
     JSON.stringify({

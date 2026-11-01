@@ -18,14 +18,19 @@ export function splitGst(totalPaise: number, gstBp: number): { taxablePaise: num
   return { taxablePaise, gstPaise: totalPaise - taxablePaise };
 }
 
-/** The rate in force at a moment. */
-export async function gstRateAt(db: Kysely<Database>, at: Date): Promise<number> {
+/** The only country with a tax rate at launch. */
+export const HOME_COUNTRY = '91';
+
+/** The rate in force in a country at a moment. */
+export async function gstRateAt(db: Kysely<Database>, country: string, at: Date): Promise<number> {
   const row = (
     await sql<{ rate_bp: number }>`
-      select rate_bp from gst_rates where valid_from <= ${at} order by valid_from desc, seq desc limit 1
+      select rate_bp from gst_rates
+      where country_calling_code = ${country} and valid_from <= ${at}
+      order by valid_from desc, seq desc limit 1
     `.execute(db)
   ).rows[0];
-  if (!row) throw new Error('no GST rate is set');
+  if (!row) throw new Error(`no tax rate is set for country ${country}`);
   return row.rate_bp;
 }
 

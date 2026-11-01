@@ -214,6 +214,16 @@ describe('changing the rate', () => {
   });
 });
 
+describe('tax belongs to a country', () => {
+  it('a client is charged its own country’s rate, and another country’s rate changes nothing for it', async () => {
+    await w.pool.query(`insert into gst_rates (country_calling_code, rate_bp, valid_from) values ('971', 500, '2026-11-01T00:00:00Z')`);
+    const id = await draft(1);
+    expect((await call(ASHA, 'GET', `${base()}/campaigns/${id}/summary`)).json().gstBp).toBe(1800);
+    expect((await call(ADMIN, 'GET', '/api/admin/gst-rates')).json().currentBp).toBe(1800);
+    await w.pool.query(`delete from gst_rates where country_calling_code = '971'`);
+  });
+});
+
 describe('statements and reports', () => {
   it('splits per rate, nets refunds off GST, and leaves top-ups out', async () => {
     await running(10);

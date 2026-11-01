@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 
 export const ErrorNote = ({ message }: { message: string | null }) =>
   message ? (
@@ -29,6 +30,18 @@ export function StatusPill({ status }: { status: string }) {
     </span>
   );
 }
+
+/** Where this page sits, so nobody has to remember how they got here. The last item is the current page. */
+export const Breadcrumbs = ({ items }: { items: Array<{ label: string; to?: string }> }) => (
+  <nav className="breadcrumbs" aria-label="Breadcrumb">
+    {items.map((item, i) => (
+      <span key={item.label}>
+        {i > 0 && <span aria-hidden="true"> / </span>}
+        {item.to ? <Link to={item.to}>{item.label}</Link> : <span aria-current="page">{item.label}</span>}
+      </span>
+    ))}
+  </nav>
+);
 
 /** A small "i" that explains something in words when hovered or focused. */
 export const Hint = ({ text }: { text: string }) => (

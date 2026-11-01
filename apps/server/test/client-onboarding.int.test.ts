@@ -167,12 +167,24 @@ describe('M3 worked example', () => {
     expect(await count(`select count(*) from notifications where event = 'client.suspended' and channel = 'email'`)).toBeGreaterThan(0);
     expect((await call(ravi, 'POST', `${path}/suspend`, { note: 'again' })).statusCode).toBe(409);
 
+    const person = async () => (await call(ravi, 'GET', '/api/admin/users?role=staff')).json().items.find((u: { id: string }) => u.id === meera);
+    expect(await person()).toMatchObject({ activeClientCount: 1 });
+    expect((await person()).assignedClientIds).toContain(w.ids.bluebird);
+
     expect((await call(ravi, 'POST', `${path}/reactivate`, {})).statusCode).toBe(400);
     expect((await call(ravi, 'POST', `${path}/reactivate`, { note: 'paid' })).statusCode).toBe(200);
     expect((await call(meeraCookie, 'GET', `/api/clients/${w.ids.bluebird}`)).statusCode).toBe(200);
+    expect(await person()).toMatchObject({ activeClientCount: 2 });
 
     await call(ravi, 'POST', `${path}/suspend`, { note: 'second time' });
+    const suspendedView = (await call(ravi, 'GET', path)).json();
+    expect(suspendedView.statusHistory[0]).toMatchObject({ action: 'client.suspended', note: 'second time', byName: 'ravi' });
+    expect(suspendedView.statusHistory.map((h: { note: string }) => h.note)).toEqual(['second time', 'paid', 'invoice overdue']);
+    const listed = (await call(ravi, 'GET', '/api/admin/clients')).json().items.find((c: { id: string }) => c.id === w.ids.bluebird);
+    expect(listed.suspendedNote).toBe('second time');
     await call(ravi, 'POST', `${path}/reactivate`, { note: 'paid again' });
+    const activeAgain = (await call(ravi, 'GET', '/api/admin/clients')).json().items.find((c: { id: string }) => c.id === w.ids.bluebird);
+    expect(activeAgain.suspendedNote).toBeNull();
     expect(await count(`select count(*) from notifications where event = 'client.suspended' and email = 'meera2@reaplift.com' and channel = 'email'`)).toBe(2);
   });
 

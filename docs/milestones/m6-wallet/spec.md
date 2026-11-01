@@ -1,7 +1,7 @@
 # M6. Wallet and prices
 
-- Status: In progress. Backend 6.1 to 6.6 built on 31 October 2026; see [test-evidence.md](test-evidence.md). Screens S7 to S9 are not connected.
-- Owner: Anirudh (backend), Suraj (screens S7 to S9)
+- Status: Built. Backend 6.1 to 6.6 and GST (6.1a), and screens S7 to S9, work together in a real browser; see [test-evidence.md](test-evidence.md) and [frontend.md](frontend.md). Left for Done: the owner's review, and ReapLift's answers on pricing and GST (P1 to P12, G1 to G7).
+- Owner: Anirudh (backend and screens, moved from Suraj on 2 November 2026)
 - Starts after: M3 (clients and logins). The backend started early (tracker, 31 October 2026).
 - External prerequisites: none. D10 (markup rules) has a default, so work can start.
 
@@ -74,7 +74,7 @@ Out:
 - Tests: the worked example's rounding (103.57 becomes 104); a client markup overrides the default; a fixed price overrides the markup; a new Meta rate changes prices only from its start date; a client-level switch overrides the global one; a price change does not change an already-confirmed campaign's price.
 - Acceptance: step 1 of the worked example with no code change.
 
-### 6.1a GST (owner, 2 November 2026; backend built, screens not)
+### 6.1a GST (owner, 2 November 2026; built)
 
 India's GST on these messages is 18% today and can change, so it is a setting, not a fixed number.
 

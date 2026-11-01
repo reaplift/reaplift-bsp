@@ -45,6 +45,7 @@ interface ActiveAccount {
   waba_id: string;
   daily_send_limit: number | null;
   messaging_limit: string | null;
+  country_calling_code: string | null;
 }
 
 interface ClaimedMessage {
@@ -115,7 +116,7 @@ export async function sendDue(
 
   const accounts = (
     await sql<ActiveAccount>`
-      select a.id, a.client_id, a.waba_id, a.daily_send_limit, a.messaging_limit, a.display_phone, a.phone_number_id, a.access_token_enc, a.send_rate_per_sec, a.meta_payer
+      select a.id, a.client_id, c.country_calling_code, a.waba_id, a.daily_send_limit, a.messaging_limit, a.display_phone, a.phone_number_id, a.access_token_enc, a.send_rate_per_sec, a.meta_payer
       from wa_accounts a
       join clients c on c.id = a.client_id and c.status = 'active'
       where a.status = 'active' and exists (
@@ -198,6 +199,14 @@ async function sendBatch(
   let paused = false;
   await Promise.all(
     claimed.map(async (message) => {
+      // The last check before money is spent: uploads already refuse these, but nothing outside the client's country
+      // goes to Meta, whatever put it in the queue, as Meta's rate there may be far above the client's price.
+      if (!account.country_calling_code || !message.to_number.startsWith(account.country_calling_code)) {
+        await markFailed(deps.db, message.id, 'wrong_country', null, now);
+        deps.log?.error({ messageId: message.id, accountId: account.id }, 'message outside the client country refused');
+        outcome.failed += 1;
+        return;
+      }
       const result = await deps.meta.sendMessage(
         account.phone_number_id,
         token,

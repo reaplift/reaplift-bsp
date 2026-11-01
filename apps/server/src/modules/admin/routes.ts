@@ -62,7 +62,11 @@ export function registerAdminRoutes(
     const rows = await sql`
       select ${CLIENT},
         coalesce((select l.balance_after_paise from wallet_ledger l where l.client_id = clients.id order by l.id desc limit 1), 0) as "balancePaise",
-        coalesce((select sum(h.amount_paise) from wallet_holds h where h.client_id = clients.id and h.released_at is null), 0)::bigint as "onHoldPaise"
+        coalesce((select sum(h.amount_paise) from wallet_holds h where h.client_id = clients.id and h.released_at is null), 0)::bigint as "onHoldPaise",
+        case when status = 'suspended' then (
+          select a.details->>'note' from audit_logs a
+          where a.client_id = clients.id and a.action = 'client.suspended' order by a.id desc limit 1
+        ) end as "suspendedNote"
       from clients order by name limit 500
     `.execute(db);
     return reply.code(200).send({ items: rows.rows, nextCursor: null });
@@ -114,8 +118,18 @@ export function registerAdminRoutes(
       join staff_clients sc on sc.staff_user_id = u.id
       where sc.client_id = ${id} order by u.name
     `.execute(db);
+    // The note on each suspension and reactivation stays findable here, however long ago it was.
+    const statusHistory = await sql`
+      select a.action, a.details->>'note' as note, u.name as "byName", a.created_at as "at"
+      from audit_logs a
+      left join users u on u.id = a.user_id
+      where a.client_id = ${id} and a.action in ('client.suspended', 'client.reactivated')
+      order by a.id desc
+      limit 50
+    `.execute(db);
     return reply.code(200).send({
       ...(client as object),
+      statusHistory: statusHistory.rows,
       balancePaise: await readBalance(db, id),
       onHoldPaise: await readOnHold(db, id),
       users: users.rows,
@@ -209,7 +223,12 @@ export function registerAdminRoutes(
       select u.id, u.name, u.email, u.role, u.status, u.client_id as "clientId", u.last_login_at as "lastLoginAt",
         coalesce((
           select jsonb_agg(sc.client_id) from staff_clients sc where sc.staff_user_id = u.id
-        ), '[]'::jsonb) as "assignedClientIds"
+        ), '[]'::jsonb) as "assignedClientIds",
+        (
+          select count(*)::int from staff_clients sc
+          join clients c on c.id = sc.client_id
+          where sc.staff_user_id = u.id and c.status = 'active'
+        ) as "activeClientCount"
       from users u
       where ${role ? sql`u.role = ${role}` : sql`true`} and ${clientId ? sql`u.client_id = ${clientId}` : sql`true`}
       order by u.name limit 500

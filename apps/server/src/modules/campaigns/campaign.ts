@@ -65,6 +65,7 @@ interface Facts {
   messagingLimit: string | null;
   dailySendLimit: number | null;
   clientStatus: string;
+  country: string;
   numberColumn: number | null;
   columnCount: number;
 }
@@ -74,7 +75,7 @@ async function readFacts(db: Kysely<Database>, campaign: CampaignRow): Promise<F
     await sql<Facts>`
       select t.status as "templateStatus", t.category as "templateCategory", t.variable_count as "variableCount",
         a.status as "accountStatus", a.paused_reason as "accountReason", a.messaging_limit as "messagingLimit", a.daily_send_limit as "dailySendLimit",
-        c.status as "clientStatus", l.number_column as "numberColumn",
+        c.status as "clientStatus", c.country_calling_code as country, l.number_column as "numberColumn",
         coalesce(jsonb_array_length(l.columns), 0) as "columnCount"
       from campaigns k
       join templates t on t.id = k.template_id and t.client_id = k.client_id
@@ -211,7 +212,7 @@ export async function computeSummary(db: Kysely<Database>, campaign: CampaignRow
 
   const willSend = eligible - blocks.length;
   const policy = await chargePolicyFor(db, campaign.client_id);
-  const gstBp = await gstRateAt(db, at);
+  const gstBp = await gstRateAt(db, facts.country, at);
   const priceWithGstPaise = priceWithGst(price, gstBp);
   const sendPricePaise = policy.delivered ? priceWithGstPaise : 0;
   const blockedPricePaise = policy.blocked ? priceWithGstPaise : 0;

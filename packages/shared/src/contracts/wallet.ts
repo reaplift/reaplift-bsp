@@ -55,3 +55,111 @@ export const CreditLimit = z.object({ limitPaise: Paise.positive() }).strict();
 export const GstRateCreate = z
   .object({ rateBp: z.number().int().min(0).max(5000), validFrom: z.string().datetime({ offset: true }) })
   .strict();
+
+// Responses. Not strict, so a field the server adds later does not break the panel.
+export const WalletView = z.object({
+  balancePaise: z.number(),
+  onHoldPaise: z.number(),
+  availablePaise: z.number(),
+  holds: z.array(
+    z.object({ campaignId: z.string(), campaignName: z.string(), scheduledAt: z.string().nullable(), amountPaise: z.number() }),
+  ),
+  lowBalanceAlertPaise: z.number().nullable(),
+});
+
+export const LedgerRow = z.object({
+  id: z.number(),
+  kind: z.enum(['topup', 'adjustment', 'charge', 'refund']),
+  amountPaise: z.number(),
+  balanceAfterPaise: z.number(),
+  campaignId: z.string().nullable(),
+  note: z.string().nullable(),
+  createdBy: z.string().nullable(),
+  createdAt: z.string(),
+});
+export type LedgerRow = z.infer<typeof LedgerRow>;
+
+export const LedgerPage = z.object({ items: z.array(LedgerRow), nextCursor: z.string().nullable() });
+
+export const PriceList = z.object({
+  items: z.array(
+    z.object({
+      category: Category,
+      pricePaise: z.number().nullable(),
+      gstBp: z.number(),
+      priceWithGstPaise: z.number().nullable(),
+    }),
+  ),
+});
+
+export const StatementView = z.object({
+  month: z.string(),
+  lines: z.array(
+    z.object({
+      gstBp: z.number(),
+      chargedPaise: z.number(),
+      refundedPaise: z.number(),
+      netPaise: z.number(),
+      taxablePaise: z.number(),
+      gstPaise: z.number(),
+    }),
+  ),
+});
+
+export const ClientPricingView = z.object({
+  pricing: z.object({
+    mode: z.enum(['markup', 'fixed', 'default']),
+    markupMarketingBp: z.number().nullable().optional(),
+    markupUtilityBp: z.number().nullable().optional(),
+    markupAuthenticationBp: z.number().nullable().optional(),
+    fixedMarketingPaise: z.number().nullable().optional(),
+    fixedUtilityPaise: z.number().nullable().optional(),
+    fixedAuthenticationPaise: z.number().nullable().optional(),
+  }),
+  prices: z.array(
+    z.object({
+      category: Category,
+      pricePaise: z.number().nullable(),
+      gstBp: z.number(),
+      priceWithGstPaise: z.number().nullable(),
+      metaRateCentipaise: z.number().nullable(),
+      belowCost: z.boolean(),
+    }),
+  ),
+});
+export type ClientPricingView = z.infer<typeof ClientPricingView>;
+
+export const MetaRateList = z.object({
+  items: z.array(
+    z.object({ id: z.string(), category: Category, countryCallingCode: z.string(), rateCentipaise: z.number(), validFrom: z.string() }),
+  ),
+  nextCursor: z.string().nullable(),
+});
+
+export const DefaultPricingView = z.object({
+  markupBp: z.object({ marketing: z.number(), utility: z.number(), authentication: z.number() }),
+});
+
+export const ChargePolicyView = z.object({ clientId: z.string().nullable(), policy: z.record(ChargeOutcome, z.boolean()) });
+
+export const GstRateList = z.object({
+  currentBp: z.number(),
+  items: z.array(z.object({ id: z.string(), rateBp: z.number(), validFrom: z.string(), createdAt: z.string() })),
+  nextCursor: z.string().nullable(),
+});
+
+export const GstReport = z.object({
+  month: z.string(),
+  lines: z.array(
+    z.object({
+      clientName: z.string(),
+      gstBp: z.number(),
+      chargedPaise: z.number(),
+      refundedPaise: z.number(),
+      netPaise: z.number(),
+      taxablePaise: z.number(),
+      gstPaise: z.number(),
+    }),
+  ),
+  totals: z.object({ netPaise: z.number(), taxablePaise: z.number(), gstPaise: z.number() }),
+});

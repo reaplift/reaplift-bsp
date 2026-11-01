@@ -16,7 +16,7 @@ import { writeAudit } from '../admin/audit.js';
 import { sendError } from '../auth/scope.js';
 import { notify } from '../notifications/notify.js';
 import { applyLedgerEntry, InsufficientBalanceError, readBalance, readOnHold, type LedgerKind } from './ledger.js';
-import { gstRateAt, priceWithGst, readGstLines } from './gst.js';
+import { gstRateAt, HOME_COUNTRY, priceWithGst, readGstLines } from './gst.js';
 import { CATEGORIES, chargePolicyFor, priceAt, recomputePrices } from './pricing.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -32,9 +32,12 @@ export function registerWalletRoutes(app: FastifyInstance, deps: { db: Kysely<Da
   const clientExists = async (id: string) =>
     UUID.test(id) && (await sql`select 1 from clients where id = ${id}`.execute(db)).rows.length > 0;
 
+  const countryOf = async (clientId: string) =>
+    (await sql<{ code: string | null }>`select country_calling_code as code from clients where id = ${clientId}`.execute(db)).rows[0]?.code ?? HOME_COUNTRY;
+
   const pricesOf = async (clientId: string) => {
     const at = now();
-    const gstBp = await gstRateAt(db, at);
+    const gstBp = await gstRateAt(db, await countryOf(clientId), at);
     return Promise.all(
       CATEGORIES.map(async (category) => {
         const pricePaise = await priceAt(db, clientId, category, at);
@@ -121,9 +124,9 @@ export function registerWalletRoutes(app: FastifyInstance, deps: { db: Kysely<Da
     const at = now();
     const rows = await sql`
       select id, rate_bp as "rateBp", valid_from as "validFrom", created_at as "createdAt"
-      from gst_rates order by valid_from desc, seq desc limit 100
+      from gst_rates where country_calling_code = ${HOME_COUNTRY} order by valid_from desc, seq desc limit 100
     `.execute(db);
-    return reply.code(200).send({ currentBp: await gstRateAt(db, at), items: rows.rows, nextCursor: null });
+    return reply.code(200).send({ currentBp: await gstRateAt(db, HOME_COUNTRY, at), items: rows.rows, nextCursor: null });
   });
 
   app.post('/api/admin/gst-rates', async (req, reply) => {
@@ -132,11 +135,11 @@ export function registerWalletRoutes(app: FastifyInstance, deps: { db: Kysely<Da
     const { rateBp, validFrom } = parsed.data;
     const at = now();
     const id = await db.transaction().execute(async (trx) => {
-      const before = await gstRateAt(trx, at);
+      const before = await gstRateAt(trx, HOME_COUNTRY, at);
       const row = (
         await sql<{ id: string }>`
-          insert into gst_rates (rate_bp, valid_from, entered_by, created_at)
-          values (${rateBp}, ${new Date(validFrom)}, ${req.auth!.userId}, ${at})
+          insert into gst_rates (country_calling_code, rate_bp, valid_from, entered_by, created_at)
+          values (${HOME_COUNTRY}, ${rateBp}, ${new Date(validFrom)}, ${req.auth!.userId}, ${at})
           returning id
         `.execute(trx)
       ).rows[0]!;
@@ -324,7 +327,7 @@ export function registerWalletRoutes(app: FastifyInstance, deps: { db: Kysely<Da
     const prices = await Promise.all(
       CATEGORIES.map(async (category) => {
         const pricePaise = await priceAt(db, id, category, at);
-        const gstBp = await gstRateAt(db, at);
+        const gstBp = await gstRateAt(db, await countryOf(id), at);
         const rate = (
           await sql<{ rate_centipaise: number }>`
             select r.rate_centipaise from meta_rates r

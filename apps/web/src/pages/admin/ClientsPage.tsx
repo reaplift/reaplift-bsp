@@ -26,7 +26,7 @@ export function ClientsPage() {
     if (done) {
       await refresh();
       reload();
-      navigate(`/admin/clients/${id}`);
+      navigate(`/admin/clients/${id}?tab=money`);
     }
   };
 
@@ -55,6 +55,7 @@ export function ClientsPage() {
                     </td>
                     <td>
                       <StatusPill status={client.status} />
+                      {client.suspendedNote && <small className="form-note"> {client.suspendedNote}</small>}
                     </td>
                     <td>{client.contactEmail}</td>
                     <td>{formatPaise(client.balancePaise ?? 0)}</td>

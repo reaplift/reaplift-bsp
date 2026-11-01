@@ -216,6 +216,44 @@ The creator is always told about problems with their campaign, as well as the su
 - Checks: no message sent twice; the rate stays at the setting; totals equal row counts; charge and refunds reconcile.
 - Acceptance: the report is saved in this folder.
 
+## Other countries (owner, 2 November 2026)
+
+**Today, India only, and enforced so no money is lost:**
+
+- Each client has one country (`clients.country_calling_code`), fixed to India. A client with none is refused rather than guessed at.
+- A number from another country is marked `wrong_country` when the list is cleaned: never queued, never charged, and listed in the invalid-rows download.
+- The worker checks again just before each send, so nothing outside the client's country reaches Meta, whatever put it in the queue. Such a message fails with `wrong_country` and is refunded.
+- Meta's rates and client prices are already stored per country.
+
+**Built so a country can be added later (owner: GST, billing and pricing all depend on the country, so keep it easy to expand):**
+
+| Depends on the country | Today |
+| --- | --- |
+| Which country a client is in | `clients.country_calling_code` |
+| Meta's rates | Per country in `meta_rates` |
+| Client prices | Per country in `price_lists` |
+| Tax rate | Per country in `gst_rates` |
+| Number cleaning | One function per country in `NUMBER_RULES`; a country with none is refused |
+| Currency | Not yet: everything is rupees and paise |
+| Tax rules and name | Not yet: GST's method and wording are India's |
+| Time zone and date formats | Not yet: India time throughout |
+| Language | Not yet: English only |
+| Screens | Not yet: the country is fixed to India on the forms, and Settings shows India's tax |
+
+Numbers in a campaign are still all from one country, the client's. A column for each row's country is not needed until a client sends across countries.
+
+**Before a client can send to another country,** all of these are needed; adding the country alone would be wrong:
+
+1. Cleaning rules for that country, as number lengths and formats differ. Today's rules are India's.
+2. Meta's rate for that country and each message type in `meta_rates`, or the client has no price there.
+3. A price per message from the number's country, not the client's. Today a campaign has one price, so a charge would be wrong for a mixed list.
+4. The summary and charge showing a count and price per country.
+5. Meta's cost per message using the number's country, for margin.
+6. GST advice for messages abroad, from the accountant.
+7. For a client based abroad: its currency, its tax rules, and an invoice to match.
+
+Until then, a client wanting another country is refused, not sent at India's price.
+
 ## Data and API
 
 Migrations (claim numbers): `lists`, `list_contacts`, `campaigns`, `opt_outs`, and their nullable columns. `messages` (0002) has no `cancelled` status; M8 uses `blocked` with reason `campaign_cancelled`.

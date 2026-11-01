@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 
 function EyeIcon({ crossed }: { crossed: boolean }) {
   return (
@@ -32,24 +32,38 @@ type PasswordFieldProps = {
 /** A password input with an eye button to show what was typed. */
 export function PasswordField({ label, name, autoComplete, minLength, hint }: PasswordFieldProps) {
   const [shown, setShown] = useState(false);
+  const hintId = useId();
   const action = shown ? 'Hide password' : 'Show password';
   return (
-    <label>
-      <span>{label}</span>
-      <div className="password-field">
-        <input name={name} type={shown ? 'text' : 'password'} autoComplete={autoComplete} minLength={minLength} required />
-        <button
-          type="button"
-          className="password-toggle"
-          onClick={() => setShown((value) => !value)}
-          aria-label={action}
-          aria-pressed={shown}
-          title={action}
-        >
-          <EyeIcon crossed={shown} />
-        </button>
-      </div>
-      {hint && <small className="form-note">{hint}</small>}
-    </label>
+    <div className="field">
+      <label>
+        <span>{label}</span>
+        <div className="password-field">
+          <input
+            name={name}
+            type={shown ? 'text' : 'password'}
+            autoComplete={autoComplete}
+            minLength={minLength}
+            aria-describedby={hint ? hintId : undefined}
+            required
+          />
+          <button
+            type="button"
+            className="password-toggle"
+            onClick={() => setShown((value) => !value)}
+            aria-label={action}
+            aria-pressed={shown}
+            title={action}
+          >
+            <EyeIcon crossed={shown} />
+          </button>
+        </div>
+      </label>
+      {hint && (
+        <small id={hintId} className="form-note">
+          {hint}
+        </small>
+      )}
+    </div>
   );
 }

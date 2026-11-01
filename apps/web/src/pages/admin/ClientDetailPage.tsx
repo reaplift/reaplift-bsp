@@ -1,14 +1,24 @@
-import { formatPaise } from '@reaplift/shared';
 import { useState, type FormEvent } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../auth/context';
 import { PasswordField } from '../../components/PasswordField';
-import { ErrorNote, Panel, StatusPill } from '../../components/ui';
+import { Breadcrumbs, ErrorNote, formatDateTime, Panel, StatusPill } from '../../components/ui';
 import { useAction, useLoad } from '../../hooks/useLoad';
 import { workspacePath } from '../../paths';
+import { ClientMoney, ClientPrices } from './ClientMoney';
+import { ClientStaff } from './ClientStaff';
+
+const TABS = [
+  { key: 'overview', label: 'Overview' },
+  { key: 'money', label: 'Money and prices' },
+  { key: 'logins', label: 'Logins' },
+  { key: 'staff', label: 'Staff' },
+] as const;
 
 export function ClientDetailPage() {
   const { id = '' } = useParams();
+  const [params] = useSearchParams();
+  const tab = TABS.find((t) => t.key === params.get('tab'))?.key ?? 'overview';
   const { api, refresh } = useAuth();
   const { data: client, error, reload } = useLoad(() => api.adminClient(id), [api, id]);
   const edit = useAction();
@@ -22,6 +32,7 @@ export function ClientDetailPage() {
   if (error) return <ErrorNote message={error} />;
   if (!client) return <p>Loading…</p>;
   const suspended = client.status === 'suspended';
+  const latestSuspension = client.statusHistory.find((entry) => entry.action === 'client.suspended');
   const resetName = client.users.find((user) => user.id === resetFor)?.name ?? '';
 
   const saveEdit = async (event: FormEvent<HTMLFormElement>) => {
@@ -82,19 +93,33 @@ export function ClientDetailPage() {
 
   return (
     <div className="page-stack">
+      <Breadcrumbs items={[{ label: 'Clients', to: '/admin/clients' }, { label: client.name }]} />
       {message && <p className="form-success">{message}</p>}
-      <Panel
-        title={client.name}
-        actions={
-          <Link className="link-button" to={workspacePath(id, 'dashboard')}>
-            Open workspace
+      <div className="client-title">
+        <h2>{client.name}</h2>
+        <StatusPill status={client.status} />
+        <Link className="link-button" to={workspacePath(id, 'dashboard')}>
+          Open workspace
+        </Link>
+      </div>
+      <nav className="tabs" aria-label="Client sections">
+        {TABS.map(({ key, label }) => (
+          <Link key={key} to={`/admin/clients/${id}?tab=${key}`} className={tab === key ? 'tab active' : 'tab'} aria-current={tab === key ? 'page' : undefined}>
+            {label}
           </Link>
-        }
-      >
-        <p>
-          <StatusPill status={client.status} /> Balance {formatPaise(client.balancePaise ?? 0)}, on hold{' '}
-          {formatPaise(client.onHoldPaise ?? 0)}
+        ))}
+      </nav>
+
+      {suspended && latestSuspension && (
+        <p className="warning-note" role="status">
+          Suspended on {formatDateTime(latestSuspension.at)}
+          {latestSuspension.byName ? ` by ${latestSuspension.byName}` : ''}. Reason: {latestSuspension.note}
         </p>
+      )}
+
+      {tab === 'overview' && (
+        <>
+      <Panel title="Details">
         <form className="form-grid" onSubmit={saveEdit}>
           <label>
             Name
@@ -115,7 +140,7 @@ export function ClientDetailPage() {
 
       <Panel
         title={suspended ? 'Reactivate' : 'Suspend'}
-        hint="While suspended, the client's users and staff cannot open it and nothing is sent. Its wallet stays as it is, and a super admin can still open it. The note goes in the audit log and to the client."
+        hint="While suspended, the client's users and staff cannot open it and nothing is sent. Its wallet stays as it is, and a super admin can still open it. The note is emailed to the client's users and assigned staff, so write it for them to read."
       >
         <div className="filter-row">
           <label>
@@ -127,8 +152,46 @@ export function ClientDetailPage() {
           </button>
         </div>
         <ErrorNote message={status.error} />
+        {client.statusHistory.length > 0 && (
+          <>
+            <h3>History</h3>
+            <div className="table-wrap">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>When</th>
+                    <th>What</th>
+                    <th>Who</th>
+                    <th>Note</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {client.statusHistory.map((entry) => (
+                    <tr key={`${entry.at}-${entry.action}`}>
+                      <td>{formatDateTime(entry.at)}</td>
+                      <td>{entry.action === 'client.suspended' ? 'Suspended' : 'Reactivated'}</td>
+                      <td>{entry.byName}</td>
+                      <td>{entry.note}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
       </Panel>
 
+        </>
+      )}
+
+      {tab === 'money' && (
+        <>
+          <ClientMoney clientId={id} onChanged={reload} />
+          <ClientPrices clientId={id} />
+        </>
+      )}
+
+      {tab === 'logins' && (
       <Panel title="Logins" hint="The people at this client who can log in. Disabling logs them out at once. Resetting a password logs them out and makes them choose a new one.">
         <ErrorNote message={userAction.error} />
         {client.users.length === 0 ? (
@@ -210,22 +273,9 @@ export function ClientDetailPage() {
         </form>
       </Panel>
 
-      <Panel title="Assigned staff" hint="ReapLift team members who can work in this client's workspace. Change this on the Staff page.">
-        {client.staff.length === 0 ? (
-          <p className="empty-state">No staff assigned.</p>
-        ) : (
-          <ul>
-            {client.staff.map((person) => (
-              <li key={person.id}>
-                {person.name} ({person.email})
-              </li>
-            ))}
-          </ul>
-        )}
-        <Link className="link-button" to="/admin/staff">
-          Manage staff
-        </Link>
-      </Panel>
+      )}
+
+      {tab === 'staff' && <ClientStaff clientId={id} clientName={client.name} suspended={suspended} onChanged={reload} />}
     </div>
   );
 }

@@ -4,10 +4,20 @@ import {
   AdminClientList,
   AdminUserList,
   AuditPage,
+  ChargePolicyView,
+  ClientPricingView,
+  DefaultPricingView,
   DeliveryLog,
+  GstRateList,
+  GstReport,
+  LedgerPage,
   LoginResponse,
+  MetaRateList,
   MeResponse,
   MyNotifications,
+  PriceList,
+  StatementView,
+  WalletView,
   type LoginRequest,
 } from '@reaplift/shared';
 import { call, type ResponseSchema } from './client';
@@ -37,6 +47,8 @@ function getTransport(): Promise<Transport> {
   })();
   return transport;
 }
+
+type PerCategory = { marketing: number; utility: number; authentication: number };
 
 function query(params: Record<string, string | undefined>): string {
   const entries = Object.entries(params).filter((e): e is [string, string] => Boolean(e[1]));
@@ -87,6 +99,43 @@ export function createApi(transport: () => Transport | Promise<Transport>) {
       send({ method: 'POST', path: `/api/admin/users/${id}/reset-password`, body: { password } }, null),
     setStaffClients: (id: string, clientIds: string[]) =>
       send({ method: 'PUT', path: `/api/admin/users/${id}/clients`, body: { clientIds } }, null),
+
+    wallet: (clientId: string) => send({ method: 'GET', path: `/api/clients/${clientId}/wallet` }, WalletView),
+    ledger: (clientId: string, filter: { kind?: string; from?: string; to?: string; cursor?: string; limit?: string }) =>
+      send({ method: 'GET', path: `/api/clients/${clientId}/wallet/ledger${query(filter)}` }, LedgerPage),
+    statement: (clientId: string, month: string) =>
+      send({ method: 'GET', path: `/api/clients/${clientId}/wallet/statement${query({ month })}` }, StatementView),
+    prices: (clientId: string) => send({ method: 'GET', path: `/api/clients/${clientId}/prices` }, PriceList),
+
+    topUp: (clientId: string, body: { amountPaise: number; note?: string }) =>
+      send({ method: 'POST', path: `/api/admin/clients/${clientId}/wallet/topups`, body }, null),
+    adjust: (clientId: string, body: { amountPaise: number; note: string }) =>
+      send({ method: 'POST', path: `/api/admin/clients/${clientId}/wallet/adjustments`, body }, null),
+    setLowBalanceAlert: (clientId: string, alertPaise: number | null) =>
+      send({ method: 'PATCH', path: `/api/admin/clients/${clientId}/low-balance-alert`, body: { alertPaise } }, null),
+    clientPricing: (clientId: string) =>
+      send({ method: 'GET', path: `/api/admin/clients/${clientId}/pricing` }, ClientPricingView),
+    setClientPricing: (
+      clientId: string,
+      body:
+        | { mode: 'default' }
+        | { mode: 'markup'; markupBp: PerCategory }
+        | { mode: 'fixed'; fixedPaise: PerCategory },
+    ) => send({ method: 'PUT', path: `/api/admin/clients/${clientId}/pricing`, body }, null),
+    defaultPricing: () => send({ method: 'GET', path: '/api/admin/pricing' }, DefaultPricingView),
+    setDefaultPricing: (markupBp: PerCategory) =>
+      send({ method: 'PUT', path: '/api/admin/pricing', body: { markupBp } }, null),
+    metaRates: () => send({ method: 'GET', path: '/api/admin/meta-rates' }, MetaRateList),
+    addMetaRate: (body: { category: string; countryCallingCode: '91'; rateCentipaise: number; validFrom: string }) =>
+      send({ method: 'POST', path: '/api/admin/meta-rates', body }, null),
+    chargePolicy: (clientId?: string) =>
+      send({ method: 'GET', path: `/api/admin/charge-policy${query({ clientId })}` }, ChargePolicyView),
+    setChargePolicy: (body: { clientId?: string; outcome: string; charged: boolean }) =>
+      send({ method: 'PUT', path: '/api/admin/charge-policy', body }, null),
+    gstRates: () => send({ method: 'GET', path: '/api/admin/gst-rates' }, GstRateList),
+    addGstRate: (body: { rateBp: number; validFrom: string }) =>
+      send({ method: 'POST', path: '/api/admin/gst-rates', body }, null),
+    gstReport: (month: string) => send({ method: 'GET', path: `/api/admin/gst-report${query({ month })}` }, GstReport),
 
     audit: (filter: { clientId?: string; userId?: string; action?: string; from?: string; to?: string; cursor?: string }) =>
       send({ method: 'GET', path: `/api/admin/audit${query(filter)}` }, AuditPage),

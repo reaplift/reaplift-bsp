@@ -131,7 +131,7 @@ Markup price = ceiling of `rate_centipaise × (10000 + that category's markup) �
 `id`, `client_id`, `campaign_id`, `amount_paise`, `created_by`, `created_at`, `released_at`, `released_because` (`started` | `unscheduled` | `cancelled` | `not_started`); one active hold per campaign. Available = balance − active holds.
 
 **`gst_rates`** (Exists, 0015). Platform table.
-`id`, `seq`, `rate_bp` (1800 = 18%), `valid_from`, `entered_by`, `created_at`; the newest row in force applies. `wallet_ledger`, `messages` and `campaigns` each have `gst_bp`, the rate included in their amounts.
+`id`, `seq`, `country_calling_code`, `rate_bp` (1800 = 18%), `valid_from`, `entered_by`, `created_at`; the newest row in force applies. `wallet_ledger`, `messages` and `campaigns` each have `gst_bp`, the rate included in their amounts.
 
 ### Campaigns (M7, M8)
 

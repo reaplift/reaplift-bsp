@@ -47,6 +47,7 @@ export const AdminClient = z.object({
   lowBalanceAlertPaise: z.number().nullable(),
   balancePaise: z.number().optional(),
   onHoldPaise: z.number().optional(),
+  suspendedNote: z.string().nullable().optional(),
 });
 export type AdminClient = z.infer<typeof AdminClient>;
 
@@ -55,6 +56,9 @@ export const AdminClientList = z.object({ items: z.array(AdminClient), nextCurso
 const PersonStatus = z.enum(['active', 'disabled']);
 
 export const AdminClientDetail = AdminClient.extend({
+  statusHistory: z.array(
+    z.object({ action: z.string(), note: z.string().nullable(), byName: z.string().nullable(), at: z.string() }),
+  ),
   users: z.array(z.object({ id: z.string(), name: z.string(), email: z.string(), role: z.string(), status: PersonStatus })),
   staff: z.array(z.object({ id: z.string(), name: z.string(), email: z.string(), status: PersonStatus })),
 });
@@ -69,6 +73,8 @@ export const AdminUser = z.object({
   clientId: z.string().nullable(),
   lastLoginAt: z.string().nullable(),
   assignedClientIds: z.array(z.string()),
+  /** Assigned clients that are not suspended: what the person is actually working on. */
+  activeClientCount: z.number(),
 });
 export type AdminUser = z.infer<typeof AdminUser>;
 

@@ -41,6 +41,12 @@ export function cleanNumber(raw: unknown): CleanResult {
   return digits.length === MOBILE_LENGTH + COUNTRY.length ? { reason: 'wrong_country' } : { reason: 'too_long' };
 }
 
+/**
+ * Cleaning rules by country calling code. Another country gets its own function here; a country with none is refused
+ * rather than checked by India's rules.
+ */
+export const NUMBER_RULES: Record<string, (raw: unknown) => CleanResult> = { [COUNTRY]: cleanNumber };
+
 export interface CleanedRow {
   row: number;
   number: string | null;
@@ -49,10 +55,13 @@ export interface CleanedRow {
 }
 
 /** Cleans a column of a list; a repeat points to the first row that had the number. */
-export function cleanRows(rows: Array<{ row: number; value: unknown }>): CleanedRow[] {
+export function cleanRows(
+  rows: Array<{ row: number; value: unknown }>,
+  clean: (raw: unknown) => CleanResult = cleanNumber,
+): CleanedRow[] {
   const firstSeen = new Map<string, number>();
   return rows.map(({ row, value }) => {
-    const result = cleanNumber(value);
+    const result = clean(value);
     if ('reason' in result) return { row, number: null, invalidReason: result.reason, duplicateOfRow: null };
     const first = firstSeen.get(result.number);
     if (first !== undefined) return { row, number: null, invalidReason: null, duplicateOfRow: first };

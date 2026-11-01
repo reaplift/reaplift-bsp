@@ -8,11 +8,13 @@ import { AuditPageView } from './pages/admin/AuditPage';
 import { ClientDetailPage } from './pages/admin/ClientDetailPage';
 import { ClientsPage } from './pages/admin/ClientsPage';
 import { DeliveryLogPage } from './pages/admin/DeliveryLogPage';
+import { SettingsPage } from './pages/admin/SettingsPage';
 import { StaffPage } from './pages/admin/StaffPage';
 import { ForcedPasswordChange, MyAccount } from './pages/Account';
 import { Dashboard } from './pages/Dashboard';
 import { Login } from './pages/Login';
 import { PushCampaign } from './pages/PushCampaign';
+import { Wallet } from './pages/Wallet';
 import { WorkspacePicker } from './pages/WorkspacePicker';
 import { homePath, WORKSPACE_PAGES, workspacePath, type WorkspacePage } from './paths';
 import './styles.css';
@@ -22,6 +24,7 @@ const adminNav = (me: MeResponse): NavItem[] =>
     ? [
         { to: '/admin/clients', label: 'Clients' },
         { to: '/admin/staff', label: 'Staff' },
+        { to: '/admin/settings', label: 'Settings' },
         { to: '/admin/audit', label: 'Audit log' },
         { to: '/admin/delivery-log', label: 'Delivery log' },
       ]
@@ -35,7 +38,7 @@ const pageElement: Record<WorkspacePage, ReactNode> = {
   campaign: <PushCampaign />,
   templates: <ComingSoon title="Templates" />,
   reports: <ComingSoon title="Reports" />,
-  wallet: <ComingSoon title="Wallet" />,
+  wallet: <Wallet />,
   settings: <ComingSoon title="Settings" />,
 };
 
@@ -137,6 +140,7 @@ export function App() {
                 <Route path="clients" element={<ClientsPage />} />
                 <Route path="clients/:id" element={<ClientDetailPage />} />
                 <Route path="staff" element={<StaffPage />} />
+                <Route path="settings" element={<SettingsPage />} />
                 <Route path="audit" element={<AuditPageView />} />
                 <Route path="delivery-log" element={<DeliveryLogPage />} />
                 <Route path="*" element={<Navigate to="/admin/clients" replace />} />

@@ -12,7 +12,7 @@ import { notify } from '../notifications/notify.js';
 import { InsufficientBalanceError } from '../wallet/ledger.js';
 import { CampaignRefused, computeSummary, confirmCampaign, publicSummary, type CampaignRow } from './campaign.js';
 import { CSV_TYPE, readAudienceFile, TooManyRowsError, UnreadableFileError, XLSX_TYPE } from './file-reader.js';
-import { cleanNumber, cleanRows } from './numbers.js';
+import { cleanNumber, cleanRows, NUMBER_RULES } from './numbers.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const BATCH = 5000;
@@ -147,6 +147,13 @@ export function registerCampaignRoutes(
     if (!parsed.success) return invalid(reply, parsed.error.flatten());
     const { column } = parsed.data;
     if (column >= list.columns.length) return sendError(reply, 400, 'COLUMN_OUT_OF_RANGE', 'This column is not in the list');
+    const country = (
+      await sql<{ code: string | null }>`select country_calling_code as code from clients where id = ${clientId}`.execute(db)
+    ).rows[0]?.code;
+    const rules = NUMBER_RULES[country ?? ''];
+    if (!rules) {
+      return sendError(reply, 400, 'COUNTRY_NOT_SUPPORTED', 'Audiences can be checked only for India at the moment');
+    }
 
     const counts = await db.transaction().execute(async (trx) => {
       const rows = (
@@ -156,7 +163,7 @@ export function registerCampaignRoutes(
           for update
         `.execute(trx)
       ).rows;
-      const cleaned = cleanRows(rows.map((r) => ({ row: r.row_number, value: r.value })));
+      const cleaned = cleanRows(rows.map((r) => ({ row: r.row_number, value: r.value })), rules);
       for (let i = 0; i < cleaned.length; i += BATCH) {
         const batch = cleaned.slice(i, i + BATCH);
         await sql`

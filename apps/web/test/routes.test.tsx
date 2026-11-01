@@ -13,7 +13,7 @@ const PASSWORD = 'reaplift-dev-1';
 const NORTHWIND = '/clients/client-northwind';
 const BLUEBIRD = '/clients/client-bluebird';
 const GREENLEAF = '/clients/client-greenleaf';
-const ADMIN_MENU = ['Clients', 'Staff', 'Audit log', 'Delivery log'];
+const ADMIN_MENU = ['Clients', 'Staff', 'Settings', 'Audit log', 'Delivery log'];
 const WORKSPACE_MENU = ['Dashboard', 'Push Campaign', 'Templates', 'Reports', 'Wallet', 'Settings'];
 
 /** Shows the current address, so a test can check where a redirect landed. */
@@ -186,7 +186,6 @@ describe('workspace pages', () => {
     ['campaign', 'Push Campaign', 'No campaigns yet. Creating campaigns is coming soon.'],
     ['templates', 'Templates', 'This page is coming soon.'],
     ['reports', 'Reports', 'This page is coming soon.'],
-    ['wallet', 'Wallet', 'This page is coming soon.'],
     ['settings', 'Settings', 'This page is coming soon.'],
   ])('%s shows "%s" and its empty or coming-soon text, and is marked active', async (page, title, text) => {
     open(`${NORTHWIND}/${page}`, await loggedInAs('ops@northwind.com'));

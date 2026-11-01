@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../auth/context';
 import { PasswordField } from '../../components/PasswordField';
-import { ErrorNote, Panel, StatusPill } from '../../components/ui';
+import { Breadcrumbs, ErrorNote, Panel, StatusPill } from '../../components/ui';
 import { useAction, useLoad } from '../../hooks/useLoad';
 
 export function StaffPage() {
@@ -12,13 +13,25 @@ export function StaffPage() {
   const action = useAction();
   const [editing, setEditing] = useState<string | null>(null);
   const [picked, setPicked] = useState<string[]>([]);
-  const [newPicked, setNewPicked] = useState<string[]>([]);
+  // Arriving from a client's page: that client is remembered, shown, and ticked for a new person.
+  const [params] = useSearchParams();
+  const fromClient = params.get('client');
+  const [newPicked, setNewPicked] = useState<string[]>(fromClient ? [fromClient] : []);
+  const [search, setSearch] = useState('');
+  const [clientSearch, setClientSearch] = useState('');
   const [resetFor, setResetFor] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
   const allClients = clients.data?.items ?? [];
   const resetName = staff.data?.items.find((person) => person.id === resetFor)?.name ?? '';
-  const nameOf = (id: string) => allClients.find((c) => c.id === id)?.name ?? id;
+  const fromName = allClients.find((client) => client.id === fromClient)?.name;
+  const term = search.trim().toLowerCase();
+  const shownStaff = (staff.data?.items ?? []).filter((person) => `${person.name} ${person.email}`.toLowerCase().includes(term));
+  const nameOf = (id: string) => {
+    const client = allClients.find((c) => c.id === id);
+    if (!client) return id;
+    return client.status === 'suspended' ? `${client.name} (suspended)` : client.name;
+  };
   const toggle = (list: string[], id: string) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
 
   const create = async (event: FormEvent<HTMLFormElement>) => {
@@ -36,7 +49,7 @@ export function StaffPage() {
     );
     if (done) {
       element.reset();
-      setNewPicked([]);
+      setNewPicked(fromClient ? [fromClient] : []);
       staff.reload();
       setMessage('Staff member created. Tell them the first password by phone; the email does not contain it.');
     }
@@ -61,7 +74,13 @@ export function StaffPage() {
 
   const ClientChecks = ({ value, onChange }: { value: string[]; onChange: (next: string[]) => void }) => (
     <div>
-      {allClients.map((client) => (
+      {allClients.length > 8 && (
+        <label>
+          Find a client
+          <input value={clientSearch} onChange={(e) => setClientSearch(e.target.value)} />
+        </label>
+      )}
+      {allClients.filter((client) => client.name.toLowerCase().includes(clientSearch.trim().toLowerCase())).map((client) => (
         <label key={client.id} className="check-row">
           <input type="checkbox" checked={value.includes(client.id)} onChange={() => onChange(toggle(value, client.id))} />
           {client.name}
@@ -72,9 +91,31 @@ export function StaffPage() {
 
   return (
     <div className="page-stack">
+      <Breadcrumbs
+        items={
+          fromClient && fromName
+            ? [{ label: 'Clients', to: '/admin/clients' }, { label: fromName, to: `/admin/clients/${fromClient}?tab=staff` }, { label: 'Staff' }]
+            : [{ label: 'Staff' }]
+        }
+      />
       {message && <p className="form-success">{message}</p>}
+      {message && fromClient && fromName && (
+        <p>
+          <Link className="link-button" to={`/admin/clients/${fromClient}?tab=staff`}>
+            Back to {fromName}
+          </Link>
+        </p>
+      )}
       <Panel title="Staff" hint="ReapLift team members. Staff can work only in the clients assigned to them, and cannot open these admin pages.">
         <ErrorNote message={staff.error ?? clients.error ?? action.error} />
+        {(staff.data?.items.length ?? 0) > 0 && (
+          <div className="filter-row">
+            <label>
+              Search by name or email
+              <input value={search} onChange={(e) => setSearch(e.target.value)} />
+            </label>
+          </div>
+        )}
         {staff.data?.items.length === 0 && <p className="empty-state">No staff yet.</p>}
         {staff.data && staff.data.items.length > 0 && (
           <div className="table-wrap">
@@ -89,7 +130,7 @@ export function StaffPage() {
                 </tr>
               </thead>
               <tbody>
-                {staff.data.items.map((person) => (
+                {shownStaff.map((person) => (
                   <tr key={person.id}>
                     <td>{person.name}</td>
                     <td>{person.email}</td>
@@ -158,7 +199,7 @@ export function StaffPage() {
         )}
       </Panel>
 
-      <Panel title="Add a staff member">
+      <Panel title={fromName ? `Add a staff member for ${fromName}` : 'Add a staff member'}>
         <form className="form-grid" onSubmit={create}>
           <label>
             Name

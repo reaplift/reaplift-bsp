@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -122,7 +122,7 @@ describe('S4 clients', () => {
     expect((await screen.findByRole('alert')).textContent).toBe('A client already has this name.');
   });
 
-  const detail = { ...CLIENT, users: [{ id: 'u2', name: 'Asha', email: 'asha@n.com', role: 'client', status: 'active' }], staff: [] };
+  const detail = { ...CLIENT, users: [{ id: 'u2', name: 'Asha', email: 'asha@n.com', role: 'client', status: 'active' }], staff: [], statusHistory: [] };
 
   it('suspending needs a note', async () => {
     const server = open('/admin/clients/c1', {
@@ -137,14 +137,14 @@ describe('S4 clients', () => {
   });
 
   it('creates a login, disables a user, and resets a password', async () => {
-    const server = open('/admin/clients/c1', {
+    const server = open('/admin/clients/c1?tab=logins', {
       'GET /api/admin/clients/c1': () => ({ status: 200, body: detail }),
       'POST /api/admin/users': () => ({ status: 201, body: {} }),
       'PATCH /api/admin/users/u2': () => ({ status: 200, body: {} }),
       'POST /api/admin/users/u2/reset-password': () => ({ status: 200, body: {} }),
     });
     await screen.findByText('asha@n.com');
-    await userEvent.type(screen.getAllByLabelText('Name')[1]!, 'Bob');
+    await userEvent.type(screen.getByLabelText('Name'), 'Bob');
     await userEvent.type(screen.getByLabelText('Email'), 'bob@n.com');
     const first = screen.getByLabelText(/^First password/) as HTMLInputElement;
     expect(first.type).toBe('password');
@@ -174,7 +174,7 @@ describe('S4 clients', () => {
   });
 
   it('saving staff assignments sends the whole new list', async () => {
-    const person = { id: 's1', name: 'Meera', email: 'm@r.com', role: 'staff', status: 'active', clientId: null, lastLoginAt: null, assignedClientIds: [] };
+    const person = { id: 's1', name: 'Meera', email: 'm@r.com', role: 'staff', status: 'active', clientId: null, lastLoginAt: null, assignedClientIds: [], activeClientCount: 0 };
     const server = open('/admin/staff', {
       'GET /api/admin/users?role=staff': () => ({ status: 200, body: { items: [person], nextCursor: null } }),
       'GET /api/admin/clients': () => ({ status: 200, body: { items: [CLIENT], nextCursor: null } }),
@@ -259,7 +259,7 @@ describe('S5 audit and S6 notifications', () => {
 
 describe('things found on review', () => {
   it('no password on any screen shows by default, on the staff page either', async () => {
-    const person = { id: 's1', name: 'Meera', email: 'm@r.com', role: 'staff', status: 'active', clientId: null, lastLoginAt: null, assignedClientIds: [] };
+    const person = { id: 's1', name: 'Meera', email: 'm@r.com', role: 'staff', status: 'active', clientId: null, lastLoginAt: null, assignedClientIds: [], activeClientCount: 0 };
     open('/admin/staff', {
       'GET /api/admin/users?role=staff': () => ({ status: 200, body: { items: [person], nextCursor: null } }),
       'GET /api/admin/clients': () => ({ status: 200, body: { items: [CLIENT], nextCursor: null } }),
@@ -287,5 +287,134 @@ describe('things found on review', () => {
   it('the audit and delivery logs explain themselves', async () => {
     open('/admin/delivery-log', { 'GET /api/admin/notifications': () => ({ status: 200, body: { items: [], nextCursor: null } }) });
     expect((await screen.findByRole('note')).getAttribute('aria-label')).toContain('whether it went out');
+  });
+});
+
+describe('staff from the client page', () => {
+  const detail = { ...CLIENT, users: [], staff: [], statusHistory: [] };
+  const person = (id: string, name: string, assignedClientIds: string[]) => ({
+    id,
+    name,
+    email: `${name.toLowerCase()}@r.com`,
+    role: 'staff',
+    status: 'active',
+    clientId: null,
+    lastLoginAt: null,
+    assignedClientIds,
+    activeClientCount: assignedClientIds.length,
+  });
+  const routes = (people: unknown[]) => ({
+    'GET /api/admin/clients/c1': () => ({ status: 200, body: detail }),
+    'GET /api/admin/users?role=staff': () => ({ status: 200, body: { items: people, nextCursor: null } }),
+    'PUT /api/admin/users/s1/clients': () => ({ status: 200, body: {} }),
+    'PUT /api/admin/users/s2/clients': () => ({ status: 200, body: {} }),
+    'GET /api/admin/clients': () => ({ status: 200, body: { items: [CLIENT], nextCursor: null } }),
+  });
+
+  it('shows where you are, and how many clients each person has', async () => {
+    open('/admin/clients/c1?tab=staff', routes([person('s1', 'Meera', ['c1', 'c2', 'c3']), person('s2', 'Rahul', ['c9'])]));
+    const trail = await screen.findByRole('navigation', { name: 'Breadcrumb' });
+    expect(trail.textContent).toBe('Clients / Northwind Labs');
+    await screen.findByRole('cell', { name: '3 clients' });
+    expect(await screen.findByRole('option', { name: 'Rahul (rahul@r.com), has 1 client' })).toBeTruthy();
+  });
+
+  it('adding picks from the dropdown and keeps the person’s other clients, staying on this page', async () => {
+    const server = open('/admin/clients/c1?tab=staff', routes([person('s2', 'Rahul', ['c9'])]));
+    const add = (await screen.findByRole('button', { name: 'Add to Northwind Labs' })) as HTMLButtonElement;
+    expect(add.disabled).toBe(true);
+    await userEvent.selectOptions(screen.getByLabelText('Staff member'), 's2');
+    await userEvent.click(add);
+    await waitFor(() => expect(sent(server, 'PUT', '/api/admin/users/s2/clients')?.body).toEqual({ clientIds: ['c9', 'c1'] }));
+    expect(await screen.findByText('Rahul can now work in Northwind Labs.')).toBeTruthy();
+  });
+
+  it('removing takes away only this client', async () => {
+    const server = open('/admin/clients/c1?tab=staff', routes([person('s1', 'Meera', ['c2', 'c1', 'c3'])]));
+    await userEvent.click(await screen.findByRole('button', { name: 'Remove Meera from Northwind Labs' }));
+    await waitFor(() => expect(sent(server, 'PUT', '/api/admin/users/s1/clients')?.body).toEqual({ clientIds: ['c2', 'c3'] }));
+  });
+
+  it('a suspended client does not count towards a person, and the page says so', async () => {
+    open('/admin/clients/c1?tab=staff', {
+      ...routes([{ ...person('s1', 'Meera', ['c1', 'c2', 'c3']), activeClientCount: 2 }]),
+      'GET /api/admin/clients/c1': () => ({ status: 200, body: { ...detail, status: 'suspended' } }),
+    });
+    await screen.findByRole('cell', { name: '2 clients' });
+    expect(screen.getByText(/does not count towards their clients/)).toBeTruthy();
+  });
+
+  it('the dropdown offers only active staff not already assigned', async () => {
+    open('/admin/clients/c1?tab=staff', routes([person('s1', 'Meera', ['c1']), person('s2', 'Rahul', []), { ...person('s3', 'Gone', []), status: 'disabled' }]));
+    const options = within(await screen.findByLabelText('Staff member')).getAllByRole('option').map((o) => o.textContent);
+    expect(options).toEqual(['Choose a person…', 'Rahul (rahul@r.com), has 0 clients']);
+  });
+
+  it('creating staff from a client remembers which client, ticks it, and links back', async () => {
+    const server = open('/admin/staff?client=c1', {
+      'GET /api/admin/users?role=staff': () => ({ status: 200, body: { items: [], nextCursor: null } }),
+      'GET /api/admin/clients': () => ({ status: 200, body: { items: [CLIENT], nextCursor: null } }),
+      'POST /api/admin/users': () => ({ status: 201, body: {} }),
+    });
+    expect((await screen.findByRole('navigation', { name: 'Breadcrumb' })).textContent).toContain('Northwind Labs');
+    await screen.findByRole('heading', { name: 'Add a staff member for Northwind Labs' });
+    expect((screen.getByLabelText('Northwind Labs') as HTMLInputElement).checked).toBe(true);
+    await userEvent.type(screen.getByLabelText('Name'), 'New');
+    await userEvent.type(screen.getByLabelText('Email'), 'new@r.com');
+    await userEvent.type(screen.getByLabelText(/^First password/), 'first-password-1');
+    await userEvent.click(screen.getByRole('button', { name: 'Add staff member' }));
+    await waitFor(() => expect(sent(server, 'POST', '/api/admin/users')?.body).toMatchObject({ clientIds: ['c1'] }));
+    expect((await screen.findByRole('link', { name: 'Back to Northwind Labs' })).getAttribute('href')).toBe('/admin/clients/c1?tab=staff');
+  });
+});
+
+describe('client page tabs', () => {
+  it('opens on Overview, moves between sections, and keeps its place in the address', async () => {
+    open('/admin/clients/c1', {
+      'GET /api/admin/clients/c1': () => ({ status: 200, body: { ...CLIENT, users: [], staff: [], statusHistory: [] } }),
+      'GET /api/admin/users?role=staff': () => ({ status: 200, body: { items: [], nextCursor: null } }),
+    });
+    await screen.findByRole('heading', { name: 'Details' });
+    expect(screen.queryByRole('heading', { name: 'Assigned staff' })).toBeNull();
+    await userEvent.click(within(screen.getByRole('navigation', { name: 'Client sections' })).getByRole('link', { name: 'Staff' }));
+    await screen.findByRole('heading', { name: 'Assigned staff' });
+    expect(screen.queryByRole('heading', { name: 'Details' })).toBeNull();
+    expect(screen.getByRole('navigation', { name: 'Breadcrumb' }).textContent).toBe('Clients / Northwind Labs');
+  });
+});
+
+describe('why a client is suspended', () => {
+  const history = [
+    { action: 'client.suspended', note: 'invoice overdue', byName: 'Ravi', at: '2026-11-01T10:00:00Z' },
+    { action: 'client.reactivated', note: 'paid', byName: 'Ravi', at: '2026-10-20T10:00:00Z' },
+    { action: 'client.suspended', note: 'first time', byName: 'Ravi', at: '2026-10-10T10:00:00Z' },
+  ];
+
+  it('shows the latest reason on every tab, and the full history on Overview', async () => {
+    open('/admin/clients/c1?tab=money', {
+      'GET /api/admin/clients/c1': () => ({ status: 200, body: { ...CLIENT, status: 'suspended', users: [], staff: [], statusHistory: history } }),
+    });
+    const banner = await screen.findByRole('status');
+    expect(banner.textContent).toBe('Suspended on 01 Nov 2026, 15:30 by Ravi. Reason: invoice overdue');
+    cleanup();
+    open('/admin/clients/c1', {
+      'GET /api/admin/clients/c1': () => ({ status: 200, body: { ...CLIENT, status: 'suspended', users: [], staff: [], statusHistory: history } }),
+    });
+    await screen.findByRole('heading', { name: 'History' });
+    expect(screen.getByRole('cell', { name: 'first time' })).toBeTruthy();
+    expect(screen.getByRole('cell', { name: 'paid' })).toBeTruthy();
+  });
+
+  it('an active client shows no banner, and the list shows a suspended client’s reason', async () => {
+    open('/admin/clients/c1', {
+      'GET /api/admin/clients/c1': () => ({ status: 200, body: { ...CLIENT, users: [], staff: [], statusHistory: [history[1]] } }),
+    });
+    await screen.findByRole('heading', { name: 'History' });
+    expect(screen.queryByRole('status')).toBeNull();
+    cleanup();
+    open('/admin/clients', {
+      'GET /api/admin/clients': () => ({ status: 200, body: { items: [{ ...CLIENT, status: 'suspended', suspendedNote: 'invoice overdue' }], nextCursor: null } }),
+    });
+    expect(await screen.findByText('invoice overdue')).toBeTruthy();
   });
 });
