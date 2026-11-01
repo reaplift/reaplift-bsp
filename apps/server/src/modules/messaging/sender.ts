@@ -62,6 +62,18 @@ interface ClaimedMessage {
  */
 export class AccountPacer {
   private readonly nextAllowedAt = new Map<string, number>();
+  private readonly running = new Map<string, Promise<void>>();
+
+  /** Runs one number's round, unless its last one is still going. A slow number holds up only itself. */
+  start(accountId: string, round: () => Promise<void>) {
+    if (this.running.has(accountId)) return;
+    this.running.set(accountId, round().finally(() => this.running.delete(accountId)));
+  }
+
+  /** Waits for rounds under way, so a shutdown does not cut them off. */
+  async settled() {
+    await Promise.allSettled([...this.running.values()]);
+  }
 
   isReady(accountId: string, now: number): boolean {
     return (this.nextAllowedAt.get(accountId) ?? 0) <= now;
@@ -93,7 +105,11 @@ export interface SendOutcome {
 }
 
 /** Claims and sends what is due on each active account. A paused account's messages are never claimed. */
-export async function sendDue(deps: SenderDeps, now: Date = new Date()): Promise<SendOutcome> {
+export async function sendDue(
+  deps: SenderDeps,
+  now: Date = new Date(),
+  options: { wait?: boolean } = {},
+): Promise<SendOutcome> {
   const { db, pacer } = deps;
   const outcome: SendOutcome = { sent: 0, retried: 0, failed: 0, paused: 0 };
 
@@ -109,10 +125,10 @@ export async function sendDue(deps: SenderDeps, now: Date = new Date()): Promise
     `.execute(db)
   ).rows;
 
-  await Promise.all(
-    accounts
-      .filter((account) => pacer.isReady(account.id, Date.now()))
-      .map(async (account) => {
+  const wait = options.wait ?? true;
+  const rounds = accounts
+    .filter((account) => pacer.isReady(account.id, Date.now()))
+    .map((account) => ({ accountId: account.id, run: async () => {
         // Over the day's limit, nothing is claimed: messages wait in the queue and go out as the 24 hours move on.
         const remaining = await dailyRemaining(db, account, now);
         const batch = remaining === null ? account.send_rate_per_sec : Math.min(account.send_rate_per_sec, remaining);
@@ -121,8 +137,15 @@ export async function sendDue(deps: SenderDeps, now: Date = new Date()): Promise
           pacer.record(account.id, claimed.length, account.send_rate_per_sec, Date.now());
         }
         await sendBatch(deps, account, claimed, now, outcome);
-      }),
-  );
+    } }));
+
+  if (wait) {
+    await Promise.all(rounds.map((round) => round.run()));
+  } else {
+    for (const round of rounds) {
+      pacer.start(round.accountId, () => round.run().catch((err) => deps.log?.error({ err }, 'sending round failed')));
+    }
+  }
   return outcome;
 }
 

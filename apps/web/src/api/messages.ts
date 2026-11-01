@@ -46,6 +46,7 @@ export const ERROR_MESSAGES: Record<string, string> = {
   ALREADY_CANCELLED: 'This campaign is already cancelled.',
   TOO_SOON: 'Schedule at least 5 minutes ahead.',
   NOT_SUPPORTED: 'This is not available yet.',
+  CREDIT_LIMIT_REACHED: 'New campaigns cannot start right now. Please contact ReapLift.',
   NETWORK_ERROR: 'Cannot reach the server. Check your connection and try again.',
   BAD_RESPONSE: 'The server sent something unexpected. Please try again.',
   UNEXPECTED_ERROR: 'Something went wrong. Please try again.',

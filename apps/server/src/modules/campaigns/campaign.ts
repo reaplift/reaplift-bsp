@@ -5,6 +5,7 @@ import { notify } from '../notifications/notify.js';
 import { applyLedgerEntry, readBalance, readOnHold, releaseHold } from '../wallet/ledger.js';
 import { chargePolicyFor, priceAt } from '../wallet/pricing.js';
 import { effectiveDailyLimit, estimateDelivery, type DeliveryEstimate } from '../messaging/limits.js';
+import { monthOf, TIME_ZONE } from '../reports/stats.js';
 import { marketingCap, repeatWithinHours } from './rules.js';
 
 export interface CampaignRow {
@@ -119,6 +120,42 @@ export interface Summary {
   estimate: DeliveryEstimate;
 }
 
+/**
+ * Meta bills ReapLift's one credit line for every client, so running out stops them all. A new campaign is refused if
+ * this month's recorded cost, what is already queued, and this campaign together would pass the super admin's limit.
+ * No limit set means no stop.
+ */
+async function refuseIfOverCreditLine(db: Kysely<Database>, category: string, willSend: number, at: Date) {
+  const limit = (await sql<{ value: number }>`select value from settings where key = 'credit_limit_paise'`.execute(db)).rows[0]?.value;
+  if (limit === undefined) return;
+  const rateOf = sql`(
+    select r.rate_centipaise from meta_rates r
+    where r.category = t.category and r.country_calling_code = c.country_calling_code and r.valid_from <= ${at}
+    order by r.valid_from desc, r.seq desc limit 1
+  )`;
+  const committed = (
+    await sql<{ cost: number }>`
+      select coalesce(sum(m.meta_cost_centipaise) filter (
+          where to_char(m.delivered_at at time zone ${TIME_ZONE}, 'YYYY-MM') = ${monthOf(at)}
+        ), 0)::bigint
+        + coalesce(sum(${rateOf}) filter (where m.status in ('queued', 'sending')), 0)::bigint as cost
+      from messages m
+      join templates t on t.id = m.template_id
+      join clients c on c.id = m.client_id
+      where m.status in ('queued', 'sending') or m.meta_cost_centipaise is not null
+    `.execute(db)
+  ).rows[0]!.cost;
+  const rate = (
+    await sql<{ rate_centipaise: number }>`
+      select rate_centipaise from meta_rates where category = ${category} and valid_from <= ${at}
+      order by valid_from desc, seq desc limit 1
+    `.execute(db)
+  ).rows[0]?.rate_centipaise ?? 0;
+  if ((committed + willSend * rate) / 100 > limit) {
+    throw new CampaignRefused(409, 'CREDIT_LIMIT_REACHED', 'ReapLift cannot start new campaigns right now. Please contact ReapLift');
+  }
+}
+
 interface Computed extends Summary {
   blocks: RowBlock[];
   /** What a queued and a blocked message are each charged. */
@@ -175,6 +212,8 @@ export async function computeSummary(db: Kysely<Database>, campaign: CampaignRow
     blocks.length * blockedPricePaise +
     (policy.invalid ? invalidTotal * price : 0) +
     (policy.duplicate ? duplicate * price : 0);
+  await refuseIfOverCreditLine(db, facts.templateCategory, willSend, at);
+
   const balancePaise = await readBalance(db, campaign.client_id);
   const availablePaise = balancePaise - (await readOnHold(db, campaign.client_id));
   const limit = effectiveDailyLimit(facts.dailySendLimit, facts.messagingLimit);
@@ -191,7 +230,7 @@ export async function computeSummary(db: Kysely<Database>, campaign: CampaignRow
     balancePaise,
     balanceAfterPaise: availablePaise - chargePaise,
     limitWarning: limit !== null && willSend > limit ? { limit } : null,
-    estimate: await estimateDelivery(db, campaign.wa_account_id, willSend, at),
+    estimate: await estimateDelivery(db, campaign.wa_account_id, willSend, at, campaign.scheduled_at ?? null),
     blocks,
     sendPricePaise,
     blockedPricePaise,

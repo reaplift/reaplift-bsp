@@ -370,6 +370,100 @@ describe('8.3 money on hold for a scheduled campaign', () => {
   });
 });
 
+describe('the credit line stop', () => {
+  const limit = (limitPaise: number) => call(ADMIN, 'PUT', '/api/admin/credit-limit', { limitPaise });
+  afterAll(() => w.pool.query(`delete from settings where key = 'credit_limit_paise'`));
+
+  it('refuses a campaign that would pass the limit, counting what is queued; others carry on; money is untouched', async () => {
+    // Meta's rate here is 76 paise a message.
+    await limit(76 * 10);
+    const first = await draft(8);
+    expect((await act(first, 'confirm')).statusCode).toBe(200);
+    const before = await balance();
+
+    const second = await draft(3, marketing, 9100000000);
+    const refused = await act(second, 'confirm');
+    expect(refused.statusCode).toBe(409);
+    expect(refused.json().error).toBe('CREDIT_LIMIT_REACHED');
+    expect(await balance()).toBe(before);
+    expect((await campaign(second)).status).toBe('draft');
+    expect((await call(ADMIN, 'GET', `/api/admin/campaigns/${second}/diagnosis`)).json().reasons[0].code).toBe('CREDIT_LIMIT_REACHED');
+
+    // The one already started is not stopped, and exactly up to the limit is allowed.
+    await send();
+    expect((await counts(first)).sent).toBe(8);
+    const third = await draft(2, marketing, 9200000000);
+    expect((await act(third, 'confirm')).statusCode).toBe(200);
+  });
+
+  it('counts delivered cost this month, and a raised limit lets campaigns through; a scheduled start falls back to draft', async () => {
+    await w.pool.query(`delete from settings where key = 'credit_limit_paise'`);
+    const id = await running(2);
+    await w.pool.query(`update messages set status = 'delivered', delivered_at = now(), meta_cost_centipaise = 7600 where campaign_id = $1`, [id]);
+    await limit(76 * 2);
+    const next = await draft(1, marketing, 9300000000);
+    expect((await act(next, 'confirm')).json().error).toBe('CREDIT_LIMIT_REACHED');
+    await limit(1000000);
+    const at = new Date(CLOCK.getTime() + 10 * 60_000);
+    expect((await act(next, 'schedule', ASHA, { at: at.toISOString() })).statusCode).toBe(200);
+    await limit(76 * 2);
+    await startDueCampaigns(w.db, at);
+    expect((await campaign(next)).status).toBe('draft');
+    expect((await wallet()).onHoldPaise).toBe(0);
+  });
+});
+
+describe('the estimate for a scheduled campaign', () => {
+  it('starts from the scheduled time, after campaigns scheduled before it', async () => {
+    await w.pool.query(`update wa_accounts set send_rate_per_sec = 10`);
+    const first = await draft(90);
+    const firstAt = new Date(CLOCK.getTime() + 3_600_000);
+    const res = (await act(first, 'schedule', ASHA, { at: firstAt.toISOString() })).json();
+    expect(res.estimate).toMatchObject({ messagesAhead: 0, seconds: 10 });
+    expect(new Date(res.estimate.finishesAt).getTime()).toBe(firstAt.getTime() + 10_000);
+
+    const second = await draft(90, marketing, 9400000000);
+    const secondAt = new Date(CLOCK.getTime() + 7_200_000);
+    expect((await act(second, 'schedule', ASHA, { at: secondAt.toISOString() })).json().estimate).toMatchObject({ messagesAhead: 90, seconds: 20 });
+  });
+});
+
+describe('one number does not hold up another', () => {
+  it('a number whose round is still going is skipped, and the others are not kept waiting', async () => {
+    const pacer = new AccountPacer();
+    let finish = () => {};
+    const hanging = new Promise<void>((resolve) => { finish = resolve; });
+    let calls = 0;
+    pacer.start('slow', () => { calls += 1; return hanging; });
+    pacer.start('slow', () => { calls += 1; return Promise.resolve(); });
+    expect(calls).toBe(1);
+
+    let otherRan = false;
+    pacer.start('other', async () => { otherRan = true; });
+    expect(otherRan).toBe(true);
+
+    let settled = false;
+    const done = pacer.settled().then(() => { settled = true; });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(settled).toBe(false);
+    finish();
+    await done;
+    pacer.start('slow', () => { calls += 1; return Promise.resolve(); });
+    expect(calls).toBe(2);
+  });
+
+  it('the worker’s way of sending does not wait for a slow Meta answer, and still sends', async () => {
+    const id = await running(2);
+    fake.queueSendResponses({ status: 200, delayMs: 300, acceptFirst: true });
+    const pacer = new AccountPacer();
+    const started = Date.now();
+    await sendDue({ db: w.db, meta, encryptionKey: KEY, pacer }, later(), { wait: false });
+    expect(Date.now() - started).toBeLessThan(250);
+    await pacer.settled();
+    expect((await counts(id)).sent).toBe(2);
+  });
+});
+
 describe('8.4 rules', () => {
   const rule = (body: object, email = ADMIN) => call(email, 'PUT', '/api/admin/rules', body);
   const blockedBy = async (id: string) => (await call(ASHA, 'GET', `${base()}/campaigns/${id}/summary`)).json().blocked.byReason;

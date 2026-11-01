@@ -131,7 +131,7 @@ Answered questions move here with their date, and the spec is updated in the sam
 | Speed | Per number, set by the super admin, default 50 a second (Meta's default is 80) | Built |
 | Our own daily limit | Optional per number, set by the super admin; the tighter of it and Meta's applies. At the limit, messages wait and resume | Built |
 | Who pays Meta | ReapLift's credit line, shared across clients; clients prepay a wallet | Decided 29 October; needs E7 |
-| Credit line | Alerts at 80% and 95%. A hard stop on new campaigns is proposed, not built | Open: owner to confirm |
+| Credit line | Alerts at 80% and 95%. New campaigns are refused once this month's cost, what is queued and the new campaign would pass the super admin's limit; running campaigns carry on | Built (owner) |
 | Client prices | Per client and message type, markup or fixed | Proposal built as the default; ReapLift to agree (P1 to P9) |
 | Campaign size | At most 20,000 rows and 10 MB | Built; ReapLift to confirm 10,000 or 20,000 (P10) |
 | Scheduled campaigns | Money on hold until start; wallet shows balance, on hold, available | Built |

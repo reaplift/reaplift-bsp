@@ -207,7 +207,15 @@ export function registerCampaignControls(app: FastifyInstance, deps: { db: Kysel
         `.execute(trx);
         await audit(trx, scope, id, 'campaign.scheduled', { after: { scheduledAt: at.toISOString(), heldPaise } });
       });
-      return reply.code(200).send({ status: 'scheduled', scheduledAt: at.toISOString(), heldPaise });
+      const estimate = (
+        await sql<CampaignRow>`select * from campaigns where id = ${id} and client_id = ${scope.clientId}`.execute(db)
+      ).rows[0]!;
+      return reply.code(200).send({
+        status: 'scheduled',
+        scheduledAt: at.toISOString(),
+        heldPaise,
+        estimate: (await computeSummary(db, estimate, current)).estimate,
+      });
     } catch (err) {
       if (err instanceof InsufficientBalanceError) {
         return reply.code(402).send({ error: 'INSUFFICIENT_BALANCE', message: 'Top up needed', shortPaise: err.shortPaise });

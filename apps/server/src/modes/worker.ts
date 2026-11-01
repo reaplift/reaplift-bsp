@@ -36,7 +36,7 @@ export async function runWorker(config: Config, log: Logger) {
     {
       name: 'messages',
       everyMs: 100,
-      run: () => sendDue({ db, meta, encryptionKey: config.APP_ENCRYPTION_KEY, pacer, log }),
+      run: () => sendDue({ db, meta, encryptionKey: config.APP_ENCRYPTION_KEY, pacer, log }, new Date(), { wait: false }),
     },
     {
       name: 'template-submissions',
@@ -51,6 +51,7 @@ export async function runWorker(config: Config, log: Logger) {
     'worker started',
   );
   await runLoops(loops, log);
+  await pacer.settled();
   await db.destroy();
   log.info('worker stopped');
 }

@@ -123,7 +123,7 @@ export async function readLimitUsage(db: Kysely<Database>, now: Date) {
 }
 
 export interface DeliveryEstimate {
-  /** Messages already waiting on this number, which go first. */
+  /** Messages already waiting on this number, or scheduled before it, which go first. */
   messagesAhead: number;
   seconds: number;
   finishesAt: string;
@@ -139,6 +139,8 @@ export async function estimateDelivery(
   accountId: string,
   count: number,
   at: Date,
+  /** A scheduled campaign starts then, after any scheduled to start before it. */
+  startsAt: Date | null = null,
 ): Promise<DeliveryEstimate> {
   const account = (
     await sql<{ waba_id: string; daily_send_limit: number | null; messaging_limit: string | null; send_rate_per_sec: number }>`
@@ -154,7 +156,16 @@ export async function estimateDelivery(
     `.execute(db)
   ).rows[0]!.n;
 
-  const total = messagesAhead + count;
+  const scheduledAhead = startsAt
+    ? (
+        await sql<{ n: number }>`
+          select coalesce(sum(l.valid_count), 0)::int as n from campaigns k
+          join lists l on l.id = k.list_id and l.client_id = k.client_id
+          where k.wa_account_id = ${accountId} and k.status = 'scheduled' and k.scheduled_at < ${startsAt}
+        `.execute(db)
+      ).rows[0]!.n
+    : 0;
+  const total = messagesAhead + scheduledAhead + count;
   const sendingSeconds = Math.ceil(total / (account.send_rate_per_sec * ESTIMATE_SPEED_FACTOR));
   const remaining = await dailyRemaining(db, account, at);
   const limit = effectiveDailyLimit(account.daily_send_limit, account.messaging_limit);
@@ -162,10 +173,11 @@ export async function estimateDelivery(
   // Each full day's limit beyond what is left today adds a day of waiting.
   const waitingDays = waitsForDailyLimit ? Math.ceil((total - remaining) / limit!) : 0;
   const seconds = sendingSeconds + (waitingDays * DAY_MS) / 1000;
+  const from = startsAt && startsAt > at ? startsAt : at;
   return {
-    messagesAhead,
+    messagesAhead: messagesAhead + scheduledAhead,
     seconds,
-    finishesAt: new Date(at.getTime() + seconds * 1000).toISOString(),
+    finishesAt: new Date(from.getTime() + seconds * 1000).toISOString(),
     waitsForDailyLimit,
   };
 }
