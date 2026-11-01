@@ -2,7 +2,6 @@
 
 - Status: Not started
 - Owner: ReapLift leads; engineering supports
-- Branch prefix: `m11-`
 - Starts after: M8, M9, M10
 - External prerequisites: E1 to E7 done (E7: ReapLift is a Solution Partner with its credit line)
 
@@ -27,6 +26,8 @@ flowchart TD
   J -- "go" --> K["Next client"]
   J -- "no go" --> L["Back to Dovesoft for this client;<br/>findings recorded"]
 ```
+
+> Checked on 31 October 2026: a Dovesoft client's own portfolio holds its WhatsApp account, with Dove Soft as a partner, so a client may be able to add ReapLift as a partner rather than release its number. A search result quoting Meta's docs says a credit line cannot be changed once attached to an account, so it may still need a new account. This is question 4 in [open-questions.md](../../open-questions.md); the runbook depends on the answer.
 
 ## Worked example
 

@@ -123,14 +123,14 @@ pnpm --filter @reaplift/shared build
 pnpm dev
 ```
 
-Open http://localhost:5173 in your browser. It should say **API: ok (version dev, database ok)**.
+Open exactly http://localhost:5173 in your browser. It should show the **Login** page. To get test logins, run `pnpm --filter @reaplift/server cli seed-dev`; the logins and password are in [M1's test evidence](milestones/m1-login-and-access/test-evidence.md). Also check http://localhost:3000/healthz, which should show `"status":"ok"`.
 
 Stop the app with **Ctrl+C**. Stop the database with `pnpm db:down`.
 
 ## 4. Every day after that
 
 ```powershell
-git checkout main; git pull          # get the latest code
+git checkout anirudh-e2e-setup; git pull --rebase origin anirudh-e2e-setup  # get the latest code
 pnpm install                         # only if packages changed
 pnpm db:up; pnpm migrate             # start the database, apply new migrations
 pnpm dev

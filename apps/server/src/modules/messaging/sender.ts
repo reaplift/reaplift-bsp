@@ -1,0 +1,361 @@
+import { sql, type Kysely } from 'kysely';
+import { decryptSecret } from '../../lib/crypto.js';
+import type { Database } from '../../lib/db.js';
+import type { Logger } from '../../lib/logger.js';
+import {
+  buildTemplateMessagePayload,
+  classifyMetaError,
+  extractMetaMessageId,
+  type MetaClient,
+  type MetaFailure,
+} from '../../lib/meta-client.js';
+import { calculateNextAttemptAt } from '../../lib/worker.js';
+import { refundFailedMessage } from '../campaigns/refunds.js';
+import { dailyRemaining } from './limits.js';
+import { pauseAccountRow } from './quality.js';
+
+export const MAX_SEND_ATTEMPTS = 5;
+export const RATE_LIMIT_COOL_DOWN_MS = 30 * 1000;
+/** Meta's "too fast" errors, from its error-code page. They say nothing about the message, so it must never fail for them. */
+const META_RATE_LIMIT_CODES = new Set([4, 80007, 130429]);
+const isRateLimited = (failure: MetaFailure) =>
+  failure.httpStatus === 429 || (failure.code !== undefined && META_RATE_LIMIT_CODES.has(failure.code));
+export const STUCK_AFTER_MS = 5 * 60 * 1000;
+/**
+ * With no answer from Meta, the message may still have been accepted, so wait long enough for its webhook before
+ * sending it again (M7 7.6a). A starting figure, to be set from real timings; see docs/open-questions.md, question 9.
+ */
+export const HOLD_AFTER_NO_RESPONSE_MS = 5 * 60 * 1000;
+
+const ACCOUNT_REASONS: Record<number, string> = {
+  190: 'token invalid',
+  131031: 'account restricted by Meta',
+  131042: 'payment problem',
+};
+const CREDIT_LINE_PAYERS = new Set(['partner_credit_line', 'reaplift_credit_line']);
+
+interface ActiveAccount {
+  id: string;
+  client_id: string;
+  display_phone: string;
+  phone_number_id: string;
+  access_token_enc: Buffer;
+  send_rate_per_sec: number;
+  meta_payer: string;
+  waba_id: string;
+  daily_send_limit: number | null;
+  messaging_limit: string | null;
+  country_calling_code: string | null;
+}
+
+interface ClaimedMessage {
+  id: number;
+  to_number: string;
+  variables: string[];
+  attempts: number;
+  template_name: string;
+  template_language: string;
+}
+
+/**
+ * Keeps each account within `send_rate_per_sec`. It counts one process's sends, so run one worker per
+ * environment until a shared limit is needed; a second worker is safe for correctness but doubles the rate.
+ */
+export class AccountPacer {
+  private readonly nextAllowedAt = new Map<string, number>();
+  private readonly running = new Map<string, Promise<void>>();
+
+  /** Runs one number's round, unless its last one is still going. A slow number holds up only itself. */
+  start(accountId: string, round: () => Promise<void>) {
+    if (this.running.has(accountId)) return;
+    this.running.set(accountId, round().finally(() => this.running.delete(accountId)));
+  }
+
+  /** Waits for rounds under way, so a shutdown does not cut them off. */
+  async settled() {
+    await Promise.allSettled([...this.running.values()]);
+  }
+
+  isReady(accountId: string, now: number): boolean {
+    return (this.nextAllowedAt.get(accountId) ?? 0) <= now;
+  }
+
+  record(accountId: string, sent: number, ratePerSec: number, now: number) {
+    this.nextAllowedAt.set(accountId, now + (sent / ratePerSec) * 1000);
+  }
+
+  /** Meta said too fast, so the whole account waits, not only the message that got the error. */
+  coolDown(accountId: string, now: number) {
+    this.nextAllowedAt.set(accountId, Math.max(this.nextAllowedAt.get(accountId) ?? 0, now + RATE_LIMIT_COOL_DOWN_MS));
+  }
+}
+
+export interface SenderDeps {
+  db: Kysely<Database>;
+  meta: MetaClient;
+  encryptionKey: string;
+  pacer: AccountPacer;
+  log?: Logger;
+}
+
+export interface SendOutcome {
+  sent: number;
+  retried: number;
+  failed: number;
+  paused: number;
+}
+
+/** Claims and sends what is due on each active account. A paused account's messages are never claimed. */
+export async function sendDue(
+  deps: SenderDeps,
+  now: Date = new Date(),
+  options: { wait?: boolean } = {},
+): Promise<SendOutcome> {
+  const { db, pacer } = deps;
+  const outcome: SendOutcome = { sent: 0, retried: 0, failed: 0, paused: 0 };
+
+  const accounts = (
+    await sql<ActiveAccount>`
+      select a.id, a.client_id, c.country_calling_code, a.waba_id, a.daily_send_limit, a.messaging_limit, a.display_phone, a.phone_number_id, a.access_token_enc, a.send_rate_per_sec, a.meta_payer
+      from wa_accounts a
+      join clients c on c.id = a.client_id and c.status = 'active'
+      where a.status = 'active' and exists (
+        select 1 from messages m
+        where m.wa_account_id = a.id and m.status = 'queued' and m.next_attempt_at <= ${now}
+      )
+    `.execute(db)
+  ).rows;
+
+  const wait = options.wait ?? true;
+  const rounds = accounts
+    .filter((account) => pacer.isReady(account.id, Date.now()))
+    .map((account) => ({ accountId: account.id, run: async () => {
+        // Over the day's limit, nothing is claimed: messages wait in the queue and go out as the 24 hours move on.
+        const remaining = await dailyRemaining(db, account, now);
+        const batch = remaining === null ? account.send_rate_per_sec : Math.min(account.send_rate_per_sec, remaining);
+        const claimed = batch > 0 ? await claim(db, account, now, batch) : [];
+        if (claimed.length > 0) {
+          pacer.record(account.id, claimed.length, account.send_rate_per_sec, Date.now());
+        }
+        await sendBatch(deps, account, claimed, now, outcome);
+    } }));
+
+  if (wait) {
+    await Promise.all(rounds.map((round) => round.run()));
+  } else {
+    for (const round of rounds) {
+      pacer.start(round.accountId, () => round.run().catch((err) => deps.log?.error({ err }, 'sending round failed')));
+    }
+  }
+  return outcome;
+}
+
+/** Moves rows to `sending` in one statement with `for update skip locked`, so two workers never take the same row. */
+async function claim(
+  db: Kysely<Database>,
+  account: ActiveAccount,
+  now: Date,
+  batch: number,
+): Promise<ClaimedMessage[]> {
+  return (
+    await sql<ClaimedMessage>`
+      update messages m
+      set status = 'sending', locked_at = ${now}, attempts = m.attempts + 1
+      from templates t
+      where t.id = m.template_id and m.id in (
+        select id from messages
+        where wa_account_id = ${account.id} and status = 'queued' and next_attempt_at <= ${now}
+          and (campaign_id is null or exists (
+            select 1 from campaigns k where k.id = messages.campaign_id and k.status = 'running'
+          ))
+        order by id
+        limit ${batch}
+        for update skip locked
+      )
+      returning m.id, m.to_number, m.variables, m.attempts,
+        t.name as template_name, t.language as template_language
+    `.execute(db)
+  ).rows;
+}
+
+async function sendBatch(
+  deps: SenderDeps,
+  account: ActiveAccount,
+  claimed: ClaimedMessage[],
+  now: Date,
+  outcome: SendOutcome,
+) {
+  if (claimed.length === 0) return;
+
+  let token: string;
+  try {
+    token = decryptSecret(account.access_token_enc.toString('utf8'), deps.encryptionKey);
+  } catch {
+    await pauseAccount(deps, account, 'token cannot be decrypted', claimed, now);
+    outcome.paused += 1;
+    return;
+  }
+
+  let paused = false;
+  await Promise.all(
+    claimed.map(async (message) => {
+      // The last check before money is spent: uploads already refuse these, but nothing outside the client's country
+      // goes to Meta, whatever put it in the queue, as Meta's rate there may be far above the client's price.
+      if (!account.country_calling_code || !message.to_number.startsWith(account.country_calling_code)) {
+        await markFailed(deps.db, message.id, 'wrong_country', null, now);
+        deps.log?.error({ messageId: message.id, accountId: account.id }, 'message outside the client country refused');
+        outcome.failed += 1;
+        return;
+      }
+      const result = await deps.meta.sendMessage(
+        account.phone_number_id,
+        token,
+        buildTemplateMessagePayload({
+          to: message.to_number,
+          templateName: message.template_name,
+          language: message.template_language,
+          variables: message.variables,
+          callbackData: String(message.id),
+        }),
+      );
+
+      if (!result.ok) {
+        if (isRateLimited(result)) deps.pacer.coolDown(account.id, Date.now());
+        const handled = await handleFailure(deps, account, message, result, now);
+        if (handled === 'paused') paused = true;
+        else outcome[handled] += 1;
+        return;
+      }
+
+      const metaMessageId = extractMetaMessageId(result.data);
+      if (!metaMessageId) {
+        await markFailed(deps.db, message.id, 'Meta accepted the message without an ID', null, now);
+        outcome.failed += 1;
+        return;
+      }
+      await sql`
+        update messages
+        set status = 'sent', meta_message_id = ${metaMessageId}, sent_at = ${now},
+          failure_reason = null, meta_error_code = null
+        where id = ${message.id} and status = 'sending'
+      `.execute(deps.db);
+      outcome.sent += 1;
+    }),
+  );
+  if (paused) outcome.paused += 1;
+}
+
+async function handleFailure(
+  deps: SenderDeps,
+  account: ActiveAccount,
+  message: ClaimedMessage,
+  failure: MetaFailure,
+  now: Date,
+): Promise<'retried' | 'failed' | 'paused'> {
+  const { db, log } = deps;
+  const classified = classifyMetaError(failure.code);
+  const code = failure.code ?? null;
+
+  // The message was not at fault, so this uses no attempt: however long Meta says wait, it is never failed for this.
+  if (isRateLimited(failure)) {
+    await sql`
+      update messages
+      set status = 'queued', attempts = attempts - 1, locked_at = null,
+        next_attempt_at = ${new Date(now.getTime() + RATE_LIMIT_COOL_DOWN_MS)},
+        failure_reason = ${failure.title}, meta_error_code = ${code}
+      where id = ${message.id} and status = 'sending'
+    `.execute(db);
+    log?.warn({ accountId: account.id, code }, 'Meta rate limit; account waits and the message is requeued');
+    return 'retried';
+  }
+
+  if (classified.category === 'account') {
+    const reason = (failure.code && ACCOUNT_REASONS[failure.code]) || `Meta error ${failure.code}: ${failure.title}`;
+    await pauseAccount(deps, account, reason, [message], now, code);
+    if (failure.code === 131042 && CREDIT_LINE_PAYERS.has(account.meta_payer)) {
+      // Every client on the shared credit line may be about to fail. M11 task 11.1 turns this log into an alert.
+      log?.error({ accountId: account.id, alert: 'credit-line' }, 'payment error on a credit line account');
+    }
+    return 'paused';
+  }
+
+  if (classified.category === 'permanent' || message.attempts >= MAX_SEND_ATTEMPTS) {
+    await markFailed(db, message.id, failure.title, code, now);
+    log?.warn({ messageId: message.id, code }, 'message failed');
+    return 'failed';
+  }
+
+  const noResponse = failure.httpStatus === undefined;
+  const nextAttempt = noResponse
+    ? new Date(now.getTime() + HOLD_AFTER_NO_RESPONSE_MS)
+    : message.attempts === 1
+      ? now // The next round claims the lowest IDs first, so a retry goes ahead of the new batch.
+      : calculateNextAttemptAt(message.attempts - 1, now);
+  await sql`
+    update messages
+    set status = 'queued', next_attempt_at = ${nextAttempt},
+      failure_reason = ${failure.title}, meta_error_code = ${code}
+    where id = ${message.id} and status = 'sending'
+  `.execute(db);
+  log?.warn({ messageId: message.id, code, attempts: message.attempts }, 'message will be retried');
+  return 'retried';
+}
+
+function markFailed(
+  db: Kysely<Database>,
+  id: number,
+  reason: string,
+  code: number | null,
+  now: Date,
+) {
+  return db.transaction().execute(async (trx) => {
+    const changed = await sql`
+      update messages
+      set status = 'failed', failed_at = ${now}, failure_reason = ${reason}, meta_error_code = ${code}
+      where id = ${id} and status = 'sending'
+    `.execute(trx);
+    if (Number(changed.numAffectedRows ?? 0) > 0) await refundFailedMessage(trx, id, now);
+  });
+}
+
+/** Pauses the account and returns the rows to the queue without using up an attempt: the message was not at fault. */
+async function pauseAccount(
+  { db, log }: SenderDeps,
+  account: ActiveAccount,
+  reason: string,
+  messages: ClaimedMessage[],
+  now: Date,
+  code: number | null = null,
+) {
+  await db.transaction().execute(async (trx) => {
+    await pauseAccountRow(trx, { id: account.id, clientId: account.client_id, number: account.display_phone }, reason, now);
+    for (const message of messages) {
+      await sql`
+        update messages
+        set status = 'queued', attempts = attempts - 1, next_attempt_at = ${now}, locked_at = null,
+          failure_reason = ${reason}, meta_error_code = ${code}
+        where id = ${message.id} and status = 'sending'
+      `.execute(trx);
+    }
+  });
+  log?.error({ accountId: account.id, reason, code }, 'WhatsApp account paused');
+}
+
+/**
+ * Logs rows left in `sending` by a crash. They are never sent again automatically: Meta may already have
+ * accepted them, and sending twice would charge the customer twice.
+ */
+export async function reportStuck(
+  db: Kysely<Database>,
+  log?: Logger,
+  now: Date = new Date(),
+): Promise<number[]> {
+  const cutoff = new Date(now.getTime() - STUCK_AFTER_MS);
+  const ids = (
+    await sql<{ id: number }>`
+      select id from messages where status = 'sending' and locked_at < ${cutoff} order by id
+    `.execute(db)
+  ).rows.map((row) => row.id);
+  if (ids.length > 0) log?.warn({ messageIds: ids }, 'messages stuck in sending; not resending');
+  return ids;
+}

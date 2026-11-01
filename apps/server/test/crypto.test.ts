@@ -18,4 +18,12 @@ describe('crypto helpers', () => {
 
     expect(() => decryptSecret(encrypted, keyB)).toThrow();
   });
+
+  it('refuses a stored value that was changed', () => {
+    const key = '12345678901234567890123456789012';
+    const encrypted = encryptSecret('meta-token-example', key);
+    const last = encrypted.at(-1) === '0' ? '1' : '0';
+
+    expect(() => decryptSecret(`${encrypted.slice(0, -1)}${last}`, key)).toThrow();
+  });
 });

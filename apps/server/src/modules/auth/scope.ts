@@ -26,6 +26,9 @@ export const PUBLIC_ROUTES = ['/healthz', '/api/auth/login', '/webhooks/meta'];
 /** Routes any logged-in user may call; they act only on the caller's own session. */
 export const SESSION_ROUTES = ['/api/auth/logout', '/api/auth/me'];
 
+/** All a user with a first password may do. */
+const PASSWORD_CHANGE_ROUTES = ['/api/me/password', '/api/auth/logout'];
+
 export type RouteKind = 'public' | 'session' | 'client' | 'admin' | 'me' | 'unscoped';
 
 /** Which access rule a route pattern (as registered, e.g. `/api/clients/:clientId/x`) falls under. */
@@ -100,6 +103,10 @@ export function registerScope(
     if (!user) return sendError(reply, 401, 'UNAUTHENTICATED', 'Please log in');
     req.auth = user;
 
+    if (user.mustChangePassword && !PASSWORD_CHANGE_ROUTES.includes(url)) {
+      return sendError(reply, 403, 'PASSWORD_CHANGE_REQUIRED', 'Choose a new password first');
+    }
+
     if (kind === 'admin' && user.role !== 'super_admin') {
       return sendError(reply, 403, 'FORBIDDEN', 'Only a super admin can do this');
     }
@@ -116,7 +123,8 @@ export function registerScope(
       if (!client || !(await canAccessClient(db, user, clientId))) {
         return sendError(reply, 404, 'NOT_FOUND', 'Not found');
       }
-      if (client.status === 'suspended') {
+      // ReapLift's own admin still needs to see its wallet and stop its campaigns.
+      if (client.status === 'suspended' && user.role !== 'super_admin') {
         return sendError(reply, 403, 'CLIENT_SUSPENDED', 'This client is suspended');
       }
       req.scope = { userId: user.userId, role: user.role, clientId };
@@ -124,20 +132,25 @@ export function registerScope(
   });
 }
 
+const WORKSPACE = sql`
+  c.id, c.name, c.status,
+  case when c.status = 'suspended' then (
+    select a.details->>'note' from audit_logs a
+    where a.client_id = c.id and a.action = 'client.suspended' order by a.id desc limit 1
+  ) end as reason
+`;
+
 /** The client workspaces a user can open: their own, their assigned ones, or all of them. */
 export async function listWorkspaces(db: Kysely<Database>, user: SessionUser) {
+  type Row = { id: string; name: string; status: string; reason: string | null };
   const rows =
     user.role === 'client'
-      ? await sql<{ id: string; name: string; status: string }>`
-          select id, name, status from clients where id = ${user.clientId} order by name`.execute(
-          db,
-        )
+      ? await sql<Row>`select ${WORKSPACE} from clients c where c.id = ${user.clientId} order by c.name`.execute(db)
       : user.role === 'staff'
-        ? await sql<{ id: string; name: string; status: string }>`
-            select c.id, c.name, c.status from clients c
+        ? await sql<Row>`
+            select ${WORKSPACE} from clients c
             join staff_clients sc on sc.client_id = c.id
             where sc.staff_user_id = ${user.userId} order by c.name`.execute(db)
-        : await sql<{ id: string; name: string; status: string }>`
-            select id, name, status from clients order by name`.execute(db);
-  return rows.rows.map((r) => ({ clientId: r.id, name: r.name, status: r.status }));
+        : await sql<Row>`select ${WORKSPACE} from clients c order by c.name`.execute(db);
+  return rows.rows.map((r) => ({ clientId: r.id, name: r.name, status: r.status, suspendedReason: r.reason }));
 }

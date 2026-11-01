@@ -1,55 +1,26 @@
-# Frontend demo and validation guide
+# M3 screens
 
-## Page: Login
+Built on 2 November 2026 by Anirudh, moved from Suraj's task list so the milestones do not wait (owner). All screens call the real routes; there is no mock for them.
 
-### Flow
+| Task | Screen | Address |
+| --- | --- | --- |
+| S3 | Forced password change, shown instead of everything else while a first password is in use | any |
+| S3 | My account: details and change password | `/account` |
+| S4 | Clients list with balance and money on hold; add a client | `/admin/clients` |
+| S4 | Client detail: edit, suspend or reactivate with a note, logins (add, disable, enable, reset password), assigned staff | `/admin/clients/:id` |
+| S4 | Staff: list, add, assign clients, disable, enable, reset password | `/admin/staff` |
+| S5 | Audit log with filters by client, person, action and date, and "Show more" | `/admin/audit` |
+| S6 | Notification bell in the header: unread count, list, click marks read | every page |
+| S6 | Delivery log with a status filter | `/admin/delivery-log` |
 
-1. Open the app at http://localhost:5173
-2. Select a role in the login form
-3. Submit the form
-4. Verify the user is routed to the correct page
+Screenshots are in [screens/](screens/).
 
-### Expected result
+Choices made while building:
 
-- super admin goes to the admin page
-- client admin or staff go to the dashboard flow
-- invalid or missing authentication should reject access in a real auth version
-
-### Current status
-
-- demo state only
-- no backend authentication is yet connected
-- page state is local to React and not persisted
-
-## Page: Admin
-
-### Flow
-
-1. Log in as super admin
-2. Open the admin panel
-3. Click Add client
-4. Fill in name, contact email, assigned staff, wallet balance, status
-5. Save the client
-6. Confirm the list refreshes
-7. Toggle active/suspended status
-8. Click Change beside the assigned staff value to update staff
-
-### Expected result
-
-- list updates immediately in the UI
-- new client appears at the top
-- status changes reflect the selected value
-- staff assignment changes reflect the selected value
-
-### Current status
-
-- demo/prototype in state
-- not yet backed by a real auth session or database layer
-
-## Frontend validation checklist
-
-- page opens without crash
-- form can be submitted
-- list updates in the same session
-- role gating matches access logic
-- no hidden fake success path is used as proof of completion
+- A suspended client shows its reason, date and who did it on every tab of its page and in the Clients list; Overview keeps the full history. The note is emailed to the client, so it is written for them to read.
+- Suspending keeps a client's staff assignments, as they return when it is reactivated, but the person cannot open it and it does not count towards their clients (owner, 2 November 2026: staff are never removed automatically; removing them is the admin's choice).
+- The client page has tabs: Overview, Money and prices, Logins, Staff. A new client opens on Money and prices.
+- Staff are added and removed on the client's own page, with a count of how many clients each person has, and a breadcrumb shows where you are. Creating a new person from there remembers the client, ticks it, and links back (owner, 2 November 2026).
+- The super admin can open a suspended client's workspace, marked Suspended in the picker. Its own users and staff cannot.
+- Dates show in India time. The audit "To" date takes in that whole day.
+- Every password field on every screen is hidden by default, with an eye button to show it (owner, 2 November 2026).

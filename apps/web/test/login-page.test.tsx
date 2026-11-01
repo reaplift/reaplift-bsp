@@ -12,7 +12,7 @@ const PASSWORD = 'reaplift-dev-1';
 const clock = new Date('2026-10-30T10:00:00.000Z');
 
 function mount(api: Api) {
-  const onLoggedIn = vi.fn<(me: MeResponse) => void>();
+  const onLoggedIn = vi.fn<(me: MeResponse | null) => void>();
   render(
     <AuthProvider api={api}>
       <Login onLoggedIn={onLoggedIn} />
@@ -57,7 +57,7 @@ describe('Login page', () => {
     const onLoggedIn = mount(createApi(() => mock));
     await signIn('ops@northwind.com', PASSWORD);
     await waitFor(() => expect(onLoggedIn).toHaveBeenCalledTimes(1));
-    const me = onLoggedIn.mock.calls[0]![0];
+    const me = onLoggedIn.mock.calls[0]![0]!;
     expect(me.user.email).toBe('ops@northwind.com');
     expect(me.workspaces.map((w) => w.name)).toEqual(['Northwind Labs']);
     expect(screen.queryByRole('alert')).toBeNull();

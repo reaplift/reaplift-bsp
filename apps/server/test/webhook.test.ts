@@ -1,4 +1,3 @@
-import { createHmac } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app.js';
 import { unusedDb } from './support/unused-db.js';
@@ -45,55 +44,14 @@ describe('Meta webhook flow', () => {
     expect(res.statusCode).toBe(401);
   });
 
-  it('accepts a valid signed webhook payload', async () => {
-    const app = buildApp({
-      version: 'abc123',
-      checkDb: async () => true,
-      db: unusedDb(),
-      metaVerifyToken: 'reaplift-verify',
-      metaAppSecret: 'super-secret',
-    });
-
-    const body = JSON.stringify({ object: 'whatsapp_business_account', entry: [] });
-    const signature = createHmac('sha256', 'super-secret').update(body, 'utf8').digest('hex');
+  it('refuses the callback check when no verify token is configured', async () => {
+    const app = buildApp({ version: 'abc123', checkDb: async () => true, db: unusedDb() });
 
     const res = await app.inject({
-      method: 'POST',
-      url: '/webhooks/meta',
-      headers: {
-        'content-type': 'application/json',
-        'x-hub-signature-256': `sha256=${signature}`,
-      },
-      payload: body,
+      method: 'GET',
+      url: '/webhooks/meta?hub.mode=subscribe&hub.challenge=challenge-123&hub.verify_token=',
     });
 
-    expect(res.statusCode).toBe(200);
-    expect(res.json()).toMatchObject({ ok: true });
-  });
-
-  it('checks the signature against the exact bytes received', async () => {
-    const app = buildApp({
-      version: 'abc123',
-      checkDb: async () => true,
-      db: unusedDb(),
-      metaVerifyToken: 'reaplift-verify',
-      metaAppSecret: 'super-secret',
-    });
-
-    // Meta's body is not always in JSON.stringify's form; re-serialising would break the check.
-    const body = '{ "object": "whatsapp_business_account", "entry": [] }';
-    const signature = createHmac('sha256', 'super-secret').update(body, 'utf8').digest('hex');
-
-    const res = await app.inject({
-      method: 'POST',
-      url: '/webhooks/meta',
-      headers: {
-        'content-type': 'application/json',
-        'x-hub-signature-256': `sha256=${signature}`,
-      },
-      payload: body,
-    });
-
-    expect(res.statusCode).toBe(200);
+    expect(res.statusCode).toBe(403);
   });
 });

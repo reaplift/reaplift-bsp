@@ -5,7 +5,7 @@ ReapLift's own WhatsApp platform, working directly with Meta: template campaigns
 - Requirements and HLD: [docs/requirements-and-hld.md](docs/requirements-and-hld.md)
 - Low-level design and milestones: [docs/low-level-design.md](docs/low-level-design.md) (online version: https://claude.ai/code/artifact/4b57f650-612d-47f8-aba6-ad9bcd98f47d)
 
-Current state: **milestone 0 skeleton**. The server answers `/healthz` and runs database migrations; the panel is a placeholder page.
+Current state: M0 and M1 are done; M2 is built; M3 and M4 are in progress. See [docs/project-tracker.md](docs/project-tracker.md).
 
 ## Milestone evidence docs
 
@@ -20,7 +20,7 @@ Follow the guide for your computer. Each one covers installing the tools, openin
 - **Mac:** [docs/setup-mac.md](docs/setup-mac.md)
 - **Windows:** [docs/setup-windows.md](docs/setup-windows.md)
 
-You need Git, Node.js 22 (see `.nvmrc`), pnpm 10, Docker Desktop and VS Code. When it works, http://localhost:5173 shows `API: ok (version dev, database ok)`.
+You need Git, Node.js 22 (see `.nvmrc`), pnpm 10, Docker Desktop and VS Code. When it works, http://localhost:5173 shows the Login page.
 
 ## Everyday commands
 
@@ -33,7 +33,7 @@ Run all of these from the repo root.
 | `pnpm db:up` / `pnpm db:down`                                      | Starts / stops the local PostgreSQL container (data is kept)          |
 | `pnpm migrate`                                                     | Applies new files in `db/migrations` to the database                  |
 | `pnpm test`                                                        | Unit tests (no database needed)                                       |
-| `pnpm test:int`                                                    | Integration tests against the local database (`pnpm db:up` first)     |
+| `pnpm test:int`                                                    | Integration tests. **Drops the schema:** use a separate `DATABASE_URL`  |
 | `pnpm lint`                                                        | ESLint over the whole repo                                            |
 | `pnpm typecheck`                                                   | TypeScript checks for every package                                   |
 | `pnpm build`                                                       | Production build of every package                                     |
@@ -151,14 +151,8 @@ There are two branches: `anirudh-e2e-setup` for all work and `main` for producti
 
 ## Working with Claude Code in VS Code
 
-Open the repo folder in VS Code, open Claude Code, and ask for one task at a time from the low-level design, for example: "Do task 1.2 from the low-level design (migration 0002), with tests." It works on `anirudh-e2e-setup`, with no new branch.
+Open the repo folder in VS Code, open Claude Code, and ask for one task at a time from a milestone spec, for example: "Do task 4.1 from the M4 spec, with tests." It works on `anirudh-e2e-setup`, with no new branch.
 
 ## Milestones
 
-| #   | Outcome                                                                                                       |
-| --- | ------------------------------------------------------------------------------------------------------------- |
-| 0   | Repo, structure, CI (done locally); deployment to Oracle Cloud later                                          |
-| 1   | One message end to end: sent from the backend, delivered and read updates stored                              |
-| 2-8 | Logins and roles, Meta number and templates, uploads and campaigns, sending and rules, wallet, reports, pilot |
-
-> Milestone 0 skeleton branch.
+The roadmap, status and owners are in [docs/project-tracker.md](docs/project-tracker.md).

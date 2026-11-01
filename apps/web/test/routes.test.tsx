@@ -13,6 +13,7 @@ const PASSWORD = 'reaplift-dev-1';
 const NORTHWIND = '/clients/client-northwind';
 const BLUEBIRD = '/clients/client-bluebird';
 const GREENLEAF = '/clients/client-greenleaf';
+const ADMIN_MENU = ['Clients', 'Staff', 'Numbers and limits', 'Settings', 'Audit log', 'Delivery log'];
 const WORKSPACE_MENU = ['Dashboard', 'Push Campaign', 'Templates', 'Reports', 'Wallet', 'Settings'];
 
 /** Shows the current address, so a test can check where a redirect landed. */
@@ -50,7 +51,9 @@ function withGreenleafSuspended(): Transport {
     const res = await mock(req);
     if (req.path === '/api/auth/me' && res.status === 200) {
       const body = res.body as { workspaces: { name: string; status: string }[] };
-      for (const w of body.workspaces) if (w.name === 'Greenleaf Foods') w.status = 'suspended';
+      for (const w of body.workspaces) {
+        if (w.name === 'Greenleaf Foods') Object.assign(w, { status: 'suspended', suspendedReason: 'Payment overdue' });
+      }
     }
     return res;
   };
@@ -62,7 +65,6 @@ const menuLinks = () => within(screen.getByRole('navigation')).getAllByRole('lin
 const menuLabels = () => menuLinks().map((a) => a.textContent);
 const menuHrefs = () => menuLinks().map((a) => a.getAttribute('href'));
 const pageTitle = () => screen.getByRole('heading', { level: 1 }).textContent;
-const sectionTitle = () => screen.getByRole('heading', { level: 2 }).textContent;
 const pickerNames = () =>
   within(screen.getByRole('list'))
     .getAllByRole('listitem')
@@ -85,7 +87,7 @@ afterEach(() => {
 });
 
 describe('logged out', () => {
-  it.each(['/', '/workspaces', `${NORTHWIND}/dashboard`, '/admin', '/no-such-page'])(
+  it.each(['/', '/workspaces', `${NORTHWIND}/dashboard`, '/admin/clients', '/account', '/no-such-page'])(
     '%s goes to /login, with no menu',
     async (path) => {
       open(path, loggedOut());
@@ -165,18 +167,17 @@ describe('the worked example: what each user sees', () => {
     open('/', await loggedInAs('ravi@reaplift.com'));
     await landsOn('/workspaces');
     expect(pickerNames()).toEqual(['Bluebird Retail', 'Greenleaf Foods', 'Northwind Labs']);
-    expect(menuLabels()).toEqual(['Admin']);
+    expect(menuLabels()).toEqual(ADMIN_MENU);
     await userEvent.click(screen.getByRole('link', { name: 'Open Admin' }));
-    await landsOn('/admin');
+    await landsOn('/admin/clients');
     expect(pageTitle()).toBe('Administration');
-    expect(sectionTitle()).toBe('Admin');
-    expect(screen.getByText('This page is coming soon.')).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'Clients' })).toBeTruthy();
   });
 
   it('ravi inside a workspace has the workspace menu plus Admin, and can switch', async () => {
     open(`${GREENLEAF}/campaign`, await loggedInAs('ravi@reaplift.com'));
     await screen.findByRole('heading', { name: 'Push Campaign' });
-    expect(menuLabels()).toEqual([...WORKSPACE_MENU, 'Admin']);
+    expect(menuLabels()).toEqual([...WORKSPACE_MENU, ...ADMIN_MENU]);
     expect(screen.getByRole('link', { name: 'Switch client' })).toBeDefined();
   });
 });
@@ -184,11 +185,7 @@ describe('the worked example: what each user sees', () => {
 describe('workspace pages', () => {
   it.each([
     ['dashboard', 'Dashboard', 'No campaign activity yet. Figures appear here once campaigns are sent.'],
-    ['campaign', 'Push Campaign', 'No campaigns yet. Creating campaigns is coming soon.'],
-    ['templates', 'Templates', 'This page is coming soon.'],
     ['reports', 'Reports', 'This page is coming soon.'],
-    ['wallet', 'Wallet', 'This page is coming soon.'],
-    ['settings', 'Settings', 'This page is coming soon.'],
   ])('%s shows "%s" and its empty or coming-soon text, and is marked active', async (page, title, text) => {
     open(`${NORTHWIND}/${page}`, await loggedInAs('ops@northwind.com'));
     expect(await screen.findByRole('heading', { level: 2, name: title })).toBeDefined();
@@ -242,20 +239,28 @@ describe('a client the user may not open', () => {
   });
 
   it('a client user typing /admin goes home', async () => {
-    open('/admin', await loggedInAs('ops@northwind.com'));
+    open('/admin/clients', await loggedInAs('ops@northwind.com'));
     await landsOn(`${NORTHWIND}/dashboard`);
   });
 
-  it('a suspended client is shown in the picker but cannot be opened', async () => {
-    open('/', await loggedInAs('ravi@reaplift.com', withGreenleafSuspended()));
+  it('its own user sees a suspended client in the picker but cannot open it', async () => {
+    open('/', await loggedInAs('sales@greenleaf.in', withGreenleafSuspended()));
     await landsOn('/workspaces');
-    expect(pickerNames()).toEqual(['Bluebird Retail', 'Greenleaf Foods Suspended', 'Northwind Labs']);
+    expect(pickerNames()).toEqual(['Greenleaf Foods SuspendedThis account is suspended: Payment overdue. Contact ReapLift.']);
     expect(screen.queryByRole('link', { name: /Greenleaf/ })).toBeNull();
   });
 
-  it("typing a suspended client's address does not open it either", async () => {
-    open(`${GREENLEAF}/dashboard`, await loggedInAs('ravi@reaplift.com', withGreenleafSuspended()));
+  it("its own user typing a suspended client's address does not open it either", async () => {
+    open(`${GREENLEAF}/dashboard`, await loggedInAs('sales@greenleaf.in', withGreenleafSuspended()));
     await landsOn('/workspaces');
+  });
+
+  it('the super admin can still open a suspended client', async () => {
+    open('/', await loggedInAs('ravi@reaplift.com', withGreenleafSuspended()));
+    await landsOn('/workspaces');
+    expect(pickerNames()).toEqual(['Bluebird Retail', 'Greenleaf Foods Suspended', 'Northwind Labs']);
+    await userEvent.click(screen.getByRole('link', { name: /Greenleaf/ }));
+    await landsOn(`${GREENLEAF}/dashboard`);
   });
 });
 

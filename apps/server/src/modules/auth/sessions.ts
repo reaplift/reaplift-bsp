@@ -19,6 +19,7 @@ export interface SessionUser {
   role: UserRole;
   /** The user's own client, for `client` users only. */
   clientId: string | null;
+  mustChangePassword: boolean;
 }
 
 function expiryFrom(createdAt: Date, now: Date): Date {
@@ -56,9 +57,10 @@ export async function findSession(
     email: string;
     role: UserRole;
     client_id: string | null;
+    must_change_password: boolean | null;
   }>`
     select s.id as session_id, s.created_at, s.last_seen_at,
-           u.id as user_id, u.name, u.email, u.role, u.client_id
+           u.id as user_id, u.name, u.email, u.role, u.client_id, u.must_change_password
     from auth_sessions s
     join users u on u.id = s.user_id
     where s.token_hash = ${hashToken(token)}
@@ -83,6 +85,7 @@ export async function findSession(
     email: row.email,
     role: row.role,
     clientId: row.client_id,
+    mustChangePassword: row.must_change_password === true,
   };
 }
 

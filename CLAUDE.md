@@ -10,12 +10,13 @@ ReapLift's own WhatsApp Business platform (BSP), talking directly to Meta's What
 - `docs/data-model-and-api.md`: every table and route, existing and planned, and the conventions they follow.
 - `docs/milestones/<milestone>/spec.md`: the spec for the milestone you are working on (flow diagram, worked example, tasks, tests, demo).
 - `docs/requirements-and-hld.md`: requirements and high-level design. Section 12 lists open items, which are NOT decided. Where the tracker's decision log differs, the tracker wins.
+- `docs/open-questions.md`: questions waiting on ReapLift or Meta. Add new ones there.
 - `docs/low-level-design.md`: technical reference. Its milestone numbers are the old ones (before 29 October 2026); the tracker has the old-to-new table.
 
 ## Where things stand
 
 - Milestones were renumbered on 29 October 2026: one milestone per flow, M0 to M11. See the tracker's roadmap and status board.
-- M0 (foundation) is done. M1 (login), M3 (client onboarding) and M4 (send engine) have prototype code; M2 (notifications) can start now.
+- M0 (foundation) and M1 (login) are done. M2 (notifications) is built; only its real-email demo is left (E5). All backend for M1 to M9 is built and tested against the fake Meta server, but only M0 and M1 are Done; the rest wait on screens and real Meta access. Suraj is on screens.
 - Everything runs locally. The cloud server and deploys are M10.
 
 ## Stack
@@ -36,7 +37,8 @@ pnpm workspaces, TypeScript, Node 22. `apps/server`: Fastify, Zod, Kysely, pg, p
 - Migrations: new numbered file only, never edit a merged one; only add things (tables, nullable columns, indexes).
 - Money is whole paise in `bigint`. Phone numbers are digits with country code, no plus (`9198xxxxxxxx`).
 - Every table carries `client_id` and every query filters by it. The only exceptions are the platform tables listed under "Tables without a client" in `docs/data-model-and-api.md`.
-- Every task ships with its tests from the low-level design. Run lint, typecheck and tests before committing.
+- Every task ships with its tests. Run lint, typecheck and tests before committing. `pnpm test:int` drops the schema of its database, so locally give it a separate `DATABASE_URL`.
+- A milestone's `test-evidence.md` holds the exact commands, SQL queries and real output that prove its flow.
 - Two branches only: all work is committed to `anirudh-e2e-setup`; `main` is production and changes only through a release pull request from it. No per-task branches, never force-push the work branch, never push to `main` directly. CI must be green. Steps are in `docs/team-workflow.md`.
 - Never commit secrets. Settings go in `.env` (ignored); add every new setting name to `.env.example` with a blank value.
 - Meta error codes, limits and rates in the design are from memory: check Meta's current docs before relying on them.

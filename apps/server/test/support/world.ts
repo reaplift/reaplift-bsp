@@ -1,5 +1,5 @@
 import { sql } from 'kysely';
-import { buildApp } from '../../src/app.js';
+import { buildApp, type AppDeps } from '../../src/app.js';
 import { createDb, createPool } from '../../src/lib/db.js';
 import { migrate } from '../../src/migrate/runner.js';
 import { migrationsDir } from '../../src/modes/migrate.js';
@@ -22,11 +22,14 @@ export async function createWorld() {
   await pool.query('create schema public');
   await migrate(pool, migrationsDir());
 
+  // Most tests are about other things and use round prices. test/gst.int.test.ts sets a real rate.
+  await pool.query(`insert into gst_rates (country_calling_code, rate_bp, valid_from) values ('91', 0, '2018-01-01T00:00:00Z')`);
+
   const client = async (name: string, status = 'active') =>
     (
       await sql<{
         id: string;
-      }>`insert into clients (name, status) values (${name}, ${status}) returning id`.execute(db)
+      }>`insert into clients (name, status, country_calling_code) values (${name}, ${status}, '91') returning id`.execute(db)
     ).rows[0]!.id;
   const northwind = await client('Northwind Labs');
   const bluebird = await client('Bluebird Retail');
@@ -47,13 +50,14 @@ export async function createWorld() {
   }
 
   let clock = new Date('2026-11-02T10:00:00Z');
-  const makeApp = () =>
+  const makeApp = (extra: Partial<AppDeps> = {}) =>
     buildApp({
       version: 'test',
       checkDb: async () => true,
       db,
       now: () => clock,
       panelOrigin: PANEL,
+      ...extra,
     });
   const app = makeApp();
 

@@ -1,9 +1,8 @@
 # M9. Reports and dashboard
 
-- Status: Not started
-- Owner: Unassigned
-- Branch prefix: `m9-`
-- Starts after: M7
+- Status: In progress. Backend 9.1 to 9.8 built on 31 October 2026; see [test-evidence.md](test-evidence.md). Screens are not started.
+- Owner: Anirudh (backend); screens unassigned
+- Starts after: M7. The backend started early (tracker, 31 October 2026).
 - External prerequisites: E7 for task 9.7 (there is no Meta credit-line invoice to check against until ReapLift has its credit line)
 
 ## Outcome
@@ -76,8 +75,8 @@ Out: log cleanup and archiving after 180 days (phase 2 in the HLD; D8 sets the r
 
 ### 9.4 Per-number campaign report
 
-- Dovesoft's columns (`Reaplift_record1`): `sr_no`, `mobile_no`, `reason`, `status`, `sent_time`, `delivery_status`, `delivery_time`, `read_time`, `que_time`; times as `dd/mm/yyyy hh:mm:ss` in India time; streamed so a 200,000-row campaign does not run out of memory.
-- Tests: a 200,000-row export within memory limits.
+- Dovesoft's columns (`Reaplift_record1`): `sr_no`, `mobile_no`, `reason`, `status`, `sent_time`, `delivery_status`, `delivery_time`, `read_time`, `que_time`; times as `dd/mm/yyyy hh:mm:ss` in India time; streamed so a full-size campaign does not run out of memory.
+- Tests: a 20,000-row export within memory limits.
 - Acceptance: step 3.
 
 ### 9.5 Meta cost per message
@@ -104,6 +103,7 @@ Out: log cleanup and archiving after 180 days (phase 2 in the HLD; D8 sets the r
 - One credit line pays for every client, so if it runs out, every client stops at once. The super admin enters the credit limit Meta grants; the view shows this month's recorded Meta cost against it.
 - Event `billing.credit_line_usage` notifies super admins at 80% and again at 95%, once each per month.
 - Clients' prepaid balances protect ReapLift from unpaid bills, but not from hitting Meta's limit, which is why this alert exists.
+- Credit line stop (owner, 31 October 2026): a new campaign is refused with 409 `CREDIT_LIMIT_REACHED` if this month's recorded cost, all queued messages at their rates, and this campaign would pass the limit. Running campaigns carry on. With no limit set, nothing is refused. The credit line is the one thing every client shares.
 - Tests: crossing 80% notifies once.
 - Acceptance: a planted month-to-date cost at 81% of the limit sends the alert.
 
@@ -125,7 +125,12 @@ Only `billing.meta_invoice_mismatch` (task 9.7) and `billing.credit_line_usage` 
 
 ## Current reality
 
-The Dashboard shows mock figures (`apps/web/src/data/mockData.ts`) until M1 replaces them with an empty state.
+- All routes above are real, plus `PUT /api/admin/credit-limit`. The panel's Dashboard has no real figures yet, as its screens are not built.
+- Meta's cost is kept in hundredths of a paisa (`messages.meta_cost_centipaise`), because rounding each message to whole paise would overstate a utility rate of 11.50 by about 4% and fail the invoice check. `meta_cost_paise` holds the rounded figure. This is ReapLift's cost, not money held; every client price and ledger amount is still whole paise.
+- A message counts as free if `billable` is false or its pricing type starts with `free`. Meta has deprecated `billable`, so check this on real webhooks (question 5 in [open-questions.md](../../open-questions.md)).
+- Report buckets follow each message's latest status: Total Count = Pending + Failed + Not Delivered + Blocked + Sent, and Sent = Delivered + Read Count + DR Not Available. Failed means Meta refused it at send; Not Delivered means it failed after being accepted; DR Not Available means sent with no later report. Total Unit is the net charge in rupees. These are our reading of Dovesoft's file; check them against a real Dovesoft export.
+- The dashboard's spend covers charges per message, so a charge for invalid or duplicate rows (if those switches are ever on) shows in the ledger and the report's Total Unit, but not on the dashboard.
+- The figures refresh every 5 minutes, and rebuild the last 40 days each time.
 
 ## Demo (milestone acceptance)
 

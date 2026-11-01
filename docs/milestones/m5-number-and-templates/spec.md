@@ -1,9 +1,8 @@
 # M5. Number connection and templates
 
-- Status: Not started
-- Owner: Unassigned
-- Branch prefix: `m5-`
-- Starts after: M3 (clients and logins), M4 (send engine and Meta client)
+- Status: In progress. All backend tasks built on 31 October 2026 against the fake Meta server; see [test-evidence.md](test-evidence.md). Screens built on 2 November 2026 ([frontend.md](frontend.md)), except the Embedded Signup button, which needs a real Meta app.
+- Owner: Anirudh
+- Starts after: M3 (clients and logins), M4 (send engine and Meta client). The backend started early by owner decision (tracker, 31 October 2026); screens and Done still wait for them.
 - External prerequisites: E3 (Business Verification and App Review) before Embedded Signup works for anyone outside ReapLift. E7 (Solution Partner status and credit line) before credit-line sharing can be accepted against real Meta; everything is built and tested against the fake Meta server first. A real Embedded Signup run needs the panel on an HTTPS address registered in ReapLift's Meta app (an HTTPS tunnel during development, or M10's address).
 
 ## Outcome
@@ -13,6 +12,8 @@ A client's own WhatsApp number is connected to its workspace. The client (or its
 ## How client numbers are connected and paid for (decided 29 October 2026)
 
 ReapLift works as a white-label provider, as Dovesoft does today:
+
+Checked on 31 October 2026 against one Dovesoft client's Meta Business Suite: the client's own portfolio assigns its WhatsApp account to Dove Soft as a partner, with partial access to phone numbers and templates. So each client has its own Meta limit, and none is shared between clients. Only that one client was checked.
 
 - Each client owns its WhatsApp account and connects it itself through Meta's **Embedded Signup** in Settings (task 5.2). Staff or the super admin can sit with the client and do it for them.
 - During that onboarding, ReapLift **shares its credit line** with the client's account. Meta then bills ReapLift for the client's messages, and ReapLift charges the client's prepaid wallet at Meta's rate plus markup (M6).
@@ -131,7 +132,7 @@ Who can do what: client users and their assigned staff run Embedded Signup and c
   - the language code is one Meta supports
   - a media header has a file of an allowed type and size
   - URL buttons hold a valid `https` address; phone buttons a valid number
-- Data (new nullable columns on `templates`): `validation_errors jsonb`, `submitted_at timestamptz`, `rejection_reason text`, `meta_recommendation text`, `media_storage_key text`, `created_by uuid`. `templates.status` has no check constraint (0002), so the new states need no constraint change.
+- Data (new nullable columns on `templates`): `validation_errors jsonb`, `submitted_at timestamptz`, `submitted_by uuid`, `rejection_reason text`, `meta_recommendation text`, `media_storage_key text`, `created_by uuid`. `templates.status` has no check constraint (0002), so the new states need no constraint change.
 - Tests: one failing and one passing fixture per rule; a failing template makes no call to the fake Meta server.
 - Acceptance: steps 2 and 3 of the worked example.
 
@@ -148,9 +149,13 @@ Who can do what: client users and their assigned staff run Embedded Signup and c
 
 ### 5.5 Quality and limit tracking, pause on Low
 
-- Quality and messaging limit from M4's stored webhooks plus an hourly sync into `wa_accounts.quality_rating` and `messaging_limit`.
+- Quality from the hourly sync into `wa_accounts.quality_rating`, because Meta's `phone_number_quality_update` webhook documents only limit and throughput changes (checked 31 October 2026). So a drop to Low can take up to an hour to notice. The limit comes from the same sync and from that webhook into `messaging_limit`.
 - Quality Low sets `status = 'paused'` with a reason; M4's worker stops claiming its messages. Only the super admin can resume (button in Admin), and resuming is audited.
-- Meta's messaging limits may now apply across a business rather than per number; check Meta's current docs while coding and record which.
+- Meta's messaging limits are set per business portfolio and shared by its numbers (checked 31 October 2026). The value is copied to each number for the account box. The limit is read from `whatsapp_business_manager_messaging_limit`, as `messaging_limit_tier` is deprecated.
+- **Limits per number (owner, 31 October 2026):** the super admin sets a speed (`send_rate_per_sec`, 1 to 1000, default 50) and a daily limit (`daily_send_limit`) with `PATCH /api/admin/wa-accounts/:id/limits`, needing no restart. The tighter of that daily limit and Meta's applies, counting unique numbers in a moving 24 hours across the WhatsApp account. At the limit, messages wait in the queue and resume on their own; nothing fails, and people are told once a day (`campaign.daily_limit_reached`). The summary warns if a campaign exceeds the limit, and does not block it. The money is charged at confirm, so it can sit charged while a campaign waits.
+- `GET /api/admin/limits-usage` gives the super admin, per number and overall: the limits, unique customers messaged in 24 hours, what is left, messages waiting, and the speed over the last minute. Numbers on one WhatsApp account share a daily count. There is no ReapLift-wide limit, as each client's portfolio has its own.
+- Each number runs its own sending round, so a slow answer from Meta on one number does not hold up another's.
+- Pausing happens only on the change to Low, so an account the super admin resumed while still Low stays resumed.
 - Tests: Medium to Low pauses; back to Medium does not resume on its own; resume needs the super admin.
 - Acceptance: step 7 of the worked example on the fake server.
 
@@ -174,12 +179,12 @@ Local validation failures are shown on screen at once and are not notified.
 
 - Tables: `wa_accounts`, `templates` (0002); new nullable columns on `wa_accounts` (5.1, 5.2): `onboarded_via`, `credit_share_ref`, `connected_by`, `connected_at`; new nullable columns on `templates` (5.3); a `settings` row for the promotional word list (claim a migration number if a table is needed).
 - Routes (write each request, response and error in `backend-api.md` before coding):
-  - `POST /api/admin/clients/:id/wa-accounts` (5.1), `POST /api/admin/wa-accounts/:id/resume` (5.5)
+  - `POST /api/admin/clients/:id/wa-accounts` (5.1), `POST /api/admin/wa-accounts/:id/resume` (5.5), `POST /api/admin/wa-accounts/:id/share-credit` (5.2.3), `POST /api/admin/wa-accounts/:id/token` (replaces a revoked token; does not resume)
   - `GET /api/clients/:clientId/wa-accounts`
   - `POST /api/clients/:clientId/wa-accounts/embedded-signup` (5.2)
-  - `GET`, `POST /api/clients/:clientId/templates`; `GET`, `PUT /api/clients/:clientId/templates/:id`; `POST /api/clients/:clientId/templates/:id/submit`; `POST /api/clients/:clientId/templates/:id/copy`
+  - `GET`, `POST /api/clients/:clientId/templates`; `GET`, `PUT /api/clients/:clientId/templates/:id`; `POST /api/clients/:clientId/templates/:id/submit`; `POST /api/clients/:clientId/templates/:id/media` (5.3.4; the file is the request body); `POST /api/clients/:clientId/templates/:id/copy`
 - Modes: submission loop in `worker`; status, quality and limit sync in `scheduler`.
-- Settings: `META_APP_ID`, `META_CONFIG_ID` for Embedded Signup if used.
+- Settings: `META_APP_ID`, `META_SYSTEM_TOKEN`, `META_CREDIT_LINE_ID`, `UPLOAD_DIR`. The screens will need Meta's configuration ID as well.
 
 ## Notifications
 
@@ -187,11 +192,16 @@ Task 5.6.
 
 ## Open questions
 
-None. The connection and billing model was decided on 29 October 2026.
+None for the owner. The connection and billing model was decided on 29 October 2026. Questions for Meta are in [open-questions.md](../../open-questions.md).
 
 ## Current reality
 
-Tables `wa_accounts` and `templates` exist from 0002. Nothing else.
+- Backend routes, rules, background submission, sync, quality tracking and notifications run against the fake Meta server. Nothing has called the real Meta API.
+- Connecting, limits, resuming, tokens, templates and the promotional word list all have screens, tested in a real browser against the fake Meta server.
+- Embedded Signup's server steps follow Meta's Solution Partner onboarding page (checked 31 October 2026): exchange the code, subscribe to webhooks, share the credit line, register the number. The button that opens Meta's pop-up is part of the screens. The credit-line currency is INR for now (question 2).
+- Without `META_CREDIT_LINE_ID` and `META_SYSTEM_TOKEN` (before E7), a number connected through Embedded Signup stays paused with "credit line not shared". The spec's test-business path, paying by the client's own card, is not built.
+- The number's two-step PIN is generated by the server and stored encrypted.
+- A template submission that times out at Meta is retried, and Meta then refuses the taken name, which shows as Rejected until the next status sync corrects it.
 
 ## Demo (milestone acceptance)
 

@@ -1,22 +1,58 @@
-# M2 admin onboarding test evidence
+# M3 test evidence
 
-This file stores the proof for the current milestone.
+Run on 31 October 2026. **Backend only:** this proves the routes against real PostgreSQL with the fake email provider. The panel's screens are not connected, so M3 is not Done.
 
-## Commands run
+## Run it
 
 ```bash
-cd /Users/anirudhkaki/Documents/workplace/BSP/reaplift-bsp-skeleton
-pnpm --filter @reaplift/shared build && pnpm --filter @reaplift/web typecheck && pnpm --filter @reaplift/server test -- --run test/admin-onboarding.test.ts
+docker exec reaplift-bsp-postgres-1 psql -U reaplift -d reaplift -c "create database reaplift_m3"
+DATABASE_URL=postgres://reaplift:reaplift@localhost:5432/reaplift_m3 pnpm --filter @reaplift/server test:int
+docker exec reaplift-bsp-postgres-1 psql -U reaplift -d reaplift -c "drop database reaplift_m3 with (force)"
 ```
 
-## Result
+## What `test/client-onboarding.int.test.ts` proves
 
-- shared build: passed
-- web typecheck: passed
-- server tests: passed
-- test files: 10 passed
-- total tests: 37 passed
+Each worked-example step, through the HTTP routes:
 
-## Evidence notes
+| Step | Proved |
+| --- | --- |
+| 1 Create a client | One audit row; note to the contact email; repeat name in any case is 409; missing country or email is 400 |
+| 2 Create a login | `created_by` comes from the session; a taken email is 409; the first password is in no response, email, notification or audit row |
+| 3 First login | Every route but the password change and logout answers 403 `PASSWORD_CHANGE_REQUIRED`; the old password then stops working |
+| 4 Staff | Workspaces are exactly the assigned clients; the bell shows the assignment; replacing the list takes effect at once and records before and after |
+| 5 Suspend | A note is required; client routes answer 403 `CLIENT_SUSPENDED`; other clients stay open; a second suspension notifies again |
+| 6 Reset | Sessions are revoked and a change is forced; the email holds no password |
+| 7 Audit | Filters by client, user, action and date, and pages correctly; a change that fails writes no row |
 
-This evidence confirms the prototype slice is operational within the current codebase, but it does not yet prove a real login + persisted session + database-backed flow. The tracker must still keep the milestone as in progress until that is implemented.
+Also: disabling revokes sessions at once; a user sees and marks only their own notifications; client and staff get 403 on the delivery log; a login locked by wrong passwords tells its owner.
+
+Not run: the restart step of the demo and the panel steps, which need the screens.
+
+## The screens, in a real browser
+
+Run on 2 November 2026: Google Chrome driven by Playwright through the panel at `http://localhost:5173`, against the real API, worker, receiver and scheduler on real PostgreSQL, with the fake email provider. Output of the run:
+
+```
+ok   super admin reaches Clients
+ok   step 1: client created, opens its page
+ok   duplicate name refused in words
+ok   step 2: login created
+ok   step 3: first password forces a change, even after reload
+ok   step 3: password changed, her own workspace opens
+ok   client user sent away from Admin
+ok   step 4: staff picker shows exactly the two clients
+ok   step 4: bell showed "Notifications1", clicking marks it read
+ok   step 5: suspended client closed to staff; the other still opens
+ok   step 5: super admin can still open it
+ok   step 6: reset logs Asha out
+ok   step 6: she must choose a new one
+ok   she can log out from there
+ok   disabled login is refused
+ok   step 7: audit filtered to Northwind
+ok   delivery log shows the emails
+ok   My account: wrong current password refused
+browser errors: none
+server errors: 0
+```
+
+`apps/web/test/m3-screens.test.tsx` holds the component tests. Not run: the demo's server restart after step 4. The email text was checked by the backend tests, not read from the fake provider's log in this run.

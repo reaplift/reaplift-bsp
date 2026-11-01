@@ -22,6 +22,12 @@ describe('loadConfig', () => {
     expect(c.APP_ENCRYPTION_KEY).toHaveLength(32);
   });
 
+  it('defaults the Meta settings when blank', () => {
+    const c = loadConfig({ ...base, META_GRAPH_VERSION: '', META_API_BASE_URL: '' }, []);
+    expect(c.META_GRAPH_VERSION).toBe('v26.0');
+    expect(c.META_API_BASE_URL).toBe('https://graph.facebook.com');
+  });
+
   it('rejects an unknown mode', () => {
     expect(() => loadConfig({ ...base, MODE: 'nope' }, [])).toThrow();
   });

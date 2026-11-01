@@ -14,9 +14,12 @@ export interface CreateUserInput {
   password: string;
   /** The user adding this one. Absent only when nobody is logged in, such as the first super admin. */
   createdBy?: string | null;
+  /** A first password set by someone else must be changed at first login. */
+  mustChangePassword?: boolean;
 }
 
 export class UserInputError extends Error {}
+export class EmailTakenError extends UserInputError {}
 
 /** Creates a user with an argon2id password hash. The plain password is never stored or logged. */
 export async function createUser(
@@ -41,14 +44,14 @@ export async function createUser(
   const passwordHash = await hashPassword(input.password);
   try {
     const result = await sql<{ id: string }>`
-      insert into users (client_id, name, email, password_hash, role, created_by)
-      values (${input.clientId ?? null}, ${name}, ${email}, ${passwordHash}, ${input.role}, ${input.createdBy ?? null})
+      insert into users (client_id, name, email, password_hash, role, created_by, must_change_password)
+      values (${input.clientId ?? null}, ${name}, ${email}, ${passwordHash}, ${input.role}, ${input.createdBy ?? null}, ${input.mustChangePassword ?? null})
       returning id
     `.execute(db);
     return { id: result.rows[0]!.id };
   } catch (err) {
     if ((err as { code?: string }).code === '23505')
-      throw new UserInputError(`${email} already has a login`);
+      throw new EmailTakenError(`${email} already has a login`);
     throw err;
   }
 }

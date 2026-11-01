@@ -1,9 +1,8 @@
 # M6. Wallet and prices
 
-- Status: Not started
-- Owner: Anirudh (backend), Suraj (screens S7 to S9)
-- Branch prefix: `m6-`
-- Starts after: M3 (clients and logins)
+- Status: Built. Backend 6.1 to 6.6 and GST (6.1a), and screens S7 to S9, work together in a real browser; see [test-evidence.md](test-evidence.md) and [frontend.md](frontend.md). Left for Done: the owner's review, and ReapLift's answers on pricing and GST (P1 to P12, G1 to G7).
+- Owner: Anirudh (backend and screens, moved from Suraj on 2 November 2026)
+- Starts after: M3 (clients and logins). The backend started early (tracker, 31 October 2026).
 - External prerequisites: none. D10 (markup rules) has a default, so work can start.
 
 ## Outcome
@@ -67,13 +66,32 @@ Out:
 ### 6.1 Price lists and charging switches
 
 - `meta_rates`: message category, recipient country calling code, Meta's rate, valid from. Entered by the super admin from Meta's published rate card. Meta's rates have fractions of a paisa, so the rate is stored as a whole number of hundredths of a paisa (`bigint`, for example 8631 for 86.31 paise); it is a rate, not money held, so the whole-paise rule applies to every price and ledger amount computed from it.
-- `pricing`: the default markup for all clients (starting at 25%, D10), and per client either a markup override or a fixed price per category for special deals. Markups are stored in basis points (`markup_bp`, 2500 = 25%), never as floats. Full columns in [data-model-and-api.md](../../data-model-and-api.md).
+- `pricing`: the default markup for all clients (starting at 25%, D10), and per client either a markup per category or a fixed price per category (proposed, to discuss with ReapLift: P1 to P9 in [open-questions.md](../../open-questions.md)), for example utility 15% and marketing 25%, or utility 15 paise and marketing 88 paise. The super admin sets it when registering the client; a client with none set uses the default. Markups are stored in basis points (2500 = 25%), never as floats. Full columns in [data-model-and-api.md](../../data-model-and-api.md).
 - `price_lists`: the resulting price per client, category and country in whole paise (`bigint`), with valid from. Recomputed when a Meta rate or a markup changes; a new price is a new row and the old row stays for history. Price = Meta rate × (1 + markup), **rounded up** to the whole paisa. Campaigns use the price valid at confirm.
 - The client's country calling code (M3) picks the Meta rate, which matches M7's rule that audience numbers must be from the client's country.
 - The client is charged at confirm, by the template's category, so the client knows the price before sending. Meta bills ReapLift by the category it decides when the message is delivered (its webhook's `pricing.category`), which can differ, for example a utility message inside a customer's 24-hour reply window, which Meta does not charge. The client's charge is not adjusted afterwards; the difference shows as margin in M9.
 - `charge_policy`: one switch per outcome from HLD section 5 (blocked, sent but not delivered, delivered or read, failed at Meta), each true or false, for all clients or one client. Defaults match HLD section 5. D6 (in the tracker) adds the invalid and duplicate outcomes.
 - Tests: the worked example's rounding (103.57 becomes 104); a client markup overrides the default; a fixed price overrides the markup; a new Meta rate changes prices only from its start date; a client-level switch overrides the global one; a price change does not change an already-confirmed campaign's price.
 - Acceptance: step 1 of the worked example with no code change.
+
+### 6.1a GST (owner, 2 November 2026; built)
+
+India's GST on these messages is 18% today and can change, so it is a setting, not a fixed number.
+
+- The super admin sets the GST rate in Admin Settings, default 18%, with the date it applies from. A new rate is a new row, so history stays, and a confirmed campaign keeps the rate it was charged at. Stored in basis points (1800 = 18%), like markups.
+- Every price a client sees and pays includes GST, and the screens show both parts: for example, "₹0.88 + 18% GST = ₹1.04".
+- Proposed method, for the accountant to confirm (G1 to G6 in [open-questions.md](../../open-questions.md)): the price per message including GST is rounded up to a whole paisa, and that is what the ledger charges and refunds, so money stays in whole paise. A statement works backwards: GST = total × 18 ÷ 118, so the split is exactly 18%. A refund returns the full price including GST.
+- Margin in M9 uses the price without GST, as GST collected is not ReapLift's income.
+- Each charge, refund, message and campaign records the rate used. Routes: `GET`, `POST /api/admin/gst-rates`; `GET /api/admin/gst-report?month=` for the accountant, per client and rate; `GET /api/clients/:clientId/wallet/statement?month=` for the client. Top-ups and adjustments carry no GST and are left out of these. A correction to a charge made as an adjustment would need the accountant's advice.
+- ReapLift's own cost and the credit line stop still use Meta's rate without GST, until G2 and G3 are answered.
+
+Example at 18%, with Meta's marketing rate of 86 paise:
+
+| | Price without GST | GST | Client pays per message |
+| --- | --- | --- | --- |
+| At Meta's rate, no margin | 86.00 paise | 15.48 paise | ₹1.02 (101.48, rounded up) |
+| Fixed price, as Dovesoft charges today | 88.00 paise | 15.84 paise | ₹1.04 (103.84, rounded up) |
+| 25% markup | 107.50, rounded up to 108 paise | 19.44 paise | ₹1.28 (127.44, rounded up) |
 
 ### 6.2 Ledger and balance safety
 
@@ -162,13 +180,17 @@ Task 6.6.
 | Question                                                                     | Default                                                                                                                                           | Decides                           |
 | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
 | D6 (in the tracker): are invalid numbers and duplicates charged?             | Not charged                                                                                                                                       | Owner, with ReapLift              |
-| D10 (in the tracker): markup per client, per message type?                   | A default markup (25%) for all clients, overridable per client; the same for every message type                                                   | Owner, with ReapLift              |
+| D10 (in the tracker; proposal to discuss with ReapLift)                       | Per client and per message type, as a markup or a fixed price; a client with none set uses the default 25%                                                   | Owner, with ReapLift              |
 | D11 (in the tracker): who issues GST invoices, per top-up or monthly?        | Issued outside the platform at launch; the Wallet page exports each client's monthly statement (top-ups, charges, refunds) as CSV                 | Owner, with ReapLift's accountant |
 | D12 (in the tracker): which currency Meta invoices ReapLift's credit line in | Rupees; if Meta invoices in dollars, `meta_rates` stores the rupee rate the super admin decides, and the markup must cover exchange-rate movement | ReapLift, from Meta during E7     |
 
 ## Current reality
 
-Nothing exists except `clients.low_balance_alert_paise` (0002). The prototype Admin page shows a plain `walletBalance` number that is not a ledger.
+- All routes below are real, except `PUT /api/admin/clients/:id/prices`, which is not built because `/api/admin/clients/:id/pricing` does the job. The pricing proposal D10 is built as the default and may change (P1 to P9 in [open-questions.md](../../open-questions.md)).
+- Available = balance − money on hold for scheduled campaigns (M8). A charge or a negative adjustment can use only what is available, and the low-balance alert watches available.
+- Beyond the spec: an adjustment that would take more than is available is refused with 402, the same as a charge; the admin pricing view marks a price below Meta's rate as `belowCost` (P6); a `default` pricing mode returns a client to the default.
+- The ledger check runs when the scheduler starts and every 24 hours after that, not at a set time of night.
+- The CSV download is built in the browser (S7), so it has no route.
 
 ## Demo (milestone acceptance)
 

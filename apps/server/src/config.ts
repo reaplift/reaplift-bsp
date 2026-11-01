@@ -1,7 +1,9 @@
 import { z } from 'zod';
 import { MODES } from '@reaplift/shared';
 
-const DEV_ENCRYPTION_KEY = '12345678901234567890123456789012';
+export const DEV_ENCRYPTION_KEY = '12345678901234567890123456789012';
+
+export const META_API_URL = 'https://graph.facebook.com';
 
 const blankToUndefined = (value: unknown) =>
   typeof value === 'string' && value.trim() === '' ? undefined : value;
@@ -13,6 +15,19 @@ const Env = z.object({
   DATABASE_URL: z.string().url(),
   META_VERIFY_TOKEN: z.string().default(''),
   META_APP_SECRET: z.string().default(''),
+  /** Embedded Signup and template media uploads. */
+  META_APP_ID: z.string().default(''),
+  /** The system user's token and ReapLift's credit line; blank until E7, so new client accounts stay paused. */
+  META_SYSTEM_TOKEN: z.string().default(''),
+  META_CREDIT_LINE_ID: z.string().default(''),
+  /** Where uploaded files go until object storage exists (M10). */
+  UPLOAD_DIR: z.preprocess(blankToUndefined, z.string().default('./uploads')),
+  UPLOAD_MAX_BYTES: z.preprocess(blankToUndefined, z.coerce.number().int().positive().default(10 * 1024 * 1024)),
+  LIST_MAX_ROWS: z.preprocess(blankToUndefined, z.coerce.number().int().positive().default(20_000)),
+  /** Latest stable when M4 was built (checked 30 October 2026). */
+  META_GRAPH_VERSION: z.preprocess(blankToUndefined, z.string().default('v26.0')),
+  /** Only changed to point at the fake Meta server. */
+  META_API_BASE_URL: z.preprocess(blankToUndefined, z.string().url().default(META_API_URL)),
   /** The panel's address; state-changing requests must come from it. */
   PANEL_ORIGIN: z.preprocess(blankToUndefined, z.string().url().default('http://localhost:5173')),
   /** Secure flag on the session cookie. Blank means on; set `false` only for plain-http local development. */
@@ -46,4 +61,11 @@ export type Config = z.infer<typeof Env>;
 export function loadConfig(env: NodeJS.ProcessEnv = process.env, argv = process.argv): Config {
   const modeArg = argv.find((a) => a.startsWith('--mode='))?.slice('--mode='.length);
   return Env.parse({ ...env, ...(modeArg ? { MODE: modeArg } : {}) });
+}
+
+/** The development key is public, so a real Meta token must not be stored with it. */
+export function usesPublicKeyWithRealMeta(
+  config: Pick<Config, 'META_API_BASE_URL' | 'APP_ENCRYPTION_KEY'>,
+): boolean {
+  return config.META_API_BASE_URL === META_API_URL && config.APP_ENCRYPTION_KEY === DEV_ENCRYPTION_KEY;
 }

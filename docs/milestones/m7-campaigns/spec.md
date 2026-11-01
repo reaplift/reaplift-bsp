@@ -1,8 +1,7 @@
 # M7. Campaigns: create, send, track
 
-- Status: Not started
-- Owner: Unassigned
-- Branch prefix: `m7-`
+- Status: In progress. Backend 7.1 to 7.10 built on 31 October 2026; see [test-evidence.md](test-evidence.md). Screens built on 2 November 2026 ([frontend.md](frontend.md)); owner review and real Meta testing left.
+- Owner: Anirudh
 - Starts after: M5 (approved templates, connected numbers), M6 (prices and wallet)
 - External prerequisites: none beyond those of M4 and M5
 
@@ -17,7 +16,7 @@ Pause, resume, cancel, schedule and the rules engine are [M8](../m8-campaign-con
 ```mermaid
 flowchart TD
   A["Push Campaign: name + approved template<br/>(only APPROVED, from M5)"] --> B["Upload Excel or CSV<br/>+ tick 'these numbers opted in' (D7)"]
-  B --> C{"Readable, under 50 MB<br/>and 200,000 rows?"}
+  B --> C{"Readable, under 10 MB<br/>and 20,000 rows?"}
   C -- "no" --> C1["Clear error, nothing saved"]
   C -- "yes" --> D["Rows saved exactly as read"]
   D --> E["Pick the number column"]
@@ -77,6 +76,7 @@ Out:
 | 7.4  | Summary                                    | 7.2, 7.3, 7.8                                  | 7.6 UI work              |
 | 7.5  | Confirm: charge and queue in one step      | 7.4                                            | 7.6                      |
 | 7.6  | Sending, totals, completion, campaign page | 7.5 for real data; UI can start on seeded rows | 7.7                      |
+| 7.6a | Check for a webhook before retrying a timeout | M4's real-phone demo                        | 7.1 to 7.5               |
 | 7.7  | Refunds on Meta failure                    | 7.5                                            | 7.6                      |
 | 7.8  | Opt-outs                                   | none                                           | 7.1 to 7.3               |
 | 7.9  | Notifications for M7 events                | 7.5, 7.6                                       | 7.10                     |
@@ -84,12 +84,12 @@ Out:
 
 ### 7.1 Audience upload
 
-- Excel (`.xlsx`) or CSV, up to 50 MB and 200,000 data rows (settings `UPLOAD_MAX_BYTES`, `LIST_MAX_ROWS`).
+- Excel (`.xlsx`) or CSV, up to 10 MB and 20,000 data rows per campaign (owner, 31 October 2026; settings `UPLOAD_MAX_BYTES`, `LIST_MAX_ROWS`). The server enforces this; the panel should also say so before uploading. A client with a larger audience splits it into several campaigns.
 - The upload form requires the opt-in tick (D7); the tick, the user and the time are saved on the list.
 - The file is stored behind a storage interface (local disk under `UPLOAD_DIR` until object storage exists in M10) and its rows are saved exactly as read in `list_contacts.cells jsonb`, in one transaction with the `lists` row.
 - Blank rows are skipped and counted. Every upload makes a new list (decided).
 - Note from the closed `m4-skeleton` branch: exceljs's streaming reader returned incomplete data on large files in measurement; test the chosen reader against a 200,000-row file before relying on it.
-- Tests: blank rows, merged header cells, numbers stored as text, a 200,000-row file, a file over the limit, a corrupt file, another client's list returning 404.
+- Tests: blank rows, merged header cells, numbers stored as text, a 20,000-row file, a file over the limit, a corrupt file, another client's list returning 404.
 - Acceptance: step 2 of the worked example.
 
 ### 7.2 Number column, cleaning and validation
@@ -107,7 +107,7 @@ Out:
 - Reasons: `empty`, `not_a_number`, `too_short`, `too_long`, `not_mobile`, `scientific_notation`, `wrong_country`, `duplicate`. A repeat within the list is marked `duplicate` and points to the first row.
 - Data: nullable columns. `lists`: `number_column int`, `valid_count`, `invalid_count`, `duplicate_count`. `list_contacts`: `number text`, `invalid_reason text`, `duplicate_of_row int`.
 - Tests: a table of at least 25 raw inputs and expected results covering every rule. Examples: `98123 45678` → `919812345678`; `+91-98123-45678` → `919812345678`; `09812345678` → `919812345678`; `00919812345678` → `919812345678`; `9812345678.0` → `919812345678`; `9.81234E+09` → `scientific_notation`; `5812345678` → `not_mobile`; `12345` → `too_short`; `+447911123456` → `wrong_country`; empty → `empty`; the same number in rows 4 and 9 → row 9 `duplicate` of row 4.
-- Acceptance: counts and reasons match a hand-checked fixture file committed with the tests; 200,000 rows clean in under a minute locally.
+- Acceptance: counts and reasons match a hand-checked fixture file committed with the tests; 20,000 rows clean in under a minute locally.
 
 ### 7.3 Campaign draft and variable mapping
 
@@ -142,8 +142,10 @@ Out:
     "balanceAfterPaise": 109750
   }
   ```
+- Expected delivery time (owner, 31 October 2026): the summary and a running campaign's page return `estimate` with `messagesAhead`, `seconds`, `finishesAt` and `waitsForDailyLimit`, worked out from the number's speed, its daily limit and what is already waiting on it. It is when messages are sent to Meta, not when phones receive them, and assumes Meta does not ask us to slow down.
+- Order: each client's number has its own queue and speed, so one client's campaign does not delay another's, and each is treated equally. On one number, the earlier campaign finishes first. Paid priority between clients is for later.
 - Tests: one fixture per check; `willSend + blocked + invalid + duplicate = total`.
-- Acceptance: step 5 of the worked example; a 200,000-row summary within the target in the open questions.
+- Acceptance: step 5 of the worked example; a 20,000-row summary within the target in the open questions.
 
 ### 7.5 Confirm: charge and queue in one step
 
@@ -151,7 +153,7 @@ Out:
 - Confirming twice charges and queues once (the second call sees status `running` and answers 409 `ALREADY_CONFIRMED`).
 - A suspended client or a paused account refuses confirm with 409 and the reason.
 - Who: client users, assigned staff, super admin (decided).
-- Tests: short balance leaves no messages and no ledger row; an opt-out added after the summary is caught at confirm; double confirm; 200,000 rows queued in one transaction.
+- Tests: short balance leaves no messages and no ledger row; an opt-out added after the summary is caught at confirm; double confirm; 20,000 rows queued in one transaction.
 - Acceptance: step 6 of the worked example and the "what-if".
 
 ### 7.6 Sending, totals, completion, campaign page
@@ -162,6 +164,17 @@ Out:
 - Campaign list and campaign page: status, totals, the charge, refunds, failure reasons grouped (131049 shown as "Meta limit, not retried").
 - Tests: after a randomised run on the fake server, totals equal a count of the rows.
 - Acceptance: step 7 and 10 of the worked example; totals on screen equal a `count(*)` of the campaign's messages.
+
+### 7.6a Check for a webhook before retrying a timeout
+
+A send that times out may still have been accepted by Meta, and Meta has no status lookup or idempotency key, so a plain retry can send twice and cost money twice at campaign volume. M4 already puts our message ID in `biz_opaque_callback_data`, which Meta returns in status webhooks.
+
+- When a send gets no response (timeout or network error), hold the message instead of using the normal retry schedule. A response with an error code retries as before.
+- If a status webhook with that callback data arrives during the hold, Meta accepted the message: save the `wamid`, apply the status, and do not resend.
+- If nothing arrives, retry when the hold ends. A webhook arriving later can still mean a double send, and this is accepted.
+- Set the hold from real `sent` webhook timings measured in M4's real-phone demo; 2 to 5 minutes is the starting guess. Check first that Meta returns the callback data in `failed` webhooks too.
+- Tests: a timeout then a webhook sends once and saves the `wamid`; a timeout with no webhook retries after the hold; an error response does not hold; a webhook after the retry changes nothing and is logged.
+- Acceptance: on the fake server, a send accepted but answered too late is sent exactly once.
 
 ### 7.7 Refunds on Meta failure
 
@@ -202,6 +215,44 @@ The creator is always told about problems with their campaign, as well as the su
 - 200,000 messages against the fake Meta server at the configured rate.
 - Checks: no message sent twice; the rate stays at the setting; totals equal row counts; charge and refunds reconcile.
 - Acceptance: the report is saved in this folder.
+
+## Other countries (owner, 2 November 2026)
+
+**Today, India only, and enforced so no money is lost:**
+
+- Each client has one country (`clients.country_calling_code`), fixed to India. A client with none is refused rather than guessed at.
+- A number from another country is marked `wrong_country` when the list is cleaned: never queued, never charged, and listed in the invalid-rows download.
+- The worker checks again just before each send, so nothing outside the client's country reaches Meta, whatever put it in the queue. Such a message fails with `wrong_country` and is refunded.
+- Meta's rates and client prices are already stored per country.
+
+**Built so a country can be added later (owner: GST, billing and pricing all depend on the country, so keep it easy to expand):**
+
+| Depends on the country | Today |
+| --- | --- |
+| Which country a client is in | `clients.country_calling_code` |
+| Meta's rates | Per country in `meta_rates` |
+| Client prices | Per country in `price_lists` |
+| Tax rate | Per country in `gst_rates` |
+| Number cleaning | One function per country in `NUMBER_RULES`; a country with none is refused |
+| Currency | Not yet: everything is rupees and paise |
+| Tax rules and name | Not yet: GST's method and wording are India's |
+| Time zone and date formats | Not yet: India time throughout |
+| Language | Not yet: English only |
+| Screens | Not yet: the country is fixed to India on the forms, and Settings shows India's tax |
+
+Numbers in a campaign are still all from one country, the client's. A column for each row's country is not needed until a client sends across countries.
+
+**Before a client can send to another country,** all of these are needed; adding the country alone would be wrong:
+
+1. Cleaning rules for that country, as number lengths and formats differ. Today's rules are India's.
+2. Meta's rate for that country and each message type in `meta_rates`, or the client has no price there.
+3. A price per message from the number's country, not the client's. Today a campaign has one price, so a charge would be wrong for a mixed list.
+4. The summary and charge showing a count and price per country.
+5. Meta's cost per message using the number's country, for margin.
+6. GST advice for messages abroad, from the accountant.
+7. For a client based abroad: its currency, its tax rules, and an invoice to match.
+
+Until then, a client wanting another country is refused, not sent at India's price.
 
 ## Data and API
 
@@ -250,11 +301,16 @@ Also open:
 
 | Question                                                                                                                                                                                                                       | Default                                                                                                             | Decides |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------- | ------- |
-| Target time for a 200,000-row summary. "30 seconds" came from low-level-design.md task 4.4, where it is marked "target, to confirm"; it is a guess at how long someone will wait on the summary screen, not a measured figure. | Keep 30 seconds as the target; measure on CI now and on the server after M10; show a progress message while it runs | Owner   |
+| Target time for a summary (measured at 200,000 rows: 0.1 s). "30 seconds" came from low-level-design.md task 4.4, where it is marked "target, to confirm"; it is a guess at how long someone will wait on the summary screen, not a measured figure. | Keep 30 seconds as the target; measure on CI now and on the server after M10; show a progress message while it runs | Owner   |
 
 ## Current reality
 
-Nothing exists on `main`. The Push Campaign page shows mock figures. The `m4-skeleton` branch (upload and lists) was closed without merging on 29 October 2026.
+- All routes above are real. The Push Campaign page still shows mock figures, as its screens are not built.
+- Beyond the spec: `POST /api/admin/clients/:id/opt-outs` takes the numbers as JSON; `GET` and `PUT /api/admin/settings/:key` edit `promo_words` and `stop_words`.
+- 7.6a holds a message with no answer for 5 minutes, a starting figure to set from real timings (question 9 in [open-questions.md](../../open-questions.md)). A status whose wamid we never saw is matched through the callback data.
+- A row whose variable cell is blank is still sent; Meta is expected to refuse it, and it is then refunded.
+- If the `sent_not_delivered` switch is turned off, nothing refunds those messages: the summary charges at `delivered`'s switch, and no later step changes it.
+- The stop-word check needs the exact word. Replies are matched on `text` and `button` messages.
 
 ## Demo (milestone acceptance)
 

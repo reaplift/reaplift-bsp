@@ -87,19 +87,20 @@ Replaced by `auth_sessions`, because its `client_id` is `not null` and a super a
 
 **`wa_accounts`** (Exists, 0002). One row per connected phone number.
 `id`, `client_id`, `waba_id`, `phone_number_id` (unique), `display_phone`, `display_name`, `access_token_enc bytea` (a business token from Embedded Signup for clients; a system user token for ReapLift's own test numbers), `quality_rating`, `messaging_limit`, `meta_payer` (`reaplift_credit_line` for clients; `reaplift_card` for ReapLift's test numbers; `partner_credit_line` is in the check but unused), `send_rate_per_sec`, `status` (`active` | `paused`), `paused_reason`, `created_at`.
-Planned (M5): `onboarded_via text` (`manual` | `embedded_signup`), `credit_share_ref text` (what Meta returns when ReapLift's credit line is shared), `connected_by uuid`, `connected_at timestamptz`.
+Added in 0014 (M5): `daily_send_limit int`, the super admin's optional limit per number; `send_rate_per_sec` now starts at 50 for a new number.
+Added in 0007 (M5): `onboarded_via text` (`manual` | `embedded_signup`), `credit_share_ref text` (what Meta returns when ReapLift's credit line is shared), `connected_by uuid`, `connected_at timestamptz`.
 
 **`templates`** (Exists, 0002)
 `id`, `client_id`, `wa_account_id`, `meta_template_id`, `name`, `language`, `category` (`MARKETING` | `UTILITY` | `AUTHENTICATION`), `components jsonb`, `variable_count`, `status` (no check, so the M5 states need no change), `updated_at`; unique (`wa_account_id`, `name`, `language`).
-Planned (M5): `validation_errors jsonb`, `submitted_at`, `rejection_reason`, `meta_recommendation`, `media_storage_key`, `created_by`.
+Added in 0007 (M5): `validation_errors jsonb`, `submitted_at`, `submitted_by`, `rejection_reason`, `meta_recommendation`, `media_storage_key`, `created_by`.
 
-**`settings`** (Planned, M5). Platform table.
+**`settings`** (Exists, 0007). Platform table.
 `key` (primary key, for example `promo_words`, `stop_words`), `value jsonb`, `updated_by`, `updated_at`.
 
 ### Sending (M4)
 
 **`messages`** (Exists, 0002). One row per number per campaign, or per `cli` send.
-`id bigint`, `client_id`, `wa_account_id`, `campaign_id` (foreign key added in M7), `template_id`, `to_number`, `variables jsonb`, `status` (`queued` | `sending` | `sent` | `delivered` | `read` | `failed` | `blocked`), `attempts`, `next_attempt_at`, `locked_at`, `meta_message_id` (unique), `queued_at`, `sent_at`, `delivered_at`, `read_at`, `failed_at`, `block_reason`, `failure_reason`, `meta_error_code`, `pricing_category` and `billable` (from Meta's webhook), `client_price_paise` (set at confirm, M7), `meta_cost_paise` (set on delivery, M9), `source` (`panel` | `api` | `crm` | `cli`), `created_date`.
+`id bigint`, `client_id`, `wa_account_id`, `campaign_id` (foreign key added in M7), `template_id`, `to_number`, `variables jsonb`, `status` (`queued` | `sending` | `sent` | `delivered` | `read` | `failed` | `blocked`), `attempts`, `next_attempt_at`, `locked_at`, `meta_message_id` (unique), `queued_at`, `sent_at`, `delivered_at`, `read_at`, `failed_at`, `block_reason`, `failure_reason`, `meta_error_code`, `pricing_category` and `billable` (from Meta's webhook), `client_price_paise` (set at confirm, M7), `meta_cost_paise` and `meta_cost_centipaise` (set on delivery, M9), `pricing_type`, `source` (`panel` | `api` | `crm` | `cli`), `created_date`.
 There is no `cancelled` status; M8 uses `blocked` with reason `campaign_cancelled`.
 
 **`meta_events`** (Exists, 0002). Platform table: every verified webhook body, stored before processing.
@@ -110,51 +111,57 @@ There is no `cancelled` status; M8 uses `blocked` with reason `campaign_cancelle
 
 ### Money (M6)
 
-**`meta_rates`** (Planned, M6). Platform table.
+**`meta_rates`** (Exists, 0009). Platform table.
 `id`, `category`, `country_calling_code`, `rate_centipaise bigint`, `valid_from`, `entered_by`, `created_at`.
 
-**`pricing`** (Planned, M6). `client_id` null is the default for all clients.
-`id`, `client_id`, `mode` (`markup` | `fixed`), `markup_bp int` (2500 = 25%), `fixed_marketing_paise`, `fixed_utility_paise`, `fixed_authentication_paise`, `valid_from`, `updated_by`.
+**`pricing`** (Exists, 0009). `client_id` null is the default for all clients.
+`id`, `client_id`, `mode` (`markup` | `fixed`), `markup_marketing_bp`, `markup_utility_bp`, `markup_authentication_bp` (`int`, 2500 = 25%), `fixed_marketing_paise`, `fixed_utility_paise`, `fixed_authentication_paise`, `valid_from`, `updated_by`.
 
-**`price_lists`** (Planned, M6). The resulting price each client pays.
+**`price_lists`** (Exists, 0009). The resulting price each client pays.
 `id`, `client_id`, `category`, `country_calling_code`, `price_paise bigint`, `source` (`markup` | `fixed`), `meta_rate_id`, `valid_from`.
-Markup price = ceiling of `rate_centipaise × (10000 + markup_bp) ÷ 1,000,000`, in whole-number arithmetic. Example: 8631 × 12000 ÷ 1,000,000 = 103.572, so 104 paise.
+Markup price = ceiling of `rate_centipaise × (10000 + that category's markup) ÷ 1,000,000`, in whole-number arithmetic. Example: 8631 × 12000 ÷ 1,000,000 = 103.572, so 104 paise.
 
-**`charge_policy`** (Planned, M6). `client_id` null is the default for all clients.
+**`charge_policy`** (Exists, 0009). `client_id` null is the default for all clients.
 `id`, `client_id`, `outcome` (`blocked`, `sent_not_delivered`, `delivered`, `failed`, and D6's `invalid`, `duplicate`), `charged boolean`.
 
-**`wallet_ledger`** (Planned, M6). Append-only; a trigger refuses update and delete.
+**`wallet_ledger`** (Exists, 0009). Append-only; a trigger refuses update and delete.
 `id bigint`, `client_id`, `kind` (`topup` | `adjustment` | `charge` | `refund`), `amount_paise bigint`, `balance_after_paise bigint`, `campaign_id`, `message_id`, `note`, `created_by`, `created_at`; unique (`message_id`) where `kind = 'refund'`.
+
+**`wallet_holds`** (Exists, 0013). Money set aside for a scheduled campaign; not in the ledger.
+`id`, `client_id`, `campaign_id`, `amount_paise`, `created_by`, `created_at`, `released_at`, `released_because` (`started` | `unscheduled` | `cancelled` | `not_started`); one active hold per campaign. Available = balance − active holds.
+
+**`gst_rates`** (Exists, 0015). Platform table.
+`id`, `seq`, `country_calling_code`, `rate_bp` (1800 = 18%), `valid_from`, `entered_by`, `created_at`; the newest row in force applies. `wallet_ledger`, `messages` and `campaigns` each have `gst_bp`, the rate included in their amounts.
 
 ### Campaigns (M7, M8)
 
-**`lists`** (Planned, M7)
+**`lists`** (Exists, 0010)
 `id`, `client_id`, `file_name`, `storage_key`, `row_count`, `blank_rows_skipped`, `columns jsonb`, `opt_in_confirmed_by`, `opt_in_confirmed_at`, `number_column`, `valid_count`, `invalid_count`, `duplicate_count`, `created_by`, `created_at`.
 
-**`list_contacts`** (Planned, M7)
+**`list_contacts`** (Exists, 0010)
 `list_id`, `row_number`, `client_id`, `cells jsonb`, `number`, `invalid_reason`, `duplicate_of_row`; primary key (`list_id`, `row_number`).
 
-**`campaigns`** (Planned, M7)
-`id`, `client_id`, `name`, `template_id`, `wa_account_id`, `list_id`, `variable_map jsonb`, `status` (`draft` | `scheduled` | `running` | `paused` | `completed` | `cancelled`, all listed from the start), `created_by`, `confirmed_by`, `confirmed_at`, `total`, `blocked`, `sent`, `delivered`, `read`, `failed`, `created_at`, `updated_at`.
-Planned (M8): `scheduled_at`, `cancelled_at`, `cancelled_by`.
+**`campaigns`** (Exists, 0010)
+`id`, `client_id`, `name`, `template_id`, `wa_account_id`, `list_id`, `variable_map jsonb`, `status` (`draft` | `scheduled` | `running` | `paused` | `completed` | `cancelled`, all listed from the start), `created_by`, `confirmed_by`, `confirmed_at`, `total`, `blocked`, `sent`, `delivered`, `read`, `failed`, `other_charged_paise`, `created_at`, `updated_at`. A trigger on `messages` keeps the status totals current.
+Added in 0011 (M8): `scheduled_at`, `cancelled_at`, `cancelled_by`.
 
-**`opt_outs`** (Planned, M7)
+**`opt_outs`** (Exists, 0010)
 `client_id`, `number`, `source` (`stop_reply` | `upload` | `manual`), `created_at`; unique (`client_id`, `number`).
 
-**`rules`** (Planned, M8). `client_id` null applies to all clients.
+**`rules`** (Exists, 0011). `client_id` null applies to all clients.
 `id`, `client_id`, `type` (`repeat_within_hours` | `marketing_cap`), `values jsonb`, `enabled`, `updated_by`, `updated_at`.
 
 ### Reports (M9)
 
-**`daily_stats`** (Planned, M9)
-`client_id`, `date`, `category`, `queued`, `sent`, `delivered`, `read`, `failed`, `blocked`, `client_charge_paise`, `meta_cost_paise`; primary key (`client_id`, `date`, `category`).
+**`daily_stats`** (Exists, 0012)
+`client_id`, `date`, `category`, `queued`, `sent`, `delivered`, `read`, `failed`, `blocked`, `client_charge_paise`, `meta_cost_centipaise`; primary key (`client_id`, `date`, `category`).
 
-**`meta_invoices`** (Planned, M9). Platform table.
+**`meta_invoices`** (Exists, 0012). Platform table.
 `id`, `month`, `total_paise`, `per_account jsonb`, `entered_by`, `created_at`. The credit limit is a `settings` row.
 
 ### Tables without a client
 
-These are platform-level and are the only exceptions to the tenant-column rule: `meta_events`, `message_status_events`, `settings`, `meta_rates`, `meta_invoices`. The tables where `client_id` may be null mean "platform" or "all clients" when it is: `users`, `auth_sessions`, `audit_logs`, `notifications`, `pricing`, `charge_policy`, `rules`. Client users and staff never reach any of them except through routes that filter by their own scope.
+These are platform-level and are the only exceptions to the tenant-column rule: `meta_events`, `message_status_events`, `settings`, `meta_rates`, `meta_invoices`, `gst_rates`. The tables where `client_id` may be null mean "platform" or "all clients" when it is: `users`, `auth_sessions`, `audit_logs`, `notifications`, `pricing`, `charge_policy`, `rules`. Client users and staff never reach any of them except through routes that filter by their own scope.
 
 ## API
 
@@ -203,6 +210,15 @@ Who: **SA** super admin; **C** client user of that client; **S** staff assigned 
 | POST       | `/api/admin/clients/:id/opt-outs`                                  | SA                          | M7        |
 | POST       | `/api/clients/:clientId/campaigns/:id/pause`, `/resume`, `/cancel` | C, S, SA                    | M8        |
 | POST       | `/api/clients/:clientId/campaigns/:id/schedule`, `/unschedule`     | C, S, SA                    | M8        |
+| GET        | `/api/admin/users` | SA | M3 |
+| GET, DELETE | `/api/admin/clients/:id/opt-outs (DELETE takes /:number)` | SA | M7 |
+| PATCH      | `/api/admin/wa-accounts/:id/limits` | SA | M5 |
+| GET        | `/api/admin/limits-usage` | SA | M5 |
+| GET        | `/api/admin/campaigns` | SA | M8 |
+| GET        | `/api/admin/campaigns/:id/diagnosis` | SA | M8 |
+| GET, POST  | `/api/admin/gst-rates` | SA | M6 |
+| GET        | `/api/admin/gst-report` | SA | M6 |
+| GET        | `/api/clients/:clientId/wallet/statement` | C, S, SA | M6 |
 | GET, PUT   | `/api/admin/rules`                                                 | SA                          | M8        |
 | GET        | `/api/clients/:clientId/dashboard`, `/reports/monthly`             | C, S, SA                    | M9        |
 | GET        | `/api/clients/:clientId/campaigns/:id/report`                      | C, S, SA                    | M9        |
@@ -219,7 +235,7 @@ Checked against the credit-line model and the merged migrations. None of these s
 
 1. **Templates are stored per phone number, but Meta keeps them per WhatsApp account.** `templates.wa_account_id` points to a number, and one WhatsApp account can hold several numbers. At launch each client has one number (decided), so this is harmless. If a client ever has two numbers in one account, add a nullable `templates.waba_id` and look templates up by it. Not needed now.
 2. **The tenant-column rule needs its exceptions written down.** CLAUDE.md says every table carries `client_id`; the platform tables above cannot. The list above is the agreed exception; approved on 29 October 2026 (D14), and CLAUDE.md points here.
-3. **`bigint` comes back as text** from `pg`. Without the type parser in the conventions, `balance_after_paise + amount_paise` would join two strings. Added to the conventions, assigned to M4 task 4.3.
+3. **`bigint` comes back as text** from `pg`. Without the type parser in the conventions, `balance_after_paise + amount_paise` would join two strings. Added to the conventions, and built in M4 task 4.3.
 4. **`sessions` (0003) is unused** and stays that way; `auth_sessions` replaces it.
 5. **`wa_accounts` needs four nullable columns for Embedded Signup and credit sharing** (M5). Added above; the existing `meta_payer` check already has `reaplift_credit_line`.
 6. **Each message keeps the price it was charged** (`messages.client_price_paise`, set at confirm), so refunds and reconciliation never depend on today's price list.

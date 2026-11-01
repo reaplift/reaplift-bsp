@@ -21,16 +21,20 @@ export function WorkspacePicker({ workspaces, showAdmin }: WorkspacePickerProps)
       ) : (
         <ul className="workspace-list">
           {workspaces.map((w) =>
-            w.status === 'active' ? (
+            w.status === 'active' || showAdmin ? (
               <li key={w.clientId}>
                 <Link className="workspace-item" to={workspacePath(w.clientId, 'dashboard')}>
                   {w.name}
+                  {w.status !== 'active' && <span className="status-pill status-suspended"> Suspended</span>}
                 </Link>
               </li>
             ) : (
               <li key={w.clientId}>
                 <span className="workspace-item disabled" aria-disabled="true">
                   {w.name} <span className="status-pill status-suspended">Suspended</span>
+                  <small className="form-note suspended-reason">
+                    This account is suspended{w.suspendedReason ? `: ${w.suspendedReason}` : ''}. Contact ReapLift.
+                  </small>
                 </span>
               </li>
             ),
@@ -40,7 +44,7 @@ export function WorkspacePicker({ workspaces, showAdmin }: WorkspacePickerProps)
 
       {showAdmin && (
         <p>
-          <Link className="link-button" to="/admin">
+          <Link className="link-button" to="/admin/clients">
             Open Admin
           </Link>
         </p>
