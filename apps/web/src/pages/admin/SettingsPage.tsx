@@ -271,9 +271,9 @@ function ChargingDefaults() {
   );
 }
 
-function PromoWords() {
+function WordList({ settingKey, title, hint, appliesWhen }: { settingKey: string; title: string; hint: string; appliesWhen: string }) {
   const { api } = useAuth();
-  const words = useLoad(() => api.wordSetting('promo_words'), [api]);
+  const words = useLoad(() => api.wordSetting(settingKey), [api, settingKey]);
   const action = useAction();
   const [message, setMessage] = useState<string | null>(null);
 
@@ -282,14 +282,14 @@ function PromoWords() {
     const text = String(new FormData(event.currentTarget).get('words'));
     const value = text.split(/[,\n]/).map((word) => word.trim()).filter(Boolean);
     setMessage(null);
-    if (await action.run(() => api.setWordSetting('promo_words', value))) {
+    if (await action.run(() => api.setWordSetting(settingKey, value))) {
       words.reload();
-      setMessage('Saved. It applies from the next template submitted.');
+      setMessage(`Saved. It applies from ${appliesWhen}.`);
     }
   };
 
   return (
-    <Panel title="Promotional words" hint="A Utility or Authentication template containing one of these is stopped before it goes to Meta, as it looks like Marketing. This is ReapLift's own check, to save a rejection; Meta decides in the end.">
+    <Panel title={title} hint={hint}>
       <ErrorNote message={words.error ?? action.error} />
       {message && <p className="form-success">{message}</p>}
       {words.data && (
@@ -300,7 +300,7 @@ function PromoWords() {
           </label>
           <div className="form-actions">
             <button type="submit" className="primary-button" disabled={action.busy}>
-              Save words
+              Save {title.toLowerCase()}
             </button>
           </div>
         </form>
@@ -317,7 +317,18 @@ export function SettingsPage() {
       <MetaRates />
       <DefaultMarkup />
       <ChargingDefaults />
-      <PromoWords />
+      <WordList
+        settingKey="promo_words"
+        title="Promotional words"
+        appliesWhen="the next template submitted"
+        hint="A Utility or Authentication template containing one of these is stopped before it goes to Meta, as it looks like Marketing. This is ReapLift's own check, to save a rejection; Meta decides in the end."
+      />
+      <WordList
+        settingKey="stop_words"
+        title="Stop words"
+        appliesWhen="the next reply received"
+        hint="A customer who replies with one of these is opted out of that client's campaigns, and only that client's."
+      />
     </div>
   );
 }

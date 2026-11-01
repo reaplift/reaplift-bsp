@@ -53,3 +53,80 @@ export const RuleUpdate = z.discriminatedUnion('type', [
     })
     .strict(),
 ]);
+
+// Responses. Not strict, so a field the server adds later does not break the panel.
+export const AudienceUploaded = z.object({ id: z.string(), rowCount: z.number(), blankRowsSkipped: z.number(), columns: z.array(z.string()) });
+
+export const AudienceList = z.object({
+  id: z.string(),
+  fileName: z.string(),
+  rowCount: z.number(),
+  blankRowsSkipped: z.number(),
+  columns: z.array(z.string()),
+  numberColumn: z.number().nullable(),
+  validCount: z.number().nullable(),
+  invalidCount: z.number().nullable(),
+  duplicateCount: z.number().nullable(),
+  preview: z.array(z.array(z.string().nullable())),
+});
+export type AudienceList = z.infer<typeof AudienceList>;
+
+const DeliveryEstimate = z.object({
+  messagesAhead: z.number(),
+  seconds: z.number(),
+  finishesAt: z.string(),
+  waitsForDailyLimit: z.boolean(),
+});
+
+export const CampaignView = z.object({
+  id: z.string(),
+  name: z.string(),
+  templateId: z.string(),
+  listId: z.string().nullable(),
+  variableMap: VariableMap,
+  status: z.string(),
+  total: z.number().nullable(),
+  blocked: z.number().nullable(),
+  sent: z.number().nullable(),
+  delivered: z.number().nullable(),
+  read: z.number().nullable(),
+  failed: z.number().nullable(),
+  scheduledAt: z.string().nullable(),
+  confirmedAt: z.string().nullable(),
+  createdAt: z.string(),
+});
+export type CampaignView = z.infer<typeof CampaignView>;
+
+export const CampaignList = z.object({ items: z.array(CampaignView), nextCursor: z.string().nullable() });
+
+export const CampaignDetail = CampaignView.extend({
+  estimate: DeliveryEstimate.nullable(),
+  chargedPaise: z.number(),
+  refundedPaise: z.number(),
+  failures: z.array(z.object({ code: z.number().nullable(), reason: z.string().nullable(), count: z.number(), label: z.string() })),
+});
+export type CampaignDetail = z.infer<typeof CampaignDetail>;
+
+export const CampaignSummary = z.object({
+  total: z.number(),
+  willSend: z.number(),
+  blocked: z.object({ total: z.number(), byReason: z.record(z.number()) }),
+  invalid: z.object({ total: z.number(), byReason: z.record(z.number()) }),
+  duplicate: z.number(),
+  pricePaise: z.number(),
+  gstBp: z.number(),
+  priceWithGstPaise: z.number(),
+  chargePaise: z.number(),
+  availablePaise: z.number(),
+  balancePaise: z.number(),
+  balanceAfterPaise: z.number(),
+  limitWarning: z.object({ limit: z.number() }).nullable(),
+  estimate: DeliveryEstimate,
+});
+export type CampaignSummary = z.infer<typeof CampaignSummary>;
+
+export const OptOutList = z.object({
+  items: z.array(z.object({ number: z.string(), source: z.string(), createdAt: z.string() })),
+  nextCursor: z.string().nullable(),
+});
+export const OptOutsAdded = z.object({ added: z.number(), invalid: z.number() });

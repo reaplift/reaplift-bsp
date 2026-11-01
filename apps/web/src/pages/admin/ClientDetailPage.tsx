@@ -7,12 +7,14 @@ import { useAction, useLoad } from '../../hooks/useLoad';
 import { workspacePath } from '../../paths';
 import { ClientMoney, ClientPrices } from './ClientMoney';
 import { ClientNumber } from './ClientNumber';
+import { ClientOptOuts } from './ClientOptOuts';
 import { ClientStaff } from './ClientStaff';
 
 const TABS = [
   { key: 'overview', label: 'Overview' },
   { key: 'money', label: 'Money and prices' },
   { key: 'number', label: 'WhatsApp number' },
+  { key: 'optouts', label: 'Opt-outs' },
   { key: 'logins', label: 'Logins' },
   { key: 'staff', label: 'Staff' },
 ] as const;
@@ -196,6 +198,8 @@ export function ClientDetailPage() {
       )}
 
       {tab === 'number' && <ClientNumber clientId={id} />}
+
+      {tab === 'optouts' && <ClientOptOuts clientId={id} />}
 
       {tab === 'logins' && (
       <Panel title="Logins" hint="The people at this client who can log in. Disabling logs them out at once. Resetting a password logs them out and makes them choose a new one.">

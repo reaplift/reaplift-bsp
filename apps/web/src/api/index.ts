@@ -10,7 +10,16 @@ import {
   DeliveryLog,
   GstRateList,
   GstReport,
+  AudienceList,
+  AudienceUploaded,
+  CampaignDetail,
+  CampaignList,
+  CampaignSummary,
+  CampaignView,
   LedgerPage,
+  OptOutList,
+  OptOutsAdded,
+  type VariableMap,
   LimitUsage,
   LoginResponse,
   MetaRateList,
@@ -135,6 +144,31 @@ export function createApi(transport: () => Transport | Promise<Transport>) {
       send({ method: 'POST', path: `/api/clients/${clientId}/templates/${id}/copy`, body: { name } }, TemplateView),
     uploadTemplateMedia: (clientId: string, id: string, file: File) =>
       send({ method: 'POST', path: `/api/clients/${clientId}/templates/${id}/media`, file }, TemplateView),
+
+    uploadAudience: (clientId: string, file: Blob, fileName: string) =>
+      send(
+        { method: 'POST', path: `/api/clients/${clientId}/lists${query({ fileName, optIn: 'true' })}`, file },
+        AudienceUploaded,
+      ),
+    audience: (clientId: string, id: string) => send({ method: 'GET', path: `/api/clients/${clientId}/lists/${id}` }, AudienceList),
+    setNumberColumn: (clientId: string, id: string, column: number) =>
+      send({ method: 'PUT', path: `/api/clients/${clientId}/lists/${id}/number-column`, body: { column } }, null),
+    campaigns: (clientId: string) => send({ method: 'GET', path: `/api/clients/${clientId}/campaigns` }, CampaignList),
+    campaign: (clientId: string, id: string) =>
+      send({ method: 'GET', path: `/api/clients/${clientId}/campaigns/${id}` }, CampaignDetail),
+    createCampaign: (clientId: string, body: { name: string; templateId: string; listId: string }) =>
+      send({ method: 'POST', path: `/api/clients/${clientId}/campaigns`, body }, CampaignView),
+    setCampaignVariables: (clientId: string, id: string, variableMap: VariableMap) =>
+      send({ method: 'PUT', path: `/api/clients/${clientId}/campaigns/${id}`, body: { variableMap } }, null),
+    campaignSummary: (clientId: string, id: string) =>
+      send({ method: 'GET', path: `/api/clients/${clientId}/campaigns/${id}/summary` }, CampaignSummary),
+    confirmCampaign: (clientId: string, id: string) =>
+      send({ method: 'POST', path: `/api/clients/${clientId}/campaigns/${id}/confirm` }, null),
+    optOuts: (clientId: string) => send({ method: 'GET', path: `/api/admin/clients/${clientId}/opt-outs` }, OptOutList),
+    addOptOuts: (clientId: string, numbers: string[]) =>
+      send({ method: 'POST', path: `/api/admin/clients/${clientId}/opt-outs`, body: { numbers } }, OptOutsAdded),
+    removeOptOut: (clientId: string, number: string) =>
+      send({ method: 'DELETE', path: `/api/admin/clients/${clientId}/opt-outs/${number}` }, null),
 
     wallet: (clientId: string) => send({ method: 'GET', path: `/api/clients/${clientId}/wallet` }, WalletView),
     ledger: (clientId: string, filter: { kind?: string; from?: string; to?: string; cursor?: string; limit?: string }) =>

@@ -133,6 +133,7 @@ export const TemplateView = z.object({
   language: z.string(),
   category: TemplateCategory,
   components: z.array(TemplateComponent),
+  variableCount: z.number().optional(),
   status: z.string(),
   validationErrors: z.array(TemplateFailure).nullable(),
   rejectionReason: z.string().nullable(),

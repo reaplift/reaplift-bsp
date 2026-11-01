@@ -185,7 +185,6 @@ describe('the worked example: what each user sees', () => {
 describe('workspace pages', () => {
   it.each([
     ['dashboard', 'Dashboard', 'No campaign activity yet. Figures appear here once campaigns are sent.'],
-    ['campaign', 'Push Campaign', 'No campaigns yet. Creating campaigns is coming soon.'],
     ['reports', 'Reports', 'This page is coming soon.'],
   ])('%s shows "%s" and its empty or coming-soon text, and is marked active', async (page, title, text) => {
     open(`${NORTHWIND}/${page}`, await loggedInAs('ops@northwind.com'));
