@@ -118,6 +118,8 @@ export function createApi(transport: () => Transport | Promise<Transport>) {
       send({ method: 'PUT', path: `/api/admin/users/${id}/clients`, body: { clientIds } }, null),
 
     waAccounts: (clientId: string) => send({ method: 'GET', path: `/api/clients/${clientId}/wa-accounts` }, WaAccountList),
+    embeddedSignup: (clientId: string, body: { code: string; wabaId: string; phoneNumberId: string }) =>
+      send({ method: 'POST', path: `/api/clients/${clientId}/wa-accounts/embedded-signup`, body }, WaAccount),
     connectNumber: (clientId: string, body: { wabaId: string; phoneNumberId: string; token: string }) =>
       send({ method: 'POST', path: `/api/admin/clients/${clientId}/wa-accounts`, body }, WaAccount),
     setNumberLimits: (id: string, body: { sendRatePerSec?: number; dailySendLimit?: number | null }) =>

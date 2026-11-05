@@ -113,3 +113,51 @@ server errors: 0
 Automated tests after these screens: integration 271, shared 33, server unit 88, web 144, all passing.
 
 Not proved here: Embedded Signup's button (needs a real Meta app), Resume and Share credit line in the browser (covered by web tests with a stubbed server and by the backend's integration tests), and anything against real Meta.
+
+## Connect WhatsApp in a real browser (5 November 2026)
+
+Task 5.2.1. Real API and Vite panel against the fake Meta server (`pnpm --filter @reaplift/server fake-meta`) on the local `reaplift` database, as `ops@northwind.com` (client), in Chrome. Meta's pop-up cannot open on `http://localhost`, so a stand-in for Meta's SDK was placed in the tab: it sends the `WA_EMBEDDED_SIGNUP` `FINISH` message from `https://www.facebook.com` with `waba_id: waba-northwind`, `phone_number_id: phone-1`, then answers FB.login with the code `good-code`. Everything after that is the real panel, server and database.
+
+Started with:
+
+```bash
+META_API_BASE_URL=http://localhost:4010 META_APP_ID=fake-app META_APP_SECRET=fake-app-secret \
+META_SYSTEM_TOKEN=system-token META_CREDIT_LINE_ID=credit-line-1 \
+VITE_META_APP_ID=fake-app VITE_META_CONFIG_ID=fake-config pnpm dev
+```
+
+What the panel passed to Meta's SDK:
+
+```json
+[{"init":{"appId":"fake-app","autoLogAppEvents":true,"xfbml":true,"version":"v26.0"}},
+ {"login":{"config_id":"fake-config","response_type":"code","override_default_response_type":true,"extras":{"setup":{}}}}]
+```
+
+Server log: `POST /api/clients/863644dc-…/wa-accounts/embedded-signup` → `201` in 101 ms, then `GET …/wa-accounts`. The page showed "919800000000 is connected." and the account box: Active, quality GREEN, daily limit 2K, Meta is paid by ReapLift credit line.
+
+```sql
+select c.name as client, w.waba_id, w.phone_number_id, w.display_phone, w.status, w.meta_payer, w.onboarded_via,
+  w.credit_share_ref, u.email as connected_by,
+  w.access_token_enc::text not like '%business-token%' as token_not_plain_text, w.two_step_pin_enc is not null as pin_saved
+from wa_accounts w join clients c on c.id = w.client_id left join users u on u.id = w.connected_by;
+```
+
+```text
+client               | Northwind Labs
+waba_id              | waba-northwind
+phone_number_id      | phone-1
+display_phone        | 919800000000
+status               | active
+meta_payer           | reaplift_credit_line
+onboarded_via        | embedded_signup
+credit_share_ref     | alloc-1
+connected_by         | ops@northwind.com
+token_not_plain_text | t
+pin_saved            | t
+```
+
+Audit: one `wa_account.connected` row by `ops@northwind.com`. Notifications for `account.connected`: one `email` (pending: no worker running, and E5) and one `panel` (sent) each for `meera@reaplift.com`, `ops@northwind.com` and `ravi@reaplift.com`. Templates copied from Meta: `hello_world`, APPROVED.
+
+Automated tests: web 174 passing (11 new in `embedded-signup.test.ts`: both arrival orders, messages not from `https://*.facebook.com` ignored, CANCEL, ERROR, FINISH_ONLY_WABA, pop-up closed, 10-second wait for the IDs; 5 new in `m5-screens.test.tsx`: off without a Meta app, code and IDs sent and the number shown, cancel sends nothing, META_REFUSED in the client's words, who pays Meta). The 5.2 integration tests and `scope.int.test.ts` pass on a separate database. `numbers-templates.int.test.ts` has one failure, "an account paused by a send error tells everyone once" (expected 3 emails, got 0); it fails the same with these changes removed, so it is not from 5.2.1.
+
+Not proved: Meta's real pop-up, which needs ReapLift's Meta app with an HTTPS address in its allowed domains (E3), and credit-line sharing against real Meta (E7).

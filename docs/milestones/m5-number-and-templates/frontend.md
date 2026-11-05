@@ -12,7 +12,8 @@ Built on 2 November 2026 by Anirudh (owner moved these from Suraj's task list). 
 
 Choices made while building:
 
-- **The Connect WhatsApp button is not working yet.** It is shown disabled in a client's Settings with a note to contact ReapLift. It opens Meta's own pop-up, which needs a real Meta app (E3), so it could not be built or tested here. The server side is built. This keeps M5 from Done.
+- **Connect WhatsApp (built 5 November 2026).** On a client's Settings while no number is connected. It loads Meta's SDK when the page opens (a pop-up opened after a wait is blocked), opens Meta's Embedded Signup v4, waits for both the code and the `FINISH` message with the account and number IDs, and sends them to `POST /api/clients/:clientId/wa-accounts/embedded-signup`. Cancel, Meta's error, a finish with no number, or the IDs not arriving within 10 seconds each show a message and send nothing. Without `VITE_META_APP_ID` and `VITE_META_CONFIG_ID` the button stays disabled with a note to contact ReapLift. Tested in a browser with a stand-in for Meta's SDK ([test-evidence.md](test-evidence.md)); Meta's real pop-up needs ReapLift's Meta app on an HTTPS address (E3), which keeps M5 from Done.
+- The account box on Settings shows who pays Meta for the number ("ReapLift credit line" for numbers connected through Embedded Signup).
 - An open template checks for Meta's answer every 3 seconds while it is on its way, so the result shows without a reload.
 - The Share credit line button shows only on a number waiting for it; Resume shows on any other paused number.
 - A rejected template is edited first and then submitted, as it cannot go back to Meta unchanged.
