@@ -1,6 +1,6 @@
 # M7. Campaigns: create, send, track
 
-- Status: In progress. Backend 7.1 to 7.10 built on 31 October 2026; see [test-evidence.md](test-evidence.md). Screens built on 2 November 2026 ([frontend.md](frontend.md)); owner review and real Meta testing left.
+- Status: In progress. Backend 7.1 to 7.10 built on 31 October 2026; see [test-evidence.md](test-evidence.md). Screens built on 2 November 2026 ([frontend.md](frontend.md)). The worked example ran at full size against a fake Meta server on 5 November 2026 ([e2e.md](e2e.md)); owner review and the real half of the demo (test number, team phones, a real STOP; E1, E2) left.
 - Owner: Anirudh
 - Starts after: M5 (approved templates, connected numbers), M6 (prices and wallet)
 - External prerequisites: none beyond those of M4 and M5
