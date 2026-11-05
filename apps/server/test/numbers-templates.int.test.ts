@@ -34,6 +34,12 @@ const call = (email: string, method: 'GET' | 'POST' | 'PUT', url: string, payloa
   });
 // Ahead of the world's clock, which stamps the rows the routes write.
 const later = () => new Date('2026-11-03T00:00:00Z');
+/** A queued `cli` message due on the test's clock; the column's default is the database's real time, which is after `later()`. */
+const queueMessage = (accountId: string, templateId: string) =>
+  w.pool.query(
+    `insert into messages (client_id, wa_account_id, template_id, to_number, source, next_attempt_at) values ($1, $2, $3, '919812345678', 'cli', $4)`,
+    [w.ids.northwind, accountId, templateId, later()],
+  );
 const deps = () => ({ db: w.db, meta, encryptionKey: KEY });
 const submit = (now = later()) => submitDue(deps(), now);
 const rowsOf = async (query: string, values: unknown[] = []) => (await w.pool.query(query, values)).rows;
@@ -436,10 +442,7 @@ describe('5.5 quality and limit', () => {
   it('stops sending while paused for quality', async () => {
     const { id } = await connect(w.ids.northwind);
     const template = (await rowsOf(`select id from templates where name = 'hello_world'`))[0].id;
-    await w.pool.query(
-      `insert into messages (client_id, wa_account_id, template_id, to_number, source) values ($1, $2, $3, '919812345678', 'cli')`,
-      [w.ids.northwind, id, template],
-    );
+    await queueMessage(id, template);
     fake.quality = 'RED';
     await syncQuality(deps());
     fake.requests.length = 0;
@@ -479,12 +482,7 @@ describe('5.6 notifications', () => {
   it('an account paused by a send error tells everyone once', async () => {
     const { id } = await connect(w.ids.northwind);
     const template = (await rowsOf(`select id from templates where name = 'hello_world'`))[0].id;
-    for (let i = 0; i < 2; i++) {
-      await w.pool.query(
-        `insert into messages (client_id, wa_account_id, template_id, to_number, source) values ($1, $2, $3, '919812345678', 'cli')`,
-        [w.ids.northwind, id, template],
-      );
-    }
+    for (let i = 0; i < 2; i++) await queueMessage(id, template);
     fake.queueSendResponses(metaError(401, 190), metaError(401, 190));
     await sendDue({ ...deps(), pacer: new AccountPacer() }, later());
     expect((await rowsOf(`select count(*) from notifications where event = 'account.paused' and channel = 'email'`))[0].count).toBe(3);
