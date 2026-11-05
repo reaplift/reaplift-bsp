@@ -13,7 +13,7 @@ const PASSWORD = 'reaplift-dev-1';
 const NORTHWIND = '/clients/client-northwind';
 const BLUEBIRD = '/clients/client-bluebird';
 const GREENLEAF = '/clients/client-greenleaf';
-const ADMIN_MENU = ['Clients', 'Staff', 'Numbers and limits', 'Settings', 'Audit log', 'Delivery log'];
+const ADMIN_MENU = ['Clients', 'Staff', 'Campaigns', 'Numbers and limits', 'Settings', 'Audit log', 'Delivery log'];
 const WORKSPACE_MENU = ['Dashboard', 'Push Campaign', 'Templates', 'Reports', 'Wallet', 'Settings'];
 
 /** Shows the current address, so a test can check where a redirect landed. */

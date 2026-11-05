@@ -1,7 +1,7 @@
 # M8. Campaign controls and rules
 
-- Status: In progress. Backend 8.1 to 8.5 built on 31 October 2026; see [test-evidence.md](test-evidence.md). Screens are not started.
-- Owner: Anirudh (backend); screens unassigned
+- Status: In progress. Backend 8.1 to 8.5 built on 31 October 2026; see [test-evidence.md](test-evidence.md). Screens built on 5 November 2026 ([frontend.md](frontend.md)) and the demo run in a browser against a fake Meta server ([e2e.md](e2e.md)); owner review left.
+- Owner: Anirudh (backend); Suraj (screens)
 - Starts after: M7. The backend started early (tracker, 31 October 2026).
 - External prerequisites: none. D5 (approve the cancel money flow) before task 8.2 is coded.
 

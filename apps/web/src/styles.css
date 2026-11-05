@@ -843,6 +843,26 @@ textarea {
   color: #7f1d1d;
 }
 
+.diagnosis-headline {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.schedule-form {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
+  justify-items: start;
+}
+
+.schedule-form h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
 .button-row {
   display: flex;
   flex-wrap: wrap;

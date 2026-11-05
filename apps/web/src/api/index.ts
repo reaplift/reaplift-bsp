@@ -12,8 +12,14 @@ import {
   GstReport,
   AudienceList,
   AudienceUploaded,
+  AdminCampaignList,
+  CampaignCancelled,
   CampaignDetail,
+  CampaignDiagnosis,
   CampaignList,
+  CampaignScheduled,
+  RuleList,
+  type RuleInput,
   CampaignSummary,
   CampaignView,
   LedgerPage,
@@ -166,6 +172,21 @@ export function createApi(transport: () => Transport | Promise<Transport>) {
       send({ method: 'GET', path: `/api/clients/${clientId}/campaigns/${id}/summary` }, CampaignSummary),
     confirmCampaign: (clientId: string, id: string) =>
       send({ method: 'POST', path: `/api/clients/${clientId}/campaigns/${id}/confirm` }, null),
+    pauseCampaign: (clientId: string, id: string) =>
+      send({ method: 'POST', path: `/api/clients/${clientId}/campaigns/${id}/pause` }, null),
+    resumeCampaign: (clientId: string, id: string) =>
+      send({ method: 'POST', path: `/api/clients/${clientId}/campaigns/${id}/resume` }, null),
+    cancelCampaign: (clientId: string, id: string) =>
+      send({ method: 'POST', path: `/api/clients/${clientId}/campaigns/${id}/cancel` }, CampaignCancelled),
+    scheduleCampaign: (clientId: string, id: string, at: string) =>
+      send({ method: 'POST', path: `/api/clients/${clientId}/campaigns/${id}/schedule`, body: { at } }, CampaignScheduled),
+    unscheduleCampaign: (clientId: string, id: string) =>
+      send({ method: 'POST', path: `/api/clients/${clientId}/campaigns/${id}/unschedule` }, null),
+    rules: () => send({ method: 'GET', path: '/api/admin/rules' }, RuleList),
+    saveRule: (body: RuleInput) => send({ method: 'PUT', path: '/api/admin/rules', body }, null),
+    adminCampaigns: (filter: { clientId?: string; status?: string }) =>
+      send({ method: 'GET', path: `/api/admin/campaigns${query(filter)}` }, AdminCampaignList),
+    campaignDiagnosis: (id: string) => send({ method: 'GET', path: `/api/admin/campaigns/${id}/diagnosis` }, CampaignDiagnosis),
     optOuts: (clientId: string) => send({ method: 'GET', path: `/api/admin/clients/${clientId}/opt-outs` }, OptOutList),
     addOptOuts: (clientId: string, numbers: string[]) =>
       send({ method: 'POST', path: `/api/admin/clients/${clientId}/opt-outs`, body: { numbers } }, OptOutsAdded),

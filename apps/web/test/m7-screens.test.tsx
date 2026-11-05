@@ -260,7 +260,6 @@ describe('a confirmed campaign', () => {
     expect((await tile('Read')).textContent).toBe('25');
     expect(screen.getByText('Net').nextElementSibling?.textContent).toBe('₹891.10');
     expect(screen.getByText('Meta limit, not retried')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: /Pause|Cancel/ })).toBeNull();
   });
 
   it('confirming moves from the summary to the live page', async () => {

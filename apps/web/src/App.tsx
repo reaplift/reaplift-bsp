@@ -5,6 +5,7 @@ import { useAuth } from './auth/context';
 import { ComingSoon } from './components/ComingSoon';
 import { Layout, type NavItem } from './components/Layout';
 import { AuditPageView } from './pages/admin/AuditPage';
+import { CampaignsPage } from './pages/admin/CampaignsPage';
 import { ClientDetailPage } from './pages/admin/ClientDetailPage';
 import { ClientsPage } from './pages/admin/ClientsPage';
 import { DeliveryLogPage } from './pages/admin/DeliveryLogPage';
@@ -27,6 +28,7 @@ const adminNav = (me: MeResponse): NavItem[] =>
     ? [
         { to: '/admin/clients', label: 'Clients' },
         { to: '/admin/staff', label: 'Staff' },
+        { to: '/admin/campaigns', label: 'Campaigns' },
         { to: '/admin/numbers', label: 'Numbers and limits' },
         { to: '/admin/settings', label: 'Settings' },
         { to: '/admin/audit', label: 'Audit log' },
@@ -144,6 +146,7 @@ export function App() {
                 <Route path="clients" element={<ClientsPage />} />
                 <Route path="clients/:id" element={<ClientDetailPage />} />
                 <Route path="staff" element={<StaffPage />} />
+                <Route path="campaigns" element={<CampaignsPage />} />
                 <Route path="numbers" element={<NumbersPage />} />
                 <Route path="settings" element={<SettingsPage />} />
                 <Route path="audit" element={<AuditPageView />} />
