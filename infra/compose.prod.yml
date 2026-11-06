@@ -1,0 +1,97 @@
+# Production: every service on the one server, from one image (M10 task 10.1).
+#
+# On the server, /opt/reaplift holds this file and its .env (mode 600); the deploy (M10 10.4) runs
+#   REAPLIFT_VERSION=<commit> docker compose -f compose.prod.yml up -d
+# On a laptop, from the repo root:
+#   docker build -t reaplift-bsp:local .
+#   cp .env.example infra/.env        # then set POSTGRES_PASSWORD in infra/.env
+#   docker compose -f infra/compose.prod.yml up -d
+#   curl http://127.0.0.1:3000/healthz
+#
+# REAPLIFT_VERSION is both the image tag and what /healthz reports, so a deploy can see its commit is live.
+# Leave APP_VERSION and DATABASE_URL out of .env: they are set here and would be overridden anyway.
+name: reaplift
+
+x-env: &env
+  DATABASE_URL: postgres://reaplift:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/reaplift
+  APP_VERSION: ${REAPLIFT_VERSION:-local}
+  UPLOAD_DIR: /app/uploads
+
+x-app: &app
+  image: ${REAPLIFT_IMAGE:-reaplift-bsp}:${REAPLIFT_VERSION:-local}
+  env_file: .env
+  restart: unless-stopped
+  volumes:
+    # Local disk until Object Storage (M10 10.5); shared, as the api writes uploads and the worker sends media.
+    - uploads:/app/uploads
+  depends_on:
+    migrate: { condition: service_completed_successfully }
+  logging: &logging
+    driver: json-file
+    options: { max-size: 20m, max-file: '5' }
+
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: reaplift
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: reaplift
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # No ports: reachable by the other containers only, never from outside the server.
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U reaplift']
+      interval: 2s
+      retries: 30
+    logging: *logging
+
+  # Runs once per `up`, before anything else starts. Migrations only add things, so the previous image still works after it.
+  migrate:
+    <<: *app
+    command: ['node', 'dist/main.js', '--mode=migrate']
+    environment: { <<: *env, MODE: migrate }
+    restart: 'no'
+    volumes: []
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  # Panel routes and Meta's webhooks. Bound to the server itself; Caddy (M10 10.3) is the way in from outside.
+  api:
+    <<: *app
+    environment: { <<: *env, MODE: api, PORT: '3000' }
+    ports:
+      - '127.0.0.1:${API_PORT:-3000}:3000'
+    healthcheck:
+      # The image has no curl; Node's fetch does the same job.
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/healthz').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+  # Turns the webhooks the api stored into message statuses. Its own container, so a busy panel never delays them.
+  receiver:
+    <<: *app
+    environment: { <<: *env, MODE: receiver }
+
+  # Sends queued messages and notification emails.
+  worker:
+    <<: *app
+    environment: { <<: *env, MODE: worker }
+
+  # Timed jobs: template and quality sync, scheduled campaigns, daily figures, ledger and credit line checks.
+  scheduler:
+    <<: *app
+    environment: { <<: *env, MODE: scheduler }
+
+volumes:
+  pgdata:
+  uploads:
