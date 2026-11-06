@@ -1,6 +1,6 @@
 # M3. Client onboarding
 
-- Status: Built. Backend 3.1 to 3.7 and screens S3 to S6 work together in a real browser; see [test-evidence.md](test-evidence.md) and [frontend.md](frontend.md). Left for Done: the demo's server restart, and the owner's review.
+- Status: Built. Backend 3.1 to 3.7 and screens S3 to S6 work together in a real browser; see [test-evidence.md](test-evidence.md) and [frontend.md](frontend.md). The demo, including the server restart, was run end to end on 6 November 2026 ([e2e.md](e2e.md)). Left for Done: the owner's review, and D15 in the tracker (a staff assignment is not in a client's audit list, so step 7 is missing its "staff assigned" row).
 - Owner: Anirudh (backend and screens, moved from Suraj on 31 October and 2 November 2026)
 - Starts after: M1 (logins and scope), M2 (notifications; may start while M2 is Built, using the fake provider)
 - External prerequisites: none (E5 only for real emails; the fake provider is enough for the demo)
