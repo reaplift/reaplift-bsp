@@ -22,6 +22,11 @@ import {
   type RuleInput,
   CampaignSummary,
   CampaignView,
+  DashboardView,
+  MetaInvoiceCheck,
+  MetaInvoiceList,
+  MetaView,
+  MonthlyReport,
   LedgerPage,
   OptOutList,
   OptOutsAdded,
@@ -229,6 +234,16 @@ export function createApi(transport: () => Transport | Promise<Transport>) {
     addGstRate: (body: { rateBp: number; validFrom: string }) =>
       send({ method: 'POST', path: '/api/admin/gst-rates', body }, null),
     gstReport: (month: string) => send({ method: 'GET', path: `/api/admin/gst-report${query({ month })}` }, GstReport),
+
+    dashboard: (clientId: string) => send({ method: 'GET', path: `/api/clients/${clientId}/dashboard` }, DashboardView),
+    monthlyReport: (clientId: string, month: string) =>
+      send({ method: 'GET', path: `/api/clients/${clientId}/reports/monthly${query({ month })}` }, MonthlyReport),
+    metaView: (month: string) => send({ method: 'GET', path: `/api/admin/meta-view${query({ month })}` }, MetaView),
+    setCreditLimit: (limitPaise: number) =>
+      send({ method: 'PUT', path: '/api/admin/credit-limit', body: { limitPaise } }, null),
+    metaInvoices: () => send({ method: 'GET', path: '/api/admin/meta-invoices' }, MetaInvoiceList),
+    addMetaInvoice: (body: { month: string; totalPaise: number; perAccount?: Record<string, number> }) =>
+      send({ method: 'POST', path: '/api/admin/meta-invoices', body }, MetaInvoiceCheck),
 
     audit: (filter: { clientId?: string; userId?: string; action?: string; from?: string; to?: string; cursor?: string }) =>
       send({ method: 'GET', path: `/api/admin/audit${query(filter)}` }, AuditPage),

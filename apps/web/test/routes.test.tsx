@@ -13,7 +13,7 @@ const PASSWORD = 'reaplift-dev-1';
 const NORTHWIND = '/clients/client-northwind';
 const BLUEBIRD = '/clients/client-bluebird';
 const GREENLEAF = '/clients/client-greenleaf';
-const ADMIN_MENU = ['Clients', 'Staff', 'Campaigns', 'Numbers and limits', 'Settings', 'Audit log', 'Delivery log'];
+const ADMIN_MENU = ['Clients', 'Staff', 'Campaigns', 'Numbers and limits', 'Meta cost and margin', 'Settings', 'Audit log', 'Delivery log'];
 const WORKSPACE_MENU = ['Dashboard', 'Push Campaign', 'Templates', 'Reports', 'Wallet', 'Settings'];
 
 /** Shows the current address, so a test can check where a redirect landed. */
@@ -184,12 +184,11 @@ describe('the worked example: what each user sees', () => {
 
 describe('workspace pages', () => {
   it.each([
-    ['dashboard', 'Dashboard', 'No campaign activity yet. Figures appear here once campaigns are sent.'],
-    ['reports', 'Reports', 'This page is coming soon.'],
-  ])('%s shows "%s" and its empty or coming-soon text, and is marked active', async (page, title, text) => {
+    ['dashboard', 'Dashboard'],
+    ['reports', 'Reports'],
+  ])('%s shows "%s" and is marked active', async (page, title) => {
     open(`${NORTHWIND}/${page}`, await loggedInAs('ops@northwind.com'));
     expect(await screen.findByRole('heading', { level: 2, name: title })).toBeDefined();
-    expect(screen.getByText(text)).toBeDefined();
     expect(screen.getByRole('link', { name: title }).className).toBe('nav-item active');
   });
 
@@ -303,9 +302,9 @@ describe('logging in and out through the page', () => {
     await screen.findByRole('heading', { level: 2, name: 'Dashboard' });
     down = true;
     await userEvent.click(screen.getByRole('button', { name: 'Log out' }));
-    expect((await screen.findByRole('alert')).textContent).toBe(
-      'Cannot reach the server. Check your connection and try again.',
-    );
+    // The dashboard has its own alert (the mock has no figures), so find the logout's by its words.
+    const alert = await screen.findByText('Cannot reach the server. Check your connection and try again.');
+    expect(alert.getAttribute('role')).toBe('alert');
     expect(where()).toBe(`${NORTHWIND}/dashboard`);
   });
 });

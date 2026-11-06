@@ -27,7 +27,7 @@ flowchart LR
   M6["M6 Wallet, prices, GST<br/>backend and screens built"]:::review
   M7["M7 Campaigns: create, send,<br/>track, backend and screens built"]:::review
   M8["M8 Campaign controls<br/>and rules, backend and<br/>screens built"]:::review
-  M9["M9 Reports and dashboard"]:::backend
+  M9["M9 Reports and dashboard,<br/>backend and screens built"]:::review
   M10["M10 Cloud deploy"]:::todo
   M11["M11 Pilot go-live"]:::todo
 
@@ -60,14 +60,14 @@ As of 2 November 2026:
 | Colour | Meaning | Milestones |
 | --- | --- | --- |
 | Green | Done | M0, M1 |
-| Blue | Backend and screens built and tested; waits on the owner's review | M3, M5, M6, M7, M8 |
+| Blue | Backend and screens built and tested; waits on the owner's review | M3, M5, M6, M7, M8, M9 |
 | Purple | Backend built and tested against fakes; has no screens of its own to wait for, and waits on an outside prerequisite | M2, M4 |
-| Yellow | Backend built and tested against the fake Meta server; screens not built | M9 |
+| Yellow | Backend built and tested against the fake Meta server; screens not built | none |
 | Grey | Not started | M10, M11 |
 
 Only Done means finished. M5, M7 and M9 also need real Meta access or a real invoice before they can be Done.
 
-Next in order: M9's screens. M8's were built by Suraj on 5 November 2026, although the owner had given them to Anirudh on 2 November. M10 needs Oracle access (E4), and M11 needs everything before it.
+Next in order: the owner's reviews of M3 and M5 to M9. M9's screens were built by Suraj on 6 November 2026, and M8's on 5 November, although the owner had given both to Anirudh on 2 November. M10 needs Oracle access (E4), and M11 needs everything before it.
 
 ## Status board
 
@@ -84,7 +84,7 @@ Update your row in the same pull request that changes a task's status.
 | [M6](milestones/m6-wallet/spec.md) Wallet and prices                          | Super admin sets prices and tops up; client sees balance and every ledger row                       | Backend and screens built, including GST; demo run end to end on 5 November 2026 ([e2e.md](milestones/m6-wallet/e2e.md)); owner review and ReapLift's pricing and GST answers left | Anirudh | M3 (started early, see the decision log) | none                           |
 | [M7](milestones/m7-campaigns/spec.md) Campaigns                               | Client uploads an audience, sees the summary, confirms, is charged, and watches messages deliver    | In progress: backend 7.1 to 7.10 built; screens built and tested in a browser against the fake Meta server ([frontend.md](milestones/m7-campaigns/frontend.md)); worked example run at full size on the fake Meta server on 5 November 2026 ([e2e.md](milestones/m7-campaigns/e2e.md)); owner review and real Meta testing left | Anirudh | M5, M6 (started early, see the decision log) | none                           |
 | [M8](milestones/m8-campaign-controls/spec.md) Campaign controls and rules     | Client pauses, resumes, cancels or schedules a campaign with exact money handling; rules apply      | In progress: backend 8.1 to 8.5 built; screens built and the demo run in a browser against the fake Meta server on 5 November 2026 ([e2e.md](milestones/m8-campaign-controls/e2e.md)); owner review left | Anirudh (backend), Suraj (screens) | M7 (started early, see the decision log) | none                           |
-| [M9](milestones/m9-reports/spec.md) Reports and dashboard                     | Dashboard and downloads match a hand count; super admin sees Meta cost and margin                   | In progress: backend 9.1 to 9.8 built; screens not started | Anirudh (backend); screens unassigned | M7 (started early, see the decision log) | none                           |
+| [M9](milestones/m9-reports/spec.md) Reports and dashboard                     | Dashboard and downloads match a hand count; super admin sees Meta cost and margin                   | In progress: backend 9.1 to 9.8 built; screens built and the demo run in a browser against the real server on 6 November 2026 ([e2e.md](milestones/m9-reports/e2e.md)); owner review, the dashboard count question and E7's real invoice left | Anirudh (backend), Suraj (screens) | M7 (started early, see the decision log) | none                           |
 | [M10](milestones/m10-cloud-deploy/spec.md) Cloud deploy                       | A merge to `main` deploys to the cloud server with HTTPS, health check, rollback and backups        | Not started                                                                                              | Unassigned                         | M0           | E4                             |
 | [M11](milestones/m11-pilot/spec.md) Pilot go-live                             | One client runs its campaigns on ReapLift for two weeks with no fallback to Dovesoft                | Not started                                                                                              | ReapLift                           | M8, M9, M10  | E1 to E7                       |
 
@@ -349,6 +349,6 @@ Do them in order; each one builds on the last. A connect task goes right after t
 
 | Person   | Milestone     | Next task                                                                                         | Waiting on |
 | -------- | ------------- | ------------------------------------------------------------------------------------------------- | ---------- |
-| Anirudh  | Screens       | M9 screens; M4 real-phone demo when E1 and E2 are ready                               | E1, E2 for the demo |
-| Suraj    | M8 screens    | Built 5 November 2026; next task to agree with the owner and Anirudh                               | owner      |
+| Anirudh  | Real Meta     | M4 real-phone demo when E1 and E2 are ready                                           | E1, E2 for the demo |
+| Suraj    | M9 screens    | Built 6 November 2026 (M8's on 5 November); next task to agree with the owner and Anirudh          | owner      |
 | ReapLift | none          | E3 (Business Verification, App Review); continue E7 with Meta; E1, E2, E5; answer D10 to D12      | none       |
