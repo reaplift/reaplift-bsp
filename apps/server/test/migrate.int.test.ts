@@ -82,6 +82,7 @@ describe.sequential('migrate', () => {
     expect(columns.rows.map((row) => row.column_name)).toContain('created_at');
     expect(columns.rows.map((row) => row.column_name)).toContain('role');
     expect(columns.rows.map((row) => row.column_name)).toContain('locked_until');
+    expect(columns.rows.map((row) => row.column_name)).toContain('login_locked_at');
     expect(columns.rows.map((row) => row.column_name)).toContain('created_by');
   });
 });

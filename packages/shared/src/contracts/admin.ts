@@ -59,8 +59,10 @@ export const AdminClientDetail = AdminClient.extend({
   statusHistory: z.array(
     z.object({ action: z.string(), note: z.string().nullable(), byName: z.string().nullable(), at: z.string() }),
   ),
-  users: z.array(z.object({ id: z.string(), name: z.string(), email: z.string(), role: z.string(), status: PersonStatus })),
-  staff: z.array(z.object({ id: z.string(), name: z.string(), email: z.string(), status: PersonStatus })),
+  users: z.array(
+    z.object({ id: z.string(), name: z.string(), email: z.string(), role: z.string(), status: PersonStatus, locked: z.boolean().optional() }),
+  ),
+  staff: z.array(z.object({ id: z.string(), name: z.string(), email: z.string(), status: PersonStatus, locked: z.boolean().optional() })),
 });
 export type AdminClientDetail = z.infer<typeof AdminClientDetail>;
 
@@ -70,6 +72,8 @@ export const AdminUser = z.object({
   email: z.string(),
   role: z.string(),
   status: PersonStatus,
+  /** Locked by wrong passwords: for 24 hours, or until a super admin unlocks it. */
+  locked: z.boolean().optional(),
   clientId: z.string().nullable(),
   lastLoginAt: z.string().nullable(),
   assignedClientIds: z.array(z.string()),

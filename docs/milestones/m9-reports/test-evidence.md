@@ -1,6 +1,6 @@
 # M9 test evidence
 
-Run on 31 October 2026. **Backend only, against the fake Meta server:** the dashboard and report screens are not built, and no real Meta invoice exists until E7, so M9 is not Done.
+Run on 31 October 2026. **Backend only, against the fake Meta server, as it was then.** The screens came later; see [frontend.md](frontend.md) and [e2e.md](e2e.md). No real Meta invoice exists until E7, so M9 is not Done.
 
 ## Run it
 

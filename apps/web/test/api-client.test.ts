@@ -42,7 +42,7 @@ describe('call', () => {
     expect([err.status, err.code, err.message]).toEqual([401, 'INVALID_CREDENTIALS', 'Wrong email or password']);
   });
 
-  it('keeps the whole body, so a 423 still carries lockedUntil', async () => {
+  it('keeps the whole body, for errors that carry more', async () => {
     const body = { error: 'LOGIN_LOCKED', message: 'Locked', lockedUntil: '2026-10-30T05:35:26.274Z' };
     const err = await failure(call(answer({ status: 423, body }), login, LoginResponse));
     expect(err.code).toBe('LOGIN_LOCKED');

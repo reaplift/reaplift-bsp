@@ -61,6 +61,10 @@ Out: operational alerts (account paused, stuck sends, disk, backups missing, hea
 ### 10.3 Caddy HTTPS and routing
 
 - Add the address to ReapLift's Meta app: the webhook callback, and the allowed domain for Embedded Signup (M5 5.2).
+- Security, from the review of 7 November 2026 ([security-review.md](../../security-review.md)):
+  - The panel's pages get the headers the API already sends: `Content-Security-Policy` (scripts only from our own address and Meta's SDK for Embedded Signup), `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, and `Strict-Transport-Security`.
+  - Rate limits at Caddy, per address: logins tightly (a password check is deliberately slow and uses memory), uploads, and the API as a whole. The API then has to read the caller's real address from Caddy (Fastify's `trustProxy`), or every user shares Caddy's address and its login lock.
+  - `APP_ENCRYPTION_KEY` is set once and backed up with the database backups (10.6). A new key cannot read stored Meta tokens, so every number would pause until its token is entered again.
 - Acceptance: the browser shows a valid certificate; Meta's dashboard verifies the webhook address.
 
 ### 10.4 Deploy pipeline with rollback

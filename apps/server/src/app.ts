@@ -87,6 +87,24 @@ export function buildApp({
       done(err as Error, undefined);
     }
   });
+  // The API answers data, never pages: nothing may frame it, guess its type, or keep a copy of it.
+  app.addHook('onSend', async (_req, reply, payload) => {
+    reply.header('x-content-type-options', 'nosniff');
+    reply.header('x-frame-options', 'DENY');
+    reply.header('content-security-policy', "default-src 'none'; frame-ancestors 'none'");
+    reply.header('referrer-policy', 'no-referrer');
+    reply.header('cache-control', 'no-store');
+    return payload;
+  });
+  // An unexpected error answers in general terms: its message can carry SQL or file paths. The log keeps the detail.
+  app.setErrorHandler((err: { statusCode?: number; code?: string; message: string }, req, reply) => {
+    const status = err.statusCode ?? 500;
+    if (status >= 500) {
+      req.log.error({ err }, 'request failed');
+      return reply.code(500).send({ error: 'INTERNAL', message: 'Something went wrong. Please try again.' });
+    }
+    return reply.code(status).send({ error: err.code ?? 'INVALID_REQUEST', message: err.message });
+  });
   registerScope(app, { db, now, panelOrigin });
   registerAuthRoutes(app, { db, now, cookieSecure });
   registerAdminRoutes(app, { db, now, panelOrigin });

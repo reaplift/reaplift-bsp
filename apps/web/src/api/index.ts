@@ -123,6 +123,7 @@ export function createApi(transport: () => Transport | Promise<Transport>) {
     }) => send({ method: 'POST', path: '/api/admin/users', body }, null),
     setUserStatus: (id: string, status: 'active' | 'disabled') =>
       send({ method: 'PATCH', path: `/api/admin/users/${id}`, body: { status } }, null),
+    unlockUser: (id: string) => send({ method: 'POST', path: `/api/admin/users/${id}/unlock` }, null),
     resetPassword: (id: string, password: string) =>
       send({ method: 'POST', path: `/api/admin/users/${id}/reset-password`, body: { password } }, null),
     setStaffClients: (id: string, clientIds: string[]) =>

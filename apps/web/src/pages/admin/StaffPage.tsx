@@ -136,7 +136,7 @@ export function StaffPage() {
                     <td>{person.name}</td>
                     <td>{person.email}</td>
                     <td>
-                      <StatusPill status={person.status} />
+                      <StatusPill status={person.status} /> {person.locked && <span className="status-pill status-suspended">Locked</span>}
                     </td>
                     <td>
                       {editing === person.id ? (
@@ -151,6 +151,18 @@ export function StaffPage() {
                       )}
                     </td>
                     <td className="row-actions">
+                      {person.locked && (
+                        <button
+                          type="button"
+                          className="small-button"
+                          disabled={action.busy}
+                          onClick={async () => {
+                            if (await action.run(() => api.unlockUser(person.id))) staff.reload();
+                          }}
+                        >
+                          Unlock
+                        </button>
+                      )}
                       <button
                         type="button"
                         className="small-button"

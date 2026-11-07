@@ -16,7 +16,7 @@ Login errors, with the messages from `apps/web/src/api/messages.ts`:
 | Case                                           | Message shown                                                 |
 | ---------------------------------------------- | ------------------------------------------------------------- |
 | Wrong password (or unknown email)              | Wrong email or password.                                      |
-| Right password after 10 failures in 15 minutes | Too many failed logins. Locked until hh:mm.                   |
+| Right password after 5 wrong in a row          | This login is locked for 24 hours after 5 wrong passwords. Ask ReapLift to unlock it sooner. |
 | Server unreachable                             | Cannot reach the server. Check your connection and try again. |
 
 ### Screenshots

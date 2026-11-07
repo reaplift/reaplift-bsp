@@ -1,6 +1,6 @@
 # M6 test evidence
 
-Run on 31 October 2026. **Backend only:** this proves the routes against real PostgreSQL with the fake email provider. The panel's screens are not connected, so M6 is not Done.
+Run on 31 October 2026. **Backend only, as it was then:** this proves the routes against real PostgreSQL with the fake email provider. The screens and the full demo came later; see [frontend.md](frontend.md) and [e2e.md](e2e.md).
 
 ## Run it
 

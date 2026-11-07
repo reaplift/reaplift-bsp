@@ -206,6 +206,14 @@ async function main() {
         password: await readSecret('Password', true),
       });
       console.log(`Created ${role} ${f.email} (${id})`);
+    } else if (command === 'unlock-user') {
+      // The way back in for a super admin whose own login is locked.
+      const email = (flags(rest).email ?? '').trim().toLowerCase();
+      const unlocked = await sql`
+        update users set login_locked_at = null, failed_login_count = null where email = ${email} returning id
+      `.execute(db);
+      if (unlocked.rows.length === 0) throw new UserInputError(`no user with email ${email}`);
+      console.log(`Unlocked ${email}`);
     } else if (command === 'seed-dev') {
       await seedDev(db, config.DATABASE_URL);
     } else if (command === 'seed-account') {

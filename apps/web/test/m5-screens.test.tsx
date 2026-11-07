@@ -338,3 +338,32 @@ describe('asking before a change that cannot be undone quietly', () => {
     expect(field.type).toBe('text');
   });
 });
+
+describe('a locked login', () => {
+  const USER = { id: 'u2', name: 'Bala', email: 'b@n.com', role: 'client', status: 'active', locked: true };
+  const CLIENT_DETAIL = { id: 'c1', name: 'Northwind Labs', status: 'active', countryCallingCode: '91', contactEmail: 'a@n.com', lowBalanceAlertPaise: null, statusHistory: [], users: [USER], staff: [] };
+
+  it('shows Locked, and Unlock asks the server and clears it', async () => {
+    let locked = true;
+    const calls = open('/admin/clients/c1?tab=logins', 'super_admin', {
+      'GET /api/admin/clients/c1': () => ok({ ...CLIENT_DETAIL, users: [{ ...USER, locked }] }),
+      'POST /api/admin/users/u2/unlock': () => {
+        locked = false;
+        return ok({ unlocked: true });
+      },
+    });
+    await screen.findByText('Locked');
+    await userEvent.click(screen.getByRole('button', { name: 'Unlock' }));
+    await screen.findByText(/^Unlocked\./);
+    expect(calls.some((c) => c.method === 'POST' && c.path === '/api/admin/users/u2/unlock')).toBe(true);
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Unlock' })).toBeNull());
+  });
+
+  it('a login that is not locked offers no Unlock', async () => {
+    open('/admin/clients/c1?tab=logins', 'super_admin', {
+      'GET /api/admin/clients/c1': () => ok({ ...CLIENT_DETAIL, users: [{ ...USER, locked: false }] }),
+    });
+    await screen.findByText('Bala');
+    expect(screen.queryByRole('button', { name: 'Unlock' })).toBeNull();
+  });
+});

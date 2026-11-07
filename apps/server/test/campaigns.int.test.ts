@@ -293,6 +293,29 @@ describe('7.4 summary and 7.5 confirm', () => {
     expect((await call(ASHA, 'PUT', `${base()}/campaigns/${id}`, { name: 'late' })).json().error).toBe('NOT_A_DRAFT');
   });
 
+  it('the number column cannot change while a confirm is charging, so every queued number was charged', async () => {
+    await topup(100000);
+    const id = await readyCampaign();
+    const listId = (await rows('select list_id from campaigns where id = $1', [id]))[0].list_id as string;
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    // Holds the confirm's list lock open, as a slow confirm would.
+    const confirm = w.db.transaction().execute(async (trx) => {
+      await sql`select 1 from lists where id = ${listId} for update`.execute(trx);
+      await held;
+    });
+    let moved = false;
+    const change = call(ASHA, 'PUT', `${base()}/lists/${listId}/number-column`, { column: 0 }).then((res) => {
+      moved = true;
+      return res;
+    });
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(moved).toBe(false);
+    release();
+    await confirm;
+    expect((await change).statusCode).toBe(200);
+  });
+
   it('an opt-out added after the summary is caught at confirm', async () => {
     await topup(10000);
     const id = await readyCampaign();

@@ -2,7 +2,7 @@
 
 The commands and output that prove M5's backend. Run on 31 October 2026 as separate real processes (fake Meta, API, worker, receiver, scheduler) over real HTTP and PostgreSQL 16.
 
-**Everything here uses the fake Meta server. The screens were added on 2 November 2026; see the last section.** M5 is In progress: all backend tasks are built, and the screens are not started. The hand run below covers 5.1, 5.3 and 5.4; 5.2, media upload and token replacement are proved by the integration tests only. The questions only Meta can settle are in [open-questions.md](../../open-questions.md).
+**Everything here uses the fake Meta server. The screens were added on 2 November 2026; see the last section.** M5 is In progress: backend and screens are built, and real Meta has not been used. The hand run below covers 5.1, 5.3 and 5.4; 5.2, media upload and token replacement are proved by the integration tests only. The questions only Meta can settle are in [open-questions.md](../../open-questions.md).
 
 ## Set up
 

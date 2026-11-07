@@ -32,23 +32,9 @@ describe('errorMessage', () => {
     expect(errorMessage(new ApiError(401, 'INVALID_CREDENTIALS', 'server text'))).toBe('Wrong email or password.');
   });
 
-  it('names the unlock time for a lockout', () => {
-    const body = { error: 'LOGIN_LOCKED', message: 'm', lockedUntil: '2026-10-30T05:35:26.274Z' };
-    const err = new ApiError(423, 'LOGIN_LOCKED', 'm', body);
-    expect(errorMessage(err, 'Asia/Kolkata')).toBe('Too many failed logins. Locked until 11:05.');
-    expect(errorMessage(err, 'UTC')).toBe('Too many failed logins. Locked until 05:35.');
-  });
-
-  it('uses 24-hour time in the afternoon', () => {
-    const body = { error: 'LOGIN_LOCKED', message: 'm', lockedUntil: '2026-10-30T09:20:00.000Z' };
-    expect(errorMessage(new ApiError(423, 'LOGIN_LOCKED', 'm', body), 'Asia/Kolkata')).toBe(
-      'Too many failed logins. Locked until 14:50.',
-    );
-  });
-
-  it('falls back to the plain lockout message when the time is missing', () => {
+  it('a locked login says who can unlock it', () => {
     expect(errorMessage(new ApiError(423, 'LOGIN_LOCKED', 'm', { error: 'LOGIN_LOCKED', message: 'm' }))).toBe(
-      'Too many failed logins. Please try again later.',
+      'This login is locked for 24 hours after 5 wrong passwords. Ask ReapLift to unlock it sooner.',
     );
   });
 

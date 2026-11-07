@@ -55,7 +55,7 @@ flowchart LR
   classDef todo fill:#eeeeee,stroke:#888,color:#000
 ```
 
-As of 2 November 2026:
+As of 7 November 2026:
 
 | Colour | Meaning | Milestones |
 | --- | --- | --- |
@@ -131,6 +131,12 @@ Each has a default, so work does not stop; the default is built unless the owner
 ## Decision log
 
 Answered questions move here with their date, and the spec is updated in the same pull request.
+
+### 7 November 2026
+
+- **Login lock (owner):** 5 wrong passwords in a row lock a login for 24 hours, even with the right password. A super admin can unlock it sooner, or reset its password, from Admin; both are audited, and the super admins are told when a login locks. Was 10 in 15 minutes, for 15 minutes. Owner asked for 6 or 24 hours; 24 chosen as safer, and the admin unlock covers a real user in a hurry. Changing it is one number. Details in [M1](milestones/m1-login-and-access/spec.md#13-lockout).
+- **Second login step, priority 1, not built yet (owner):** for super admins, a 6-digit code from an authenticator app (Google or Microsoft Authenticator) after the password, with one-time backup codes and an emailed code as the backup for a lost phone. No SMS (cost, DLT registration, SIM swaps). Optional for clients and staff later. To be built before real money moves.
+- **Library upgrades block the pilot (owner):** Zod 3 to 4 and React Router 6 to 7 have published flaws fixed only in new major versions. Neither is reachable as the code stands ([security-review.md](security-review.md)), so they do not block current work, but both must be done and fully tested before M11.
 
 ### 2 November 2026
 
@@ -314,7 +320,8 @@ Claim a number in the pull request that opens the task, before writing the file.
 | 0015   | `0015_gst.sql`              | M6 6.1a            | On `anirudh-e2e-setup`                                                    |
 | 0016   | `0016_client_country_backfill.sql` | M7 countries | On `anirudh-e2e-setup`                                                    |
 | 0017   | `0017_gst_by_country.sql`   | M6 countries       | On `anirudh-e2e-setup`                                                    |
-| 0018   | next free                   |                    | Free                                                                      |
+| 0018   | `0018_login_lock_until_unlocked.sql` | M1 lockout | On `anirudh-e2e-setup`                                                    |
+| 0019   | next free                   |                    | Free                                                                      |
 
 ## Suraj's task list (screens track)
 

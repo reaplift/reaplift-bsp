@@ -278,6 +278,11 @@ export async function confirmCampaign(
     throw new CampaignRefused(409, 'ALREADY_CONFIRMED', `This campaign is ${campaign.status}`);
   }
 
+  // Choosing the number column locks the list too, so the numbers charged below are the numbers queued below.
+  if (campaign.list_id) {
+    await sql`select 1 from lists where id = ${campaign.list_id} and client_id = ${clientId} for update`.execute(trx);
+  }
+
   // Its hold becomes the charge below; the money is free for that moment only inside this transaction.
   if (campaign.status === 'scheduled') await releaseHold(trx, clientId, campaignId, 'started', at);
 
@@ -309,7 +314,7 @@ export async function confirmCampaign(
   const blockRows = summary.blocks.map((b) => b.row);
   const blockReasons = summary.blocks.map((b) => b.reason);
 
-  await sql`
+  const queued = await sql`
     insert into messages (
       client_id, wa_account_id, campaign_id, template_id, to_number, variables, status, block_reason,
       client_price_paise, gst_bp, source, next_attempt_at, queued_at
@@ -325,6 +330,10 @@ export async function confirmCampaign(
       and lc.number is not null and lc.invalid_reason is null and lc.duplicate_of_row is null
     order by lc.row_number
   `.execute(trx);
+  // Never send what was not charged for: anything else undoes the whole confirm.
+  if (Number(queued.numAffectedRows ?? 0) !== summary.willSend + summary.blocked.total) {
+    throw new Error(`campaign ${campaignId}: charged for ${summary.willSend + summary.blocked.total} messages, queued ${queued.numAffectedRows}`);
+  }
 
   const nothingToSend = summary.willSend === 0;
   await sql`

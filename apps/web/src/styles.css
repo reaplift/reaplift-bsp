@@ -90,13 +90,20 @@ button {
   transition: all 0.2s ease;
 }
 
-.nav-item:hover,
+/* Hover is lighter than the current page, so the page you are on is never in doubt. */
+.nav-item:hover {
+  background: rgba(124, 58, 237, 0.08);
+  color: white;
+}
+
 .nav-item.active {
-  background: rgba(124, 58, 237, 0.18);
+  background: rgba(124, 58, 237, 0.28);
   color: white;
 }
 
 .main-panel {
+  /* Lets a wide table scroll inside its own box instead of widening the page. */
+  min-width: 0;
   padding: 32px;
 }
 
@@ -400,6 +407,20 @@ button {
 
   .sidebar {
     padding-bottom: 12px;
+  }
+
+  .main-panel {
+    padding: 16px;
+  }
+
+  .topbar,
+  .topbar-actions,
+  .panel-header {
+    flex-wrap: wrap;
+  }
+
+  .summary-list {
+    grid-template-columns: 1fr max-content;
   }
 
   .campaign-row {

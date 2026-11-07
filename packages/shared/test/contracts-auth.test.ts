@@ -29,11 +29,7 @@ describe('auth contracts', () => {
   });
 
   it('accepts the real 423 lockout body', () => {
-    const body = {
-      error: 'LOGIN_LOCKED',
-      message: 'Too many failed logins; try again later',
-      lockedUntil: '2026-10-30T05:35:26.274Z',
-    };
+    const body = { error: 'LOGIN_LOCKED', message: 'This login is locked for 24 hours after too many wrong passwords' };
     expect(LoginLockedBody.parse(body)).toEqual(body);
   });
 
@@ -60,9 +56,9 @@ describe('auth contracts', () => {
     expect(LoginResponse.safeParse({ ok: true, token: 'abc' }).success).toBe(false);
   });
 
-  it('refuses a workspace with an unknown status and a lockout without a time', () => {
+  it('refuses a workspace with an unknown status, and a lockout body with another code', () => {
     const me = { user, workspaces: [{ clientId: 'c1', name: 'X', status: 'paused' }] };
     expect(MeResponse.safeParse(me).success).toBe(false);
-    expect(LoginLockedBody.safeParse({ error: 'LOGIN_LOCKED', message: 'm' }).success).toBe(false);
+    expect(LoginLockedBody.safeParse({ error: 'INVALID_CREDENTIALS', message: 'm' }).success).toBe(false);
   });
 });

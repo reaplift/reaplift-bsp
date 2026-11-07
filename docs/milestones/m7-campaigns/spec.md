@@ -305,7 +305,7 @@ Also open:
 
 ## Current reality
 
-- All routes above are real. The Push Campaign page still shows mock figures, as its screens are not built.
+- All routes above are real, and the Push Campaign screens call them ([frontend.md](frontend.md)).
 - Beyond the spec: `POST /api/admin/clients/:id/opt-outs` takes the numbers as JSON; `GET` and `PUT /api/admin/settings/:key` edit `promo_words` and `stop_words`.
 - 7.6a holds a message with no answer for 5 minutes, a starting figure to set from real timings (question 9 in [open-questions.md](../../open-questions.md)). A status whose wamid we never saw is matched through the callback data.
 - A row whose variable cell is blank is still sent; Meta is expected to refuse it, and it is then refunded.
