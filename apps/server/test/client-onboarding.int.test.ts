@@ -278,8 +278,9 @@ describe('3.6 and 3.7 notifications', () => {
     expect(log.every((n: { status: string }) => n.status === 'pending')).toBe(true);
   });
 
-  it('a login locked by wrong passwords tells its owner', async () => {
-    for (let i = 0; i < 10; i++) await w.login('sales@greenleaf.in', 'wrong-password-x');
+  it('a login locked by wrong passwords tells its owner and the super admins', async () => {
+    for (let i = 0; i < 5; i++) await w.login('sales@greenleaf.in', 'wrong-password-x');
     expect(await count(`select count(*) from notifications where event = 'user.locked' and email = 'sales@greenleaf.in'`)).toBe(1);
+    expect(await count(`select count(*) from notifications where event = 'user.locked_admin'`)).toBeGreaterThan(0);
   });
 });

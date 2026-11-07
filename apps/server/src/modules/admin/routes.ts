@@ -111,10 +111,10 @@ export function registerAdminRoutes(
     const client = (await sql`select ${CLIENT} from clients where id = ${id}`.execute(db)).rows[0];
     if (!client) return notFound(reply);
     const users = await sql`
-      select id, name, email, role, status from users where client_id = ${id} order by name
+      select id, name, email, role, status, login_locked_at > now() - interval '24 hours' as locked from users where client_id = ${id} order by name
     `.execute(db);
     const staff = await sql`
-      select u.id, u.name, u.email, u.status from users u
+      select u.id, u.name, u.email, u.status, u.login_locked_at > now() - interval '24 hours' as locked from users u
       join staff_clients sc on sc.staff_user_id = u.id
       where sc.client_id = ${id} order by u.name
     `.execute(db);
@@ -221,6 +221,7 @@ export function registerAdminRoutes(
     }
     const rows = await sql`
       select u.id, u.name, u.email, u.role, u.status, u.client_id as "clientId", u.last_login_at as "lastLoginAt",
+        u.login_locked_at > now() - interval '24 hours' as locked,
         coalesce((
           select jsonb_agg(sc.client_id) from staff_clients sc where sc.staff_user_id = u.id
         ), '[]'::jsonb) as "assignedClientIds",
@@ -343,7 +344,11 @@ export function registerAdminRoutes(
       const user = await readUser(trx, id);
       if (!user) return false;
       const at = now();
-      await sql`update users set password_hash = ${hash}, must_change_password = true where id = ${id}`.execute(trx);
+      // A reset is also how a locked login gets back in.
+      await sql`
+        update users set password_hash = ${hash}, must_change_password = true, login_locked_at = null, failed_login_count = null
+        where id = ${id}
+      `.execute(trx);
       await revokeUserSessions(trx, id, at);
       const auditId = await writeAudit(trx, {
         clientId: user.client_id,
@@ -358,6 +363,27 @@ export function registerAdminRoutes(
     });
     if (!found) return notFound(reply);
     return reply.code(200).send({ reset: true });
+  });
+
+  app.post('/api/admin/users/:id/unlock', async (req, reply) => {
+    const { id } = req.params as { id: string };
+    if (!UUID.test(id)) return notFound(reply);
+    const found = await db.transaction().execute(async (trx) => {
+      const user = await readUser(trx, id);
+      if (!user) return false;
+      await sql`update users set login_locked_at = null, failed_login_count = null where id = ${id}`.execute(trx);
+      await writeAudit(trx, {
+        clientId: user.client_id,
+        userId: req.auth!.userId,
+        action: 'user.unlocked',
+        entityType: 'user',
+        entityId: id,
+        at: now(),
+      });
+      return true;
+    });
+    if (!found) return notFound(reply);
+    return reply.code(200).send({ unlocked: true });
   });
 
   app.put('/api/admin/users/:id/clients', async (req, reply) => {

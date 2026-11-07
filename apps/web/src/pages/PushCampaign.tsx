@@ -46,13 +46,29 @@ function durationWords(seconds: number) {
   return `about ${hours} hour${hours === 1 ? '' : 's'}${rest ? ` ${rest} minutes` : ''}`;
 }
 
+/** A `datetime-local` value typed in India time, as the server wants it: `2026-11-05T18:30` becomes `2026-11-05T18:30:00+05:30`. */
+export const indiaTimeToIso = (local: string) => `${local}:00+05:30`;
+
+/** A moment as a `datetime-local` value in India time, for the input's earliest allowed time. */
+function indiaLocal(date: Date) {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+      .formatToParts(date)
+      .map((p) => [p.type, p.value]),
+  );
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
+}
+
+/** The server refuses a time less than 5 minutes ahead. */
+const SCHEDULE_AHEAD_MS = 5 * 60 * 1000;
+
 function statusClass(status: string) {
   if (status === 'running' || status === 'completed') return 'status-active';
   if (status === 'cancelled' || status === 'paused') return 'status-suspended';
   return 'status-draft';
 }
 
-const StatusWord = ({ status }: { status: string }) => (
+export const StatusWord = ({ status }: { status: string }) => (
   <span className={`status-pill ${statusClass(status)}`}>{STATUS_WORDS[status] ?? status}</span>
 );
 
@@ -294,8 +310,27 @@ function VariablesStep({
   );
 }
 
-function SummaryStep({ summary, clientId, onConfirm, busy, error }: { summary: CampaignSummary; clientId: string; onConfirm: () => void; busy: boolean; error: string | null }) {
+function SummaryStep({
+  summary,
+  clientId,
+  onConfirm,
+  onSchedule,
+  busy,
+  error,
+}: {
+  summary: CampaignSummary;
+  clientId: string;
+  onConfirm: () => void;
+  onSchedule: (at: string) => void;
+  busy: boolean;
+  error: string | null;
+}) {
   const short = summary.balanceAfterPaise < 0 ? -summary.balanceAfterPaise : 0;
+  const cannotStart = busy || short > 0 || summary.willSend + summary.blocked.total === 0;
+  const schedule = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    onSchedule(String(new FormData(event.currentTarget).get('at')));
+  };
   const reasons = (byReason: Record<string, number>, words: (reason: string) => string) =>
     Object.entries(byReason).map(([reason, n]) => (
       <div key={reason} style={{ display: 'contents' }}>
@@ -351,10 +386,24 @@ function SummaryStep({ summary, clientId, onConfirm, busy, error }: { summary: C
       )}
       <ErrorNote message={error} />
       <div className="form-actions">
-        <button type="button" className="primary-button" disabled={busy || short > 0 || summary.willSend + summary.blocked.total === 0} onClick={onConfirm}>
+        <button type="button" className="primary-button" disabled={cannotStart} onClick={onConfirm}>
           {busy ? 'Starting…' : `Confirm and charge ${formatPaise(summary.chargePaise)}`}
         </button>
       </div>
+      <form className="schedule-form" onSubmit={schedule}>
+        <h3>Or start it later</h3>
+        <label>
+          Start at (India time)
+          <input type="datetime-local" name="at" required min={indiaLocal(new Date(Date.now() + SCHEDULE_AHEAD_MS))} />
+        </label>
+        <p className="form-note">
+          At least 5 minutes from now. {formatPaise(summary.chargePaise)} is set aside now so nothing else can spend it, and is charged when it starts. If it
+          cannot start then, the money is released and you are told.
+        </p>
+        <button type="submit" className="small-button" disabled={cannotStart}>
+          Schedule
+        </button>
+      </form>
     </Panel>
   );
 }
@@ -390,11 +439,12 @@ function Draft({ clientId, campaign, onStarted }: { clientId: string; campaign: 
     }
   };
 
-  const confirm = async () => {
+  /** Confirm and Schedule both take the money (now, or on hold), so both are refused the same way. */
+  const start = async (work: () => Promise<unknown>) => {
     setBusy(true);
     setConfirmError(null);
     try {
-      await api.confirmCampaign(clientId, campaign.id);
+      await work();
       onStarted();
     } catch (err) {
       const shortPaise = err instanceof ApiError ? (err.body as { shortPaise?: number } | null)?.shortPaise : undefined;
@@ -402,6 +452,8 @@ function Draft({ clientId, campaign, onStarted }: { clientId: string; campaign: 
       setBusy(false);
     }
   };
+  const confirm = () => start(() => api.confirmCampaign(clientId, campaign.id));
+  const schedule = (local: string) => start(() => api.scheduleCampaign(clientId, campaign.id, indiaTimeToIso(local)));
 
   return (
     <div className="page-stack">
@@ -440,13 +492,123 @@ function Draft({ clientId, campaign, onStarted }: { clientId: string; campaign: 
           )}
         </>
       )}
-      {summary && <SummaryStep summary={summary} clientId={clientId} busy={busy} error={confirmError} onConfirm={() => void confirm()} />}
+      {summary && (
+        <SummaryStep
+          summary={summary}
+          clientId={clientId}
+          busy={busy}
+          error={confirmError}
+          onConfirm={() => void confirm()}
+          onSchedule={(at) => void schedule(at)}
+        />
+      )}
     </div>
   );
 }
 
-function Running({ clientId, campaign }: { clientId: string; campaign: CampaignDetail }) {
+/** Pause, resume, cancel and unschedule (M8). Each one is checked again on the server, which locks the campaign. */
+function Controls({ clientId, campaign, onChanged }: { clientId: string; campaign: CampaignDetail; onChanged: () => void }) {
+  const { api } = useAuth();
+  const action = useAction();
+  const [message, setMessage] = useState<string | null>(null);
+  const { status } = campaign;
+
+  const run = async (work: () => Promise<string>) => {
+    setMessage(null);
+    let done = '';
+    if (
+      await action.run(async () => {
+        done = await work();
+      })
+    ) {
+      setMessage(done);
+      onChanged();
+    }
+  };
+  const pause = () =>
+    run(async () => {
+      await api.pauseCampaign(clientId, campaign.id);
+      return 'Paused. Messages already on their way finish; nothing else is sent until you resume. Nothing is charged or refunded.';
+    });
+  const resume = () =>
+    run(async () => {
+      await api.resumeCampaign(clientId, campaign.id);
+      return 'Resumed. Sending carries on.';
+    });
+  const unschedule = () =>
+    run(async () => {
+      await api.unscheduleCampaign(clientId, campaign.id);
+      return 'Unscheduled. It is a draft again, and its money is no longer on hold.';
+    });
+  const cancel = () => {
+    const what =
+      status === 'scheduled'
+        ? 'It will not start, and its money is no longer on hold.'
+        : 'Messages not sent yet are stopped and refunded. Messages already sent stay charged.';
+    if (!window.confirm(`Cancel ${campaign.name}? ${what} This cannot be undone.`)) return;
+    void run(async () => {
+      const result = await api.cancelCampaign(clientId, campaign.id);
+      if (status === 'scheduled') return 'Cancelled. Its money is no longer on hold.';
+      return result.cancelled > 0
+        ? `Cancelled. ${count(result.cancelled)} messages were not sent, and ${formatPaise(result.refundPaise)} went back to the wallet.`
+        : 'Cancelled. Nothing was waiting to send, so nothing was refunded.';
+    });
+  };
+
+  const buttons =
+    status === 'running' || status === 'paused' || status === 'scheduled' ? (
+      <div className="button-row">
+        {status === 'running' && (
+          <button type="button" className="small-button" disabled={action.busy} onClick={() => void pause()}>
+            Pause
+          </button>
+        )}
+        {status === 'paused' && (
+          <button type="button" className="small-button" disabled={action.busy} onClick={() => void resume()}>
+            Resume
+          </button>
+        )}
+        {status === 'scheduled' && (
+          <button type="button" className="small-button" disabled={action.busy} onClick={() => void unschedule()}>
+            Unschedule
+          </button>
+        )}
+        <button type="button" className="small-button" disabled={action.busy} onClick={cancel}>
+          Cancel campaign
+        </button>
+      </div>
+    ) : null;
+
+  return (
+    <>
+      {message && (
+        <p className="form-success" role="status">
+          {message}
+        </p>
+      )}
+      <ErrorNote message={action.error} />
+      {buttons}
+    </>
+  );
+}
+
+/** A scheduled campaign has nothing sent yet: when it starts and what is set aside for it. */
+function ScheduledFacts({ clientId, campaign }: { clientId: string; campaign: CampaignDetail }) {
+  const { api } = useAuth();
+  const wallet = useLoad(() => api.wallet(clientId), [api, clientId, campaign.status]);
+  const hold = wallet.data?.holds.find((h) => h.campaignId === campaign.id);
+  return (
+    <p>
+      Starts at {formatDateTime(campaign.scheduledAt)} (India time).
+      {hold && ` ${formatPaise(hold.amountPaise)} is on hold for it and is charged when it starts.`} If the wallet is short then, it goes back to a draft and you
+      are told.
+    </p>
+  );
+}
+
+function Running({ clientId, campaign, onChanged }: { clientId: string; campaign: CampaignDetail; onChanged: () => void }) {
   const page = workspacePath(clientId, 'campaign');
+  const scheduled = campaign.status === 'scheduled';
   const toSend = (campaign.total ?? 0) - (campaign.blocked ?? 0);
   // A message's status moves on, so delivered and read messages were sent too.
   const finished = (campaign.sent ?? 0) + (campaign.delivered ?? 0) + (campaign.read ?? 0) + (campaign.failed ?? 0);
@@ -463,23 +625,35 @@ function Running({ clientId, campaign }: { clientId: string; campaign: CampaignD
     <div className="page-stack">
       <Breadcrumbs items={[{ label: 'Push Campaign', to: page }, { label: campaign.name }]} />
       <Panel title={campaign.name} actions={<StatusWord status={campaign.status} />}>
-        <div className="progress-bar" role="progressbar" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100} aria-label="Finished so far">
-          <span style={{ width: `${percent}%` }} />
-        </div>
-        <p className="form-note">{percent}% finished, counting sent and failed messages.</p>
-        <div className="money-tiles">
-          {tiles.map(([name, value]) => (
-            <div className="money-tile" key={name}>
-              <small>{name}</small>
-              <strong>{count(value)}</strong>
+        {scheduled ? (
+          <ScheduledFacts clientId={clientId} campaign={campaign} />
+        ) : (
+          <>
+            <div className="progress-bar" role="progressbar" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100} aria-label="Finished so far">
+              <span style={{ width: `${percent}%` }} />
             </div>
-          ))}
-        </div>
-        {campaign.estimate && campaign.estimate.seconds > 0 && (
+            <p className="form-note">{percent}% finished, counting sent and failed messages.</p>
+            <div className="money-tiles">
+              {tiles.map(([name, value]) => (
+                <div className="money-tile" key={name}>
+                  <small>{name}</small>
+                  <strong>{count(value)}</strong>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+        {campaign.status === 'paused' && (
+          <p className="warning-note" role="status">
+            Paused. Nothing more is sent until someone resumes it.
+          </p>
+        )}
+        {campaign.status === 'running' && campaign.estimate && campaign.estimate.seconds > 0 && (
           <p>
             Expected to finish sending in {durationWords(campaign.estimate.seconds)}, around {formatDateTime(campaign.estimate.finishesAt)}.
           </p>
         )}
+        <Controls clientId={clientId} campaign={campaign} onChanged={onChanged} />
       </Panel>
       <Panel title="Money" hint="Charged when the campaign starts. A message that fails at Meta is refunded to the wallet by itself.">
         <dl className="summary-list">
@@ -529,7 +703,11 @@ function OneCampaign({ clientId, id }: { clientId: string; id: string }) {
 
   if (error) return <ErrorNote message={error} />;
   if (!data) return <p>Loading…</p>;
-  return data.status === 'draft' ? <Draft clientId={clientId} campaign={data} onStarted={reload} /> : <Running clientId={clientId} campaign={data} />;
+  return data.status === 'draft' ? (
+    <Draft clientId={clientId} campaign={data} onStarted={reload} />
+  ) : (
+    <Running clientId={clientId} campaign={data} onChanged={reload} />
+  );
 }
 
 export function PushCampaign() {

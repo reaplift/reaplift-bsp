@@ -12,10 +12,21 @@ import {
   GstReport,
   AudienceList,
   AudienceUploaded,
+  AdminCampaignList,
+  CampaignCancelled,
   CampaignDetail,
+  CampaignDiagnosis,
   CampaignList,
+  CampaignScheduled,
+  RuleList,
+  type RuleInput,
   CampaignSummary,
   CampaignView,
+  DashboardView,
+  MetaInvoiceCheck,
+  MetaInvoiceList,
+  MetaView,
+  MonthlyReport,
   LedgerPage,
   OptOutList,
   OptOutsAdded,
@@ -112,12 +123,15 @@ export function createApi(transport: () => Transport | Promise<Transport>) {
     }) => send({ method: 'POST', path: '/api/admin/users', body }, null),
     setUserStatus: (id: string, status: 'active' | 'disabled') =>
       send({ method: 'PATCH', path: `/api/admin/users/${id}`, body: { status } }, null),
+    unlockUser: (id: string) => send({ method: 'POST', path: `/api/admin/users/${id}/unlock` }, null),
     resetPassword: (id: string, password: string) =>
       send({ method: 'POST', path: `/api/admin/users/${id}/reset-password`, body: { password } }, null),
     setStaffClients: (id: string, clientIds: string[]) =>
       send({ method: 'PUT', path: `/api/admin/users/${id}/clients`, body: { clientIds } }, null),
 
     waAccounts: (clientId: string) => send({ method: 'GET', path: `/api/clients/${clientId}/wa-accounts` }, WaAccountList),
+    embeddedSignup: (clientId: string, body: { code: string; wabaId: string; phoneNumberId: string }) =>
+      send({ method: 'POST', path: `/api/clients/${clientId}/wa-accounts/embedded-signup`, body }, WaAccount),
     connectNumber: (clientId: string, body: { wabaId: string; phoneNumberId: string; token: string }) =>
       send({ method: 'POST', path: `/api/admin/clients/${clientId}/wa-accounts`, body }, WaAccount),
     setNumberLimits: (id: string, body: { sendRatePerSec?: number; dailySendLimit?: number | null }) =>
@@ -164,6 +178,21 @@ export function createApi(transport: () => Transport | Promise<Transport>) {
       send({ method: 'GET', path: `/api/clients/${clientId}/campaigns/${id}/summary` }, CampaignSummary),
     confirmCampaign: (clientId: string, id: string) =>
       send({ method: 'POST', path: `/api/clients/${clientId}/campaigns/${id}/confirm` }, null),
+    pauseCampaign: (clientId: string, id: string) =>
+      send({ method: 'POST', path: `/api/clients/${clientId}/campaigns/${id}/pause` }, null),
+    resumeCampaign: (clientId: string, id: string) =>
+      send({ method: 'POST', path: `/api/clients/${clientId}/campaigns/${id}/resume` }, null),
+    cancelCampaign: (clientId: string, id: string) =>
+      send({ method: 'POST', path: `/api/clients/${clientId}/campaigns/${id}/cancel` }, CampaignCancelled),
+    scheduleCampaign: (clientId: string, id: string, at: string) =>
+      send({ method: 'POST', path: `/api/clients/${clientId}/campaigns/${id}/schedule`, body: { at } }, CampaignScheduled),
+    unscheduleCampaign: (clientId: string, id: string) =>
+      send({ method: 'POST', path: `/api/clients/${clientId}/campaigns/${id}/unschedule` }, null),
+    rules: () => send({ method: 'GET', path: '/api/admin/rules' }, RuleList),
+    saveRule: (body: RuleInput) => send({ method: 'PUT', path: '/api/admin/rules', body }, null),
+    adminCampaigns: (filter: { clientId?: string; status?: string }) =>
+      send({ method: 'GET', path: `/api/admin/campaigns${query(filter)}` }, AdminCampaignList),
+    campaignDiagnosis: (id: string) => send({ method: 'GET', path: `/api/admin/campaigns/${id}/diagnosis` }, CampaignDiagnosis),
     optOuts: (clientId: string) => send({ method: 'GET', path: `/api/admin/clients/${clientId}/opt-outs` }, OptOutList),
     addOptOuts: (clientId: string, numbers: string[]) =>
       send({ method: 'POST', path: `/api/admin/clients/${clientId}/opt-outs`, body: { numbers } }, OptOutsAdded),
@@ -206,6 +235,16 @@ export function createApi(transport: () => Transport | Promise<Transport>) {
     addGstRate: (body: { rateBp: number; validFrom: string }) =>
       send({ method: 'POST', path: '/api/admin/gst-rates', body }, null),
     gstReport: (month: string) => send({ method: 'GET', path: `/api/admin/gst-report${query({ month })}` }, GstReport),
+
+    dashboard: (clientId: string) => send({ method: 'GET', path: `/api/clients/${clientId}/dashboard` }, DashboardView),
+    monthlyReport: (clientId: string, month: string) =>
+      send({ method: 'GET', path: `/api/clients/${clientId}/reports/monthly${query({ month })}` }, MonthlyReport),
+    metaView: (month: string) => send({ method: 'GET', path: `/api/admin/meta-view${query({ month })}` }, MetaView),
+    setCreditLimit: (limitPaise: number) =>
+      send({ method: 'PUT', path: '/api/admin/credit-limit', body: { limitPaise } }, null),
+    metaInvoices: () => send({ method: 'GET', path: '/api/admin/meta-invoices' }, MetaInvoiceList),
+    addMetaInvoice: (body: { month: string; totalPaise: number; perAccount?: Record<string, number> }) =>
+      send({ method: 'POST', path: '/api/admin/meta-invoices', body }, MetaInvoiceCheck),
 
     audit: (filter: { clientId?: string; userId?: string; action?: string; from?: string; to?: string; cursor?: string }) =>
       send({ method: 'GET', path: `/api/admin/audit${query(filter)}` }, AuditPage),

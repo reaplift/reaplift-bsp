@@ -2,12 +2,13 @@ import type { MeResponse, Workspace } from '@reaplift/shared';
 import type { ReactNode } from 'react';
 import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from './auth/context';
-import { ComingSoon } from './components/ComingSoon';
 import { Layout, type NavItem } from './components/Layout';
 import { AuditPageView } from './pages/admin/AuditPage';
+import { CampaignsPage } from './pages/admin/CampaignsPage';
 import { ClientDetailPage } from './pages/admin/ClientDetailPage';
 import { ClientsPage } from './pages/admin/ClientsPage';
 import { DeliveryLogPage } from './pages/admin/DeliveryLogPage';
+import { MetaCostPage } from './pages/admin/MetaCostPage';
 import { NumbersPage } from './pages/admin/NumbersPage';
 import { SettingsPage } from './pages/admin/SettingsPage';
 import { StaffPage } from './pages/admin/StaffPage';
@@ -15,6 +16,7 @@ import { ForcedPasswordChange, MyAccount } from './pages/Account';
 import { Dashboard } from './pages/Dashboard';
 import { Login } from './pages/Login';
 import { PushCampaign } from './pages/PushCampaign';
+import { Reports } from './pages/Reports';
 import { Templates } from './pages/Templates';
 import { Wallet } from './pages/Wallet';
 import { WorkspaceSettings } from './pages/WorkspaceSettings';
@@ -27,7 +29,9 @@ const adminNav = (me: MeResponse): NavItem[] =>
     ? [
         { to: '/admin/clients', label: 'Clients' },
         { to: '/admin/staff', label: 'Staff' },
+        { to: '/admin/campaigns', label: 'Campaigns' },
         { to: '/admin/numbers', label: 'Numbers and limits' },
+        { to: '/admin/meta-cost', label: 'Meta cost and margin' },
         { to: '/admin/settings', label: 'Settings' },
         { to: '/admin/audit', label: 'Audit log' },
         { to: '/admin/delivery-log', label: 'Delivery log' },
@@ -41,7 +45,7 @@ const pageElement: Record<WorkspacePage, ReactNode> = {
   dashboard: <Dashboard />,
   campaign: <PushCampaign />,
   templates: <Templates />,
-  reports: <ComingSoon title="Reports" />,
+  reports: <Reports />,
   wallet: <Wallet />,
   settings: <WorkspaceSettings />,
 };
@@ -144,7 +148,9 @@ export function App() {
                 <Route path="clients" element={<ClientsPage />} />
                 <Route path="clients/:id" element={<ClientDetailPage />} />
                 <Route path="staff" element={<StaffPage />} />
+                <Route path="campaigns" element={<CampaignsPage />} />
                 <Route path="numbers" element={<NumbersPage />} />
+                <Route path="meta-cost" element={<MetaCostPage />} />
                 <Route path="settings" element={<SettingsPage />} />
                 <Route path="audit" element={<AuditPageView />} />
                 <Route path="delivery-log" element={<DeliveryLogPage />} />

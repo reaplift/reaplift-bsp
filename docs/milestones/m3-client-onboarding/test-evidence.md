@@ -1,6 +1,6 @@
 # M3 test evidence
 
-Run on 31 October 2026. **Backend only:** this proves the routes against real PostgreSQL with the fake email provider. The panel's screens are not connected, so M3 is not Done.
+Run on 31 October 2026. **Backend only, as it was then:** this proves the routes against real PostgreSQL with the fake email provider. The screens and the full demo came later; see [frontend.md](frontend.md) and [e2e.md](e2e.md).
 
 ## Run it
 
@@ -26,7 +26,7 @@ Each worked-example step, through the HTTP routes:
 
 Also: disabling revokes sessions at once; a user sees and marks only their own notifications; client and staff get 403 on the delivery log; a login locked by wrong passwords tells its owner.
 
-Not run: the restart step of the demo and the panel steps, which need the screens.
+Not run here: the restart step of the demo and the panel steps. Both were run on 6 November 2026 ([e2e.md](e2e.md)).
 
 ## The screens, in a real browser
 
@@ -55,4 +55,4 @@ browser errors: none
 server errors: 0
 ```
 
-`apps/web/test/m3-screens.test.tsx` holds the component tests. Not run: the demo's server restart after step 4. The email text was checked by the backend tests, not read from the fake provider's log in this run.
+`apps/web/test/m3-screens.test.tsx` holds the component tests. The demo's server restart after step 4, and the emails read from the fake provider's log, are in [e2e.md](e2e.md) (6 November 2026).

@@ -16,8 +16,8 @@ flowchart TD
   A["User opens the panel"] --> B["Login: email + password"]
   B --> C{"Server checks users table<br/>(argon2id hash)"}
   C -- "wrong password" --> D["401, failure counted"]
-  D --> E{"10 failures in 15 min?"}
-  E -- "yes" --> F["423: locked for 15 minutes"]
+  D --> E{"5 wrong in a row?"}
+  E -- "yes" --> F["423: locked for 24 hours,<br/>or until a super admin unlocks it"]
   E -- "no" --> B
   C -- "user disabled" --> G["401, same message"]
   C -- "correct" --> H["Session row saved;<br/>httpOnly cookie set"]
@@ -123,11 +123,11 @@ Out:
 
 ### 1.3 Lockout
 
-- 10 failed logins for one email within 15 minutes lock that login for 15 minutes, even with the right password. A successful login resets the count.
-- As built: the 15 minutes are counted from the first failure in the window, not as a rolling window, so up to 18 failures can fall close together across two windows. Accepted on 29 October 2026; a rolling window would need a table of failed attempts.
-- The response for an unknown email, a wrong password and a disabled user is the same 401 `INVALID_CREDENTIALS`, so nobody can test which emails exist. A locked account gets 423 `LOGIN_LOCKED` with the unlock time.
-- Data: nullable columns on `users`: `failed_login_count int`, `first_failed_login_at timestamptz` (when the current 15-minute window started), `locked_until timestamptz` (migration 0004).
-- Tests: the 11th attempt is locked; the lock ends after 15 minutes (fake clock); success resets the count.
+- **Changed on 7 November 2026 (owner):** 5 wrong passwords in a row lock that login for 24 hours, even with the right password. A super admin can unlock it sooner from Admin (Unlock, on the client's Logins tab or the Staff page), and resetting its password also unlocks it. A successful login resets the count. A locked super admin is unlocked from the server with `cli unlock-user --email ...`. Until then the rule was 10 failures within 15 minutes, locking for 15 minutes; the evidence of 30 October shows that rule.
+- The user is emailed, and the super admins are told in the panel and by email, so someone can check it was really them before unlocking.
+- The response for an unknown email, a wrong password and a disabled user is the same 401 `INVALID_CREDENTIALS`, so nobody can test which emails exist. A locked login gets 423 `LOGIN_LOCKED`, which shows that the email has an account; accepted.
+- Data: `users.failed_login_count` counts wrong passwords in a row; `users.login_locked_at` (migration 0018) is when it was locked. `first_failed_login_at` and `locked_until` (0004) are no longer used.
+- Tests: the 6th attempt is locked, still locked after 23 hours, open after 24 with a fresh count; Unlock (super admin only, audited) and a password reset both open it; a right password resets the count.
 - Acceptance: the worked example's step 5 behaves as written.
 
 ### 1.4 Request scope and client workspaces

@@ -1,7 +1,7 @@
 # M10. Cloud deploy
 
-- Status: Not started
-- Owner: Unassigned
+- Status: In progress. 10.1 built on 6 November 2026 ([test-evidence.md](test-evidence.md)); 10.2 to 10.6 wait on E4.
+- Owner: Suraj (10.1); 10.2 to 10.6 unassigned
 - Starts after: M0
 - External prerequisites: E4 (OCI account access and DNS for the final address)
 
@@ -61,6 +61,10 @@ Out: operational alerts (account paused, stuck sends, disk, backups missing, hea
 ### 10.3 Caddy HTTPS and routing
 
 - Add the address to ReapLift's Meta app: the webhook callback, and the allowed domain for Embedded Signup (M5 5.2).
+- Security, from the review of 7 November 2026 ([security-review.md](../../security-review.md)):
+  - The panel's pages get the headers the API already sends: `Content-Security-Policy` (scripts only from our own address and Meta's SDK for Embedded Signup), `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, and `Strict-Transport-Security`.
+  - Rate limits at Caddy, per address: logins tightly (a password check is deliberately slow and uses memory), uploads, and the API as a whole. The API then has to read the caller's real address from Caddy (Fastify's `trustProxy`), or every user shares Caddy's address and its login lock.
+  - `APP_ENCRYPTION_KEY` is set once and backed up with the database backups (10.6). A new key cannot read stored Meta tokens, so every number would pause until its token is entered again.
 - Acceptance: the browser shows a valid certificate; Meta's dashboard verifies the webhook address.
 
 ### 10.4 Deploy pipeline with rollback
@@ -94,7 +98,11 @@ None here; see M11 task 11.1.
 
 ## Current reality
 
-Nothing exists: no Dockerfile, no production compose, no server. Everything runs locally.
+- 10.1: the multi-stage `Dockerfile` (from M0) builds for amd64 and arm64; `infra/compose.prod.yml` runs `postgres`, a one-shot `migrate`, `api`, `receiver`, `worker` and `scheduler`; CI starts it and waits for `/healthz` to report the commit. `REAPLIFT_VERSION` is the image tag and the version `/healthz` reports. CI builds amd64 only; the arm64 build was run on a laptop, and `deploy.yml` (10.4) is to build arm64 for the server.
+- Meta's webhooks (`/webhooks/meta`) are received by the **api**, which stores them; the receiver has no HTTP port and processes what was stored. So Caddy (10.3) routes `/webhooks/meta` to the api, not to the receiver as low-level-design.md says.
+- The image holds the built panel in `/app/public`, but nothing serves it yet. Caddy (10.3) is to serve those files.
+- PostgreSQL's data is a named Docker volume. On the server it must sit on the block volume (10.2).
+- No server yet (E4). Everything else runs locally.
 
 ## Demo (milestone acceptance)
 

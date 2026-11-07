@@ -5,19 +5,16 @@ import { createMockTransport } from '../src/api/mock';
 import type { Transport } from '../src/api/transport';
 
 const PASSWORD = 'reaplift-dev-1';
-let clock: Date;
 let mock: Transport;
 
 beforeEach(() => {
-  clock = new Date('2026-10-30T10:00:00.000Z');
-  mock = createMockTransport(() => clock);
+  mock = createMockTransport();
 });
 
 const login = (email: string, password = PASSWORD) =>
   call(mock, { method: 'POST', path: '/api/auth/login', body: { email, password } }, LoginResponse);
 const me = () => call(mock, { method: 'GET', path: '/api/auth/me' }, MeResponse);
 const logout = () => call(mock, { method: 'POST', path: '/api/auth/logout' }, null);
-const minutes = (n: number) => (clock = new Date(clock.getTime() + n * 60_000));
 
 async function failure(promise: Promise<unknown>): Promise<ApiError> {
   const err = await promise.then(
@@ -68,17 +65,11 @@ describe('mock API: wrong logins', () => {
 });
 
 describe('mock API: lockout', () => {
-  it('locks after 10 failures, even for the right password, and unlocks after 15 minutes', async () => {
-    for (let i = 0; i < 10; i++) expect((await failure(login('sales@greenleaf.in', 'wrong'))).status).toBe(401);
-
+  it('locks after 5 wrong passwords in a row, even for the right password, and stays locked', async () => {
+    for (let i = 0; i < 5; i++) expect((await failure(login('sales@greenleaf.in', 'wrong'))).status).toBe(401);
     const locked = await failure(login('sales@greenleaf.in'));
     expect([locked.status, locked.code]).toEqual([423, 'LOGIN_LOCKED']);
-    expect((locked.body as { lockedUntil: string }).lockedUntil).toBe('2026-10-30T10:15:00.000Z');
-
-    minutes(14);
     expect((await failure(login('sales@greenleaf.in'))).status).toBe(423);
-    minutes(1);
-    expect((await login('sales@greenleaf.in')).user.email).toBe('sales@greenleaf.in');
   });
 
   it('locks only that email', async () => {
@@ -87,16 +78,9 @@ describe('mock API: lockout', () => {
   });
 
   it('does not lock after 9 failures, and a good login resets the count', async () => {
-    for (let i = 0; i < 9; i++) await failure(login('ops@northwind.com', 'wrong'));
+    for (let i = 0; i < 4; i++) await failure(login('ops@northwind.com', 'wrong'));
     await login('ops@northwind.com');
-    for (let i = 0; i < 9; i++) await failure(login('ops@northwind.com', 'wrong'));
-    expect((await login('ops@northwind.com')).user.email).toBe('ops@northwind.com');
-  });
-
-  it('starts a new count once the 15-minute window has passed', async () => {
-    for (let i = 0; i < 9; i++) await failure(login('ops@northwind.com', 'wrong'));
-    minutes(15);
-    expect((await failure(login('ops@northwind.com', 'wrong'))).status).toBe(401);
+    for (let i = 0; i < 4; i++) await failure(login('ops@northwind.com', 'wrong'));
     expect((await login('ops@northwind.com')).user.email).toBe('ops@northwind.com');
   });
 });

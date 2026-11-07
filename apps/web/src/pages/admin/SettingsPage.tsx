@@ -4,6 +4,7 @@ import { useAuth } from '../../auth/context';
 import { ErrorNote, formatDateTime, Panel } from '../../components/ui';
 import { useAction, useLoad } from '../../hooks/useLoad';
 import { CATEGORIES, ChargeSwitches } from './ClientMoney';
+import { RulesPanel } from './RulesPanel';
 
 const startOfDay = (day: string) => new Date(`${day}T00:00:00+05:30`).toISOString();
 const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
@@ -317,6 +318,7 @@ export function SettingsPage() {
       <MetaRates />
       <DefaultMarkup />
       <ChargingDefaults />
+      <RulesPanel />
       <WordList
         settingKey="promo_words"
         title="Promotional words"

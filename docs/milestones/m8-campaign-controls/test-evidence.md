@@ -1,6 +1,6 @@
 # M8 test evidence
 
-Run on 31 October 2026. **Backend only, against the fake Meta server:** the Rules screen and campaign controls are not built, so M8 is not Done. D5 (the cancel money flow) is built as written and is still for the owner to approve.
+Run on 31 October 2026. **Backend only, against the fake Meta server, as it was then.** The Rules screen and campaign controls came later; see [frontend.md](frontend.md) and [e2e.md](e2e.md). D5 (the cancel money flow) is built as written and is still for the owner to approve.
 
 ## Run it
 

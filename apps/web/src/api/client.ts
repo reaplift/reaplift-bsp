@@ -18,7 +18,7 @@ export class ApiError extends Error {
     readonly status: number,
     readonly code: string,
     message: string,
-    /** The raw response body, for errors that carry more (the 423's `lockedUntil`). */
+    /** The raw response body, for errors that carry more (the 402's `shortPaise`). */
     readonly body: unknown = null,
   ) {
     super(message);

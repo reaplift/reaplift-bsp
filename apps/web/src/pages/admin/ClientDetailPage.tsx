@@ -81,6 +81,13 @@ export function ClientDetailPage() {
     }
   };
 
+  const unlock = async (userId: string) => {
+    if (await userAction.run(() => api.unlockUser(userId))) {
+      reload();
+      setMessage('Unlocked. They can log in with their password again.');
+    }
+  };
+
   const toggleUser = async (userId: string, current: string, name: string) => {
     if (current === 'active' && !window.confirm(`Disable ${name}? They are logged out at once and cannot log in.`)) return;
     if (await userAction.run(() => api.setUserStatus(userId, current === 'active' ? 'disabled' : 'active'))) reload();
@@ -223,9 +230,14 @@ export function ClientDetailPage() {
                     <td>{user.name}</td>
                     <td>{user.email}</td>
                     <td>
-                      <StatusPill status={user.status} />
+                      <StatusPill status={user.status} /> {user.locked && <span className="status-pill status-suspended">Locked</span>}
                     </td>
                     <td className="row-actions">
+                      {user.locked && (
+                        <button type="button" className="small-button" disabled={userAction.busy} onClick={() => void unlock(user.id)}>
+                          Unlock
+                        </button>
+                      )}
                       <button type="button" className="small-button" onClick={() => void toggleUser(user.id, user.status, user.name)}>
                         {user.status === 'active' ? 'Disable' : 'Enable'}
                       </button>

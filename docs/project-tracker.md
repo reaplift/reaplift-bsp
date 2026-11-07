@@ -26,8 +26,8 @@ flowchart LR
   M5["M5 Number connection<br/>and templates, backend and<br/>screens built"]:::review
   M6["M6 Wallet, prices, GST<br/>backend and screens built"]:::review
   M7["M7 Campaigns: create, send,<br/>track, backend and screens built"]:::review
-  M8["M8 Campaign controls<br/>and rules"]:::backend
-  M9["M9 Reports and dashboard"]:::backend
+  M8["M8 Campaign controls<br/>and rules, backend and<br/>screens built"]:::review
+  M9["M9 Reports and dashboard,<br/>backend and screens built"]:::review
   M10["M10 Cloud deploy"]:::todo
   M11["M11 Pilot go-live"]:::todo
 
@@ -55,19 +55,19 @@ flowchart LR
   classDef todo fill:#eeeeee,stroke:#888,color:#000
 ```
 
-As of 2 November 2026:
+As of 7 November 2026:
 
 | Colour | Meaning | Milestones |
 | --- | --- | --- |
 | Green | Done | M0, M1 |
-| Blue | Backend and screens built and tested; waits on the owner's review | M3, M5, M6, M7 |
+| Blue | Backend and screens built and tested; waits on the owner's review | M3, M5, M6, M7, M8, M9 |
 | Purple | Backend built and tested against fakes; has no screens of its own to wait for, and waits on an outside prerequisite | M2, M4 |
-| Yellow | Backend built and tested against the fake Meta server; screens not built | M8, M9 |
-| Grey | Not started | M10, M11 |
+| Yellow | Backend built and tested against the fake Meta server; screens not built | none |
+| Grey | Not started (M10: only 10.1 built; the rest waits on E4) | M10, M11 |
 
 Only Done means finished. M5, M7 and M9 also need real Meta access or a real invoice before they can be Done.
 
-Next in order: M8's screens, then M9's (Anirudh; owner decided 2 November 2026). M10 needs Oracle access (E4), and M11 needs everything before it.
+Next in order: the owner's reviews of M3 and M5 to M9. M9's screens were built by Suraj on 6 November 2026, and M8's on 5 November, although the owner had given both to Anirudh on 2 November. M10 needs Oracle access (E4), and M11 needs everything before it.
 
 ## Status board
 
@@ -78,14 +78,14 @@ Update your row in the same pull request that changes a task's status.
 | [M0](milestones/m0-foundation/spec.md) Foundation                             | Developer clones the repo, runs it locally, CI checks every pull request                            | Done                                                                                                     | repo setup                         | none         | none                           |
 | [M1](milestones/m1-login-and-access/spec.md) Login and access                 | Super admin, staff and client each log in and see only what their role and clients allow            | Done (30 October 2026, PR #15)                                                                           | Anirudh (backend), Suraj (screens) | M0           | none                           |
 | [M2](milestones/m2-notifications/spec.md) Notifications                       | A state change sends an email from `info@reaplift.com` and shows in the panel's notification list   | Built (backend 2.1 to 2.4); Done when E5 allows the real-email demo                                      | Anirudh                            | M0           | E5                             |
-| [M3](milestones/m3-client-onboarding/spec.md) Client onboarding               | Super admin creates a client, its login and its staff; they get welcome emails and can log in       | Backend and screens built; worked example passes in a real browser; server-restart step of the demo and owner review left | Anirudh | M1, M2 (started early, see the decision log) | none                           |
+| [M3](milestones/m3-client-onboarding/spec.md) Client onboarding               | Super admin creates a client, its login and its staff; they get welcome emails and can log in       | Backend and screens built; demo run end to end, including the server restart, on 6 November 2026 ([e2e.md](milestones/m3-client-onboarding/e2e.md)); owner review and D15 left | Anirudh | M1, M2 (started early, see the decision log) | none                           |
 | [M4](milestones/m4-send-engine/spec.md) Send engine                           | Operator queues one template message; it reaches a phone; sent, delivered and read are recorded     | Built against the fake Meta server (4.1 to 4.6, 4.7 commands); Done when E1 and E2 allow the real-phone demo | Anirudh | M0           | E1, E2 for the real-phone demo |
-| [M5](milestones/m5-number-and-templates/spec.md) Number connection, templates | A client's number is connected; a template passes our checks, goes to Meta, shows approved/rejected | In progress: backend 5.1 to 5.6 built against the fake Meta server; screens built and tested in a browser ([frontend.md](milestones/m5-number-and-templates/frontend.md)), except the Embedded Signup button, which needs a real Meta app (E3); waits on the owner's review | Anirudh | M3, M4 (backend started early, see the decision log) | E3; E7 for credit-line sharing |
-| [M6](milestones/m6-wallet/spec.md) Wallet and prices                          | Super admin sets prices and tops up; client sees balance and every ledger row                       | Backend and screens built, including GST; worked example passes in a real browser; owner review and ReapLift's pricing and GST answers left | Anirudh | M3 (started early, see the decision log) | none                           |
-| [M7](milestones/m7-campaigns/spec.md) Campaigns                               | Client uploads an audience, sees the summary, confirms, is charged, and watches messages deliver    | In progress: backend 7.1 to 7.10 built; screens built and tested in a browser against the fake Meta server ([frontend.md](milestones/m7-campaigns/frontend.md)); owner review and real Meta testing left | Anirudh | M5, M6 (started early, see the decision log) | none                           |
-| [M8](milestones/m8-campaign-controls/spec.md) Campaign controls and rules     | Client pauses, resumes, cancels or schedules a campaign with exact money handling; rules apply      | In progress: backend 8.1 to 8.5 built; screens not started | Anirudh (backend); screens unassigned | M7 (started early, see the decision log) | none                           |
-| [M9](milestones/m9-reports/spec.md) Reports and dashboard                     | Dashboard and downloads match a hand count; super admin sees Meta cost and margin                   | In progress: backend 9.1 to 9.8 built; screens not started | Anirudh (backend); screens unassigned | M7 (started early, see the decision log) | none                           |
-| [M10](milestones/m10-cloud-deploy/spec.md) Cloud deploy                       | A merge to `main` deploys to the cloud server with HTTPS, health check, rollback and backups        | Not started                                                                                              | Unassigned                         | M0           | E4                             |
+| [M5](milestones/m5-number-and-templates/spec.md) Number connection, templates | A client's number is connected; a template passes our checks, goes to Meta, shows approved/rejected | In progress: backend 5.1 to 5.6 built against the fake Meta server; screens built and tested in a browser ([frontend.md](milestones/m5-number-and-templates/frontend.md)), including the Connect WhatsApp button (5 November 2026, with a stand-in for Meta's SDK; Meta's real pop-up needs E3); waits on the owner's review | Anirudh | M3, M4 (backend started early, see the decision log) | E3; E7 for credit-line sharing |
+| [M6](milestones/m6-wallet/spec.md) Wallet and prices                          | Super admin sets prices and tops up; client sees balance and every ledger row                       | Backend and screens built, including GST; demo run end to end on 5 November 2026 ([e2e.md](milestones/m6-wallet/e2e.md)); owner review and ReapLift's pricing and GST answers left | Anirudh | M3 (started early, see the decision log) | none                           |
+| [M7](milestones/m7-campaigns/spec.md) Campaigns                               | Client uploads an audience, sees the summary, confirms, is charged, and watches messages deliver    | In progress: backend 7.1 to 7.10 built; screens built and tested in a browser against the fake Meta server ([frontend.md](milestones/m7-campaigns/frontend.md)); worked example run at full size on the fake Meta server on 5 November 2026 ([e2e.md](milestones/m7-campaigns/e2e.md)); owner review and real Meta testing left | Anirudh | M5, M6 (started early, see the decision log) | none                           |
+| [M8](milestones/m8-campaign-controls/spec.md) Campaign controls and rules     | Client pauses, resumes, cancels or schedules a campaign with exact money handling; rules apply      | In progress: backend 8.1 to 8.5 built; screens built and the demo run in a browser against the fake Meta server on 5 November 2026 ([e2e.md](milestones/m8-campaign-controls/e2e.md)); owner review left | Anirudh (backend), Suraj (screens) | M7 (started early, see the decision log) | none                           |
+| [M9](milestones/m9-reports/spec.md) Reports and dashboard                     | Dashboard and downloads match a hand count; super admin sees Meta cost and margin                   | In progress: backend 9.1 to 9.8 built; screens built and the demo run in a browser against the real server on 6 November 2026 ([e2e.md](milestones/m9-reports/e2e.md)); owner review, the dashboard count question and E7's real invoice left | Anirudh (backend), Suraj (screens) | M7 (started early, see the decision log) | none                           |
+| [M10](milestones/m10-cloud-deploy/spec.md) Cloud deploy                       | A merge to `main` deploys to the cloud server with HTTPS, health check, rollback and backups        | In progress: 10.1 (image and production compose) built and run locally, including on ARM64, on 6 November 2026; CI starts it on every push ([test-evidence.md](milestones/m10-cloud-deploy/test-evidence.md)); 10.2 to 10.6 wait on E4 | Suraj (10.1); rest unassigned | M0           | E4                             |
 | [M11](milestones/m11-pilot/spec.md) Pilot go-live                             | One client runs its campaigns on ReapLift for two weeks with no fallback to Dovesoft                | Not started                                                                                              | ReapLift                           | M8, M9, M10  | E1 to E7                       |
 
 ## Dependency rule
@@ -126,10 +126,17 @@ Each has a default, so work does not stop; the default is built unless the owner
 | D10 | Client pricing: rates per client and per message type, as a fixed price or a percentage on Meta's rate. Proposed by Anirudh; to discuss with ReapLift. Questions P1 to P9 in [open-questions.md](open-questions.md). | As proposed; a client with none set uses a 25% markup | M6 task 6.1 | [M6](milestones/m6-wallet/spec.md) |
 | D11 | Who issues GST invoices to clients, and per top-up or monthly? No milestone builds invoices today.                                                                                                                                                               | Outside the platform at launch; M6's Wallet page exports each client's monthly statement as CSV for ReapLift's accountant                                     | M6 task 6.4                | [M6](milestones/m6-wallet/spec.md)            |
 | D12 | In which currency does Meta invoice ReapLift's credit line? If dollars, the markup also has to cover exchange-rate changes. Ask Meta during E7.                                                                                                                  | Rupees                                                                                                                                                        | M6 task 6.1                | [M6](milestones/m6-wallet/spec.md)            |
+| D15 | A staff assignment is not in a client's audit list. Assigning staff (when created, or with Assign clients) is audited with no client, the clients only in the details, so the audit page filtered to Northwind cannot show it; M3's step 7 expects "staff assigned" there. Found in the M3 demo on 6 November 2026. | Change the code: also write one audit row per client added or removed, carrying that client | M3 step 7 | [M3](milestones/m3-client-onboarding/spec.md) |
 
 ## Decision log
 
 Answered questions move here with their date, and the spec is updated in the same pull request.
+
+### 7 November 2026
+
+- **Login lock (owner):** 5 wrong passwords in a row lock a login for 24 hours, even with the right password. A super admin can unlock it sooner, or reset its password, from Admin; both are audited, and the super admins are told when a login locks. Was 10 in 15 minutes, for 15 minutes. Owner asked for 6 or 24 hours; 24 chosen as safer, and the admin unlock covers a real user in a hurry. Changing it is one number. Details in [M1](milestones/m1-login-and-access/spec.md#13-lockout).
+- **Second login step, priority 1, not built yet (owner):** for super admins, a 6-digit code from an authenticator app (Google or Microsoft Authenticator) after the password, with one-time backup codes and an emailed code as the backup for a lost phone. No SMS (cost, DLT registration, SIM swaps). Optional for clients and staff later. To be built before real money moves.
+- **Library upgrades block the pilot (owner):** Zod 3 to 4 and React Router 6 to 7 have published flaws fixed only in new major versions. Neither is reachable as the code stands ([security-review.md](security-review.md)), so they do not block current work, but both must be done and fully tested before M11.
 
 ### 2 November 2026
 
@@ -313,7 +320,8 @@ Claim a number in the pull request that opens the task, before writing the file.
 | 0015   | `0015_gst.sql`              | M6 6.1a            | On `anirudh-e2e-setup`                                                    |
 | 0016   | `0016_client_country_backfill.sql` | M7 countries | On `anirudh-e2e-setup`                                                    |
 | 0017   | `0017_gst_by_country.sql`   | M6 countries       | On `anirudh-e2e-setup`                                                    |
-| 0018   | next free                   |                    | Free                                                                      |
+| 0018   | `0018_login_lock_until_unlocked.sql` | M1 lockout | On `anirudh-e2e-setup`                                                    |
+| 0019   | next free                   |                    | Free                                                                      |
 
 ## Suraj's task list (screens track)
 
@@ -349,6 +357,6 @@ Do them in order; each one builds on the last. A connect task goes right after t
 
 | Person   | Milestone     | Next task                                                                                         | Waiting on |
 | -------- | ------------- | ------------------------------------------------------------------------------------------------- | ---------- |
-| Anirudh  | Screens       | M8 screens, then M9; M4 real-phone demo when E1 and E2 are ready                      | E1, E2 for the demo |
-| Suraj    | To decide     | Owner to confirm; M3 screens are done by Anirudh                                                   | owner      |
+| Anirudh  | Real Meta     | M4 real-phone demo when E1 and E2 are ready                                           | E1, E2 for the demo |
+| Suraj    | M10 10.1      | Built 6 November 2026; 10.2 onward wait on E4. Next task to agree with the owner and Anirudh       | owner      |
 | ReapLift | none          | E3 (Business Verification, App Review); continue E7 with Meta; E1, E2, E5; answer D10 to D12      | none       |

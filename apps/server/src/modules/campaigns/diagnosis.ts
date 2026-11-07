@@ -6,10 +6,13 @@ import { sendError } from '../auth/scope.js';
 import { dailyRemaining, effectiveDailyLimit, estimateDelivery } from '../messaging/limits.js';
 import { InsufficientBalanceError } from '../wallet/ledger.js';
 import { CampaignRefused, computeSummary, type CampaignRow } from './campaign.js';
+import { TIME_ZONE } from '../reports/stats.js';
 import { STALLED_AFTER_MS } from './monitor.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const META_RATE_LIMIT_CODES = [4, 80007, 130429];
+const indiaTime = (at: Date) =>
+  `${new Intl.DateTimeFormat('en-IN', { timeZone: TIME_ZONE, dateStyle: 'medium', timeStyle: 'short' }).format(at)} India time`;
 
 export interface Reason {
   code: string;
@@ -101,7 +104,7 @@ export async function diagnoseCampaign(db: Kysely<Database>, campaign: CampaignR
       else throw err;
     }
     if (campaign.status === 'scheduled') {
-      add('SCHEDULED', `Scheduled to start at ${campaign.scheduled_at?.toISOString()}; its money is on hold until then.`);
+      add('SCHEDULED', `Scheduled to start at ${campaign.scheduled_at ? indiaTime(campaign.scheduled_at) : 'an unknown time'}; its money is on hold until then.`);
     }
   }
 

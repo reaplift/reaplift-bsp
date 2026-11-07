@@ -48,11 +48,8 @@ export type LoginRequest = z.infer<typeof LoginRequest>;
 export const LoginResponse = z.object({ user: AuthUser });
 export type LoginResponse = z.infer<typeof LoginResponse>;
 
-/** 423 from POST /api/auth/login after 10 failed logins in 15 minutes. */
-export const LoginLockedBody = ApiErrorBody.extend({
-  error: z.literal('LOGIN_LOCKED'),
-  lockedUntil: z.string().datetime(),
-});
+/** 423 from POST /api/auth/login after 5 wrong passwords in a row: for 24 hours, or until a super admin unlocks it. */
+export const LoginLockedBody = ApiErrorBody.extend({ error: z.literal('LOGIN_LOCKED') });
 export type LoginLockedBody = z.infer<typeof LoginLockedBody>;
 
 /** 200 from GET /api/auth/me. */

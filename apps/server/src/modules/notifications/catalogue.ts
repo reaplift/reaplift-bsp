@@ -81,10 +81,18 @@ export const CATALOGUE = defineCatalogue({
     recipients: ['user'],
   },
   'user.locked': {
-    subject: () => 'Your ReapLift login is locked for now',
-    text: (p) => `Too many wrong passwords were tried on your login, so it is locked until ${String(p.lockedUntil)}. If this was not you, tell ReapLift.`,
+    subject: () => 'Your ReapLift login is locked',
+    text: () =>
+      'Five wrong passwords were tried on your login, so it is locked for 24 hours. ReapLift can unlock it sooner or reset your password. If this was not you, tell ReapLift.',
     channels: ['email'],
     recipients: ['user'],
+  },
+  'user.locked_admin': {
+    subject: (p) => `A login is locked: ${String(p.name)}`,
+    text: (p) =>
+      `${String(p.name)} (${String(p.email)}) is locked for 24 hours after five wrong passwords. Unlock it or reset the password from Admin if they ask, after checking it was really them.`,
+    channels: ['email', 'panel'],
+    recipients: ['super_admins'],
   },
   'wallet.topped_up': {
     subject: () => 'Your ReapLift wallet was topped up',

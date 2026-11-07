@@ -1,6 +1,6 @@
 # M7 test evidence
 
-Run on 31 October 2026. **Backend only, against the fake Meta server:** the screens are not built, and no message reached a phone, so M7 is not Done.
+Run on 31 October 2026. **Backend only, against the fake Meta server, as it was then.** The screens came later (see the last section, [frontend.md](frontend.md) and [e2e.md](e2e.md)). No message has reached a real phone, so M7 is not Done.
 
 ## Run it
 

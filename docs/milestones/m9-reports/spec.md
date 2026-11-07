@@ -1,7 +1,7 @@
 # M9. Reports and dashboard
 
-- Status: In progress. Backend 9.1 to 9.8 built on 31 October 2026; see [test-evidence.md](test-evidence.md). Screens are not started.
-- Owner: Anirudh (backend); screens unassigned
+- Status: In progress. Backend 9.1 to 9.8 built on 31 October 2026; see [test-evidence.md](test-evidence.md). Screens built on 6 November 2026 ([frontend.md](frontend.md)) and the demo run in a browser against the real server ([e2e.md](e2e.md)). Owner review, E7's real invoice, and the dashboard count question below are left.
+- Owner: Anirudh (backend), Suraj (screens)
 - Starts after: M7. The backend started early (tracker, 31 October 2026).
 - External prerequisites: E7 for task 9.7 (there is no Meta credit-line invoice to check against until ReapLift has its credit line)
 
@@ -125,7 +125,8 @@ Only `billing.meta_invoice_mismatch` (task 9.7) and `billing.credit_line_usage` 
 
 ## Current reality
 
-- All routes above are real, plus `PUT /api/admin/credit-limit`. The panel's Dashboard has no real figures yet, as its screens are not built.
+- All routes above are real, plus `PUT /api/admin/credit-limit`. The panel's Dashboard, Reports and Admin "Meta cost and margin" screens call them ([frontend.md](frontend.md)).
+- The dashboard's message count adds every status, blocked and cancelled included, and its chart counts a read message under Read only, not Delivered. The demo showed 12,898 messages for 2,012 sent ([e2e.md](e2e.md)). This is not yet the funnel the open question below defaults to.
 - Meta's cost is kept in hundredths of a paisa (`messages.meta_cost_centipaise`), because rounding each message to whole paise would overstate a utility rate of 11.50 by about 4% and fail the invoice check. `meta_cost_paise` holds the rounded figure. This is ReapLift's cost, not money held; every client price and ledger amount is still whole paise.
 - A message counts as free if `billable` is false or its pricing type starts with `free`. Meta has deprecated `billable`, so check this on real webhooks (question 5 in [open-questions.md](../../open-questions.md)).
 - Report buckets follow each message's latest status: Total Count = Pending + Failed + Not Delivered + Blocked + Sent, and Sent = Delivered + Read Count + DR Not Available. Failed means Meta refused it at send; Not Delivered means it failed after being accepted; DR Not Available means sent with no later report. Total Unit is the net charge in rupees. These are our reading of Dovesoft's file; check them against a real Dovesoft export.

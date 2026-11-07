@@ -49,6 +49,8 @@ flowchart TD
 
 ### 11.1 Operational alerts and readiness drill
 
+- Before go-live (owner, 7 November 2026): the super admin's second login step built (priority 1), Zod 4 and React Router 7 upgrades done and fully tested, and the security items left in [security-review.md](../../security-review.md) closed or accepted by the owner.
+
 - Alerts to super admins through M2 when: an account is paused; messages are stuck in `sending` for 5 minutes; `meta_events` are unprocessed for 5 minutes; disk is over 80%; last night's backup is missing; `/healthz` is down (checked from outside the server); any account gets Meta's payment error 131042, which may mean ReapLift's credit line has a problem (M4 4.3.7).
 - Acceptance: all seven fire once in a drill.
 

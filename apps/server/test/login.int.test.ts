@@ -143,34 +143,48 @@ describe.sequential('1.3 lockout', () => {
     });
   });
 
-  it('locks the 11th attempt after 10 failures in 15 minutes, even with the right password', async () => {
-    for (let i = 0; i < 10; i++) {
-      expect((await fail('sales@greenleaf.in')).res.statusCode).toBe(401);
-      w.advance(30 * 1000);
-    }
+  it('locks after 5 wrong passwords in a row, even for the right password, for 24 hours', async () => {
+    for (let i = 0; i < 5; i++) expect((await fail('sales@greenleaf.in')).res.statusCode).toBe(401);
     const { res } = await w.login('sales@greenleaf.in');
     expect(res.statusCode).toBe(423);
-    expect(res.json()).toMatchObject({ error: 'LOGIN_LOCKED' });
-    expect(Date.parse(res.json().lockedUntil)).toBeGreaterThan(0);
+    expect(res.json()).toEqual({ error: 'LOGIN_LOCKED', message: 'This login is locked for 24 hours after too many wrong passwords' });
+    w.advance(23 * 60 * MINUTE);
+    expect((await w.login('sales@greenleaf.in')).res.statusCode).toBe(423);
   });
 
-  it('unlocks after 15 minutes', async () => {
-    w.advance(15 * MINUTE);
+  it('unlocks by itself after 24 hours, with a fresh count', async () => {
+    w.advance(61 * MINUTE);
+    expect((await fail('sales@greenleaf.in')).res.statusCode).toBe(401);
     expect((await w.login('sales@greenleaf.in')).res.statusCode).toBe(200);
+    for (let i = 0; i < 5; i++) await fail('sales@greenleaf.in');
+    expect((await w.login('sales@greenleaf.in')).res.statusCode).toBe(423);
   });
 
-  it('a successful login resets the count', async () => {
-    for (let i = 0; i < 9; i++) await fail('ops@northwind.com');
-    expect((await w.login('ops@northwind.com')).res.statusCode).toBe(200);
-    for (let i = 0; i < 9; i++) await fail('ops@northwind.com');
-    expect((await w.login('ops@northwind.com')).res.statusCode).toBe(200);
+  it('a super admin unlocks it, which is audited; the password works again', async () => {
+    const id = (await w.pool.query(`select id from users where email = 'sales@greenleaf.in'`)).rows[0].id;
+    const ravi = (await w.login('ravi@reaplift.com')).cookie;
+    const greenleafOps = (await w.login('ops@northwind.com')).cookie;
+    const unlock = (cookie: string) =>
+      w.app.inject({ method: 'POST', url: `/api/admin/users/${id}/unlock`, headers: { cookie, origin: PANEL } });
+    expect((await unlock(greenleafOps)).statusCode).toBe(403);
+    expect((await unlock(ravi)).statusCode).toBe(200);
+    expect((await w.login('sales@greenleaf.in')).res.statusCode).toBe(200);
+    expect((await w.pool.query(`select count(*)::int as n from audit_logs where action = 'user.unlocked' and entity_id = $1`, [id])).rows[0].n).toBe(1);
   });
 
-  it('does not lock for failures spread over more than 15 minutes', async () => {
-    for (let i = 0; i < 12; i++) {
-      await fail('meera@reaplift.com');
-      w.advance(2 * MINUTE);
-    }
-    expect((await w.login('meera@reaplift.com')).res.statusCode).toBe(200);
+  it('a password reset by a super admin also unlocks it', async () => {
+    for (let i = 0; i < 5; i++) await fail('sales@greenleaf.in');
+    expect((await w.login('sales@greenleaf.in')).res.statusCode).toBe(423);
+    const id = (await w.pool.query(`select id from users where email = 'sales@greenleaf.in'`)).rows[0].id;
+    const ravi = (await w.login('ravi@reaplift.com')).cookie;
+    await w.app.inject({ method: 'POST', url: `/api/admin/users/${id}/reset-password`, headers: { cookie: ravi, origin: PANEL }, payload: { password: 'Brand-new-pass-1' } });
+    expect((await w.login('sales@greenleaf.in', 'Brand-new-pass-1')).res.statusCode).toBe(200);
+  });
+
+  it('a right password sets the count back, so 4 wrong, right, 4 wrong does not lock', async () => {
+    for (let i = 0; i < 4; i++) await fail('ops@northwind.com');
+    expect((await w.login('ops@northwind.com')).res.statusCode).toBe(200);
+    for (let i = 0; i < 4; i++) await fail('ops@northwind.com');
+    expect((await w.login('ops@northwind.com')).res.statusCode).toBe(200);
   });
 });

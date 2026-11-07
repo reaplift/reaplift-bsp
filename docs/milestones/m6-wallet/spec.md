@@ -1,6 +1,6 @@
 # M6. Wallet and prices
 
-- Status: Built. Backend 6.1 to 6.6 and GST (6.1a), and screens S7 to S9, work together in a real browser; see [test-evidence.md](test-evidence.md) and [frontend.md](frontend.md). Left for Done: the owner's review, and ReapLift's answers on pricing and GST (P1 to P12, G1 to G7).
+- Status: Built. Backend 6.1 to 6.6 and GST (6.1a), and screens S7 to S9, work together in a real browser; see [test-evidence.md](test-evidence.md) and [frontend.md](frontend.md). The demo (steps 1 to 6, a restart, and the refused ledger change) ran end to end on 5 November 2026: [e2e.md](e2e.md). Left for Done: the owner's review, and ReapLift's answers on pricing and GST (P1 to P12, G1 to G7).
 - Owner: Anirudh (backend and screens, moved from Suraj on 2 November 2026)
 - Starts after: M3 (clients and logins). The backend started early (tracker, 31 October 2026).
 - External prerequisites: none. D10 (markup rules) has a default, so work can start.

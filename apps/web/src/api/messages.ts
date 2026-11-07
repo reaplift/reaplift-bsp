@@ -1,4 +1,3 @@
-import { LoginLockedBody } from '@reaplift/shared';
 import { ApiError } from './client';
 
 /**
@@ -8,7 +7,7 @@ import { ApiError } from './client';
 export const ERROR_MESSAGES: Record<string, string> = {
   INVALID_REQUEST: 'Please check the form and try again.',
   INVALID_CREDENTIALS: 'Wrong email or password.',
-  LOGIN_LOCKED: 'Too many failed logins. Please try again later.',
+  LOGIN_LOCKED: 'This login is locked for 24 hours after 5 wrong passwords. Ask ReapLift to unlock it sooner.',
   UNAUTHENTICATED: 'Your session has ended. Please log in again.',
   FORBIDDEN: 'You do not have access to this.',
   NOT_FOUND: 'This page or item was not found.',
@@ -29,6 +28,7 @@ export const ERROR_MESSAGES: Record<string, string> = {
   CANNOT_CHANGE_SELF: 'You cannot disable your own login.',
   NOT_STAFF: 'Only staff are assigned clients.',
   PASSWORD_CHANGE_REQUIRED: 'Choose a new password first.',
+  INTERNAL: 'Something went wrong. Please try again.',
   INSUFFICIENT_BALANCE: 'The wallet balance is not enough for this.',
   OPT_IN_REQUIRED: 'Confirm that every number in this file opted in.',
   FILE_UNREADABLE: 'This file cannot be read.',
@@ -58,19 +58,7 @@ export const ERROR_MESSAGES: Record<string, string> = {
  * 24-hour "hh:mm"); `timeZone` is only for tests. Unknown codes and non-API errors get the
  * general message, so a raw code never reaches the screen.
  */
-export function errorMessage(err: unknown, timeZone?: string): string {
+export function errorMessage(err: unknown): string {
   if (!(err instanceof ApiError)) return ERROR_MESSAGES.UNEXPECTED_ERROR!;
-  if (err.code === 'LOGIN_LOCKED') {
-    const locked = LoginLockedBody.safeParse(err.body);
-    if (locked.success) {
-      const time = new Intl.DateTimeFormat('en-GB', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hourCycle: 'h23',
-        timeZone,
-      }).format(new Date(locked.data.lockedUntil));
-      return `Too many failed logins. Locked until ${time}.`;
-    }
-  }
   return ERROR_MESSAGES[err.code] ?? ERROR_MESSAGES.UNEXPECTED_ERROR!;
 }

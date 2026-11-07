@@ -9,7 +9,6 @@ import { AuthProvider } from '../src/auth/AuthProvider';
 import { Login } from '../src/pages/Login';
 
 const PASSWORD = 'reaplift-dev-1';
-const clock = new Date('2026-10-30T10:00:00.000Z');
 
 function mount(api: Api) {
   const onLoggedIn = vi.fn<(me: MeResponse | null) => void>();
@@ -76,17 +75,13 @@ describe('Login page', () => {
     expect(await alertText()).toBe('Wrong email or password.');
   });
 
-  it('shows "Locked until hh:mm" after 10 failures, even for the right password', async () => {
-    const mock = createMockTransport(() => clock);
+  it('after 5 wrong passwords says the login is locked and who unlocks it, even for the right password', async () => {
+    const mock = createMockTransport();
     const api = createApi(() => mock);
-    for (let i = 0; i < 10; i++) await api.login({ email: 'sales@greenleaf.in', password: 'wrong' }).catch(() => {});
+    for (let i = 0; i < 5; i++) await api.login({ email: 'sales@greenleaf.in', password: 'wrong' }).catch(() => {});
     mount(api);
     await signIn('sales@greenleaf.in', PASSWORD);
-    // The unlock time in this machine's own time zone, as the panel shows it.
-    const time = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(
-      new Date('2026-10-30T10:15:00.000Z'),
-    );
-    expect(await alertText()).toBe(`Too many failed logins. Locked until ${time}.`);
+    expect(await alertText()).toBe('This login is locked for 24 hours after 5 wrong passwords. Ask ReapLift to unlock it sooner.');
   });
 
   it('shows a connection message when the server cannot be reached', async () => {

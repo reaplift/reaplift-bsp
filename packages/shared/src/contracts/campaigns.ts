@@ -54,6 +54,9 @@ export const RuleUpdate = z.discriminatedUnion('type', [
     .strict(),
 ]);
 
+/** What the Rules screen sends; `clientId` may be left out for all clients. */
+export type RuleInput = z.input<typeof RuleUpdate>;
+
 // Responses. Not strict, so a field the server adds later does not break the panel.
 export const AudienceUploaded = z.object({ id: z.string(), rowCount: z.number(), blankRowsSkipped: z.number(), columns: z.array(z.string()) });
 
@@ -124,6 +127,65 @@ export const CampaignSummary = z.object({
   estimate: DeliveryEstimate,
 });
 export type CampaignSummary = z.infer<typeof CampaignSummary>;
+
+// M8: campaign controls, rules and the super admin's campaign view.
+export const CampaignCancelled = z.object({ status: z.literal('cancelled'), cancelled: z.number(), refundPaise: z.number() });
+export type CampaignCancelled = z.infer<typeof CampaignCancelled>;
+
+export const CampaignScheduled = z.object({
+  status: z.literal('scheduled'),
+  scheduledAt: z.string(),
+  heldPaise: z.number(),
+  estimate: DeliveryEstimate,
+});
+export type CampaignScheduled = z.infer<typeof CampaignScheduled>;
+
+export const RuleView = z.object({
+  id: z.string(),
+  clientId: z.string().nullable(),
+  type: z.string(),
+  values: z.record(z.unknown()),
+  enabled: z.boolean(),
+  updatedAt: z.string(),
+});
+export type RuleView = z.infer<typeof RuleView>;
+export const RuleList = z.object({ items: z.array(RuleView), nextCursor: z.string().nullable() });
+
+export const AdminCampaign = z.object({
+  id: z.string(),
+  clientId: z.string(),
+  clientName: z.string(),
+  name: z.string(),
+  status: z.string(),
+  total: z.number().nullable(),
+  sent: z.number().nullable(),
+  delivered: z.number().nullable(),
+  read: z.number().nullable(),
+  failed: z.number().nullable(),
+  blocked: z.number().nullable(),
+  scheduledAt: z.string().nullable(),
+  confirmedAt: z.string().nullable(),
+  createdAt: z.string(),
+});
+export type AdminCampaign = z.infer<typeof AdminCampaign>;
+export const AdminCampaignList = z.object({ items: z.array(AdminCampaign), nextCursor: z.string().nullable() });
+
+export const CampaignDiagnosis = z.object({
+  status: z.string(),
+  headline: z.string(),
+  reasons: z.array(z.object({ code: z.string(), message: z.string() })),
+  queue: z.object({ waiting: z.number(), sending: z.number(), aheadOnNumber: z.number() }),
+  limits: z.object({
+    sendRatePerSec: z.number(),
+    dailyLimit: z.number().nullable(),
+    dailySetting: z.number().nullable(),
+    metaLimit: z.string().nullable(),
+    remainingToday: z.number().nullable(),
+  }),
+  estimate: DeliveryEstimate.nullable(),
+  failures: z.array(z.object({ code: z.number().nullable(), reason: z.string().nullable(), count: z.number() })),
+});
+export type CampaignDiagnosis = z.infer<typeof CampaignDiagnosis>;
 
 export const OptOutList = z.object({
   items: z.array(z.object({ number: z.string(), source: z.string(), createdAt: z.string() })),

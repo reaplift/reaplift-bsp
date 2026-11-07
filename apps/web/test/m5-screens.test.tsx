@@ -1,12 +1,13 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApi } from '../src/api';
 import type { ApiRequest, ApiResponse } from '../src/api/transport';
 import { App } from '../src/App';
 import { AuthProvider } from '../src/auth/AuthProvider';
 import { ROUTER_FUTURE } from '../src/components/Layout';
+import { resetMetaSdkForTests } from '../src/meta/embeddedSignup';
 
 const me = (role: string) => ({
   user: { id: 'u1', name: 'Asha', email: 'a@n.com', role },
@@ -226,6 +227,87 @@ describe('Settings in a workspace', () => {
     expect(screen.queryByRole('button', { name: 'Save limits' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Replace token' })).toBeNull();
   });
+
+  it('shows who pays Meta for the number', async () => {
+    open('/clients/c1/settings', 'client', {
+      'GET /api/clients/c1/wa-accounts': () => ok({ items: [{ ...ACCOUNT, metaPayer: 'reaplift_credit_line' }], nextCursor: null }),
+    });
+    expect(await screen.findByText('ReapLift credit line')).toBeTruthy();
+  });
+});
+
+describe('Connect WhatsApp', () => {
+  const win = window as { FB?: unknown };
+  let answer: (code?: string) => void = () => {};
+  const fb = {
+    init: vi.fn(),
+    login: vi.fn((callback: (response: { authResponse?: { code?: string } | null }) => void) => {
+      answer = (code) => callback({ authResponse: code ? { code } : null });
+    }),
+  };
+  const signupMessage = (event: string, data: object) =>
+    window.dispatchEvent(new MessageEvent('message', { origin: 'https://www.facebook.com', data: JSON.stringify({ type: 'WA_EMBEDDED_SIGNUP', event, data }) }));
+
+  beforeEach(() => {
+    resetMetaSdkForTests();
+    win.FB = fb;
+    vi.stubEnv('VITE_META_APP_ID', 'app-1');
+    vi.stubEnv('VITE_META_CONFIG_ID', 'cfg-1');
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    delete win.FB;
+  });
+
+  it('stays off with a note when the panel has no Meta app set', async () => {
+    vi.stubEnv('VITE_META_APP_ID', '');
+    open('/clients/c1/settings', 'client', { 'GET /api/clients/c1/wa-accounts': () => ok(empty) });
+    const button = (await screen.findByRole('button', { name: 'Connect WhatsApp' })) as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    expect(screen.getByText(/Please contact ReapLift to connect your number/)).toBeTruthy();
+  });
+
+  it('sends the code and IDs from Meta to the server and shows the connected number', async () => {
+    let connected = false;
+    const calls = open('/clients/c1/settings', 'client', {
+      'GET /api/clients/c1/wa-accounts': () => ok(connected ? { items: [{ ...ACCOUNT, metaPayer: 'reaplift_credit_line' }], nextCursor: null } : empty),
+      'POST /api/clients/c1/wa-accounts/embedded-signup': () => {
+        connected = true;
+        return { status: 201, body: { ...ACCOUNT, metaPayer: 'reaplift_credit_line', onboardedVia: 'embedded_signup' } };
+      },
+    });
+    const button = (await screen.findByRole('button', { name: 'Connect WhatsApp' })) as HTMLButtonElement;
+    await waitFor(() => expect(button.disabled).toBe(false));
+    await userEvent.click(button);
+    signupMessage('FINISH', { waba_id: 'waba-9', phone_number_id: 'phone-9' });
+    answer('code-1');
+    await screen.findByText('919800000000 is connected.');
+    expect(sentTo(calls, 'POST', '/api/clients/c1/wa-accounts/embedded-signup')).toEqual({ code: 'code-1', wabaId: 'waba-9', phoneNumberId: 'phone-9' });
+    expect(await screen.findByText('ReapLift credit line')).toBeTruthy();
+  });
+
+  it('a cancel in the pop-up sends nothing and says so', async () => {
+    const calls = open('/clients/c1/settings', 'staff', { 'GET /api/clients/c1/wa-accounts': () => ok(empty) });
+    const button = (await screen.findByRole('button', { name: 'Connect WhatsApp' })) as HTMLButtonElement;
+    await waitFor(() => expect(button.disabled).toBe(false));
+    await userEvent.click(button);
+    signupMessage('CANCEL', { current_step: 'PHONE_NUMBER_SETUP' });
+    await screen.findByText(/Connecting was cancelled/);
+    expect(sentTo(calls, 'POST', '/api/clients/c1/wa-accounts/embedded-signup')).toBeUndefined();
+  });
+
+  it("explains Meta refusing the connection in the client's words", async () => {
+    open('/clients/c1/settings', 'client', {
+      'GET /api/clients/c1/wa-accounts': () => ok(empty),
+      'POST /api/clients/c1/wa-accounts/embedded-signup': () => ({ status: 400, body: { error: 'META_REFUSED', message: 'Meta refused the signup code (code 100)' } }),
+    });
+    const button = (await screen.findByRole('button', { name: 'Connect WhatsApp' })) as HTMLButtonElement;
+    await waitFor(() => expect(button.disabled).toBe(false));
+    await userEvent.click(button);
+    signupMessage('FINISH', { waba_id: 'waba-9', phone_number_id: 'phone-9' });
+    answer('code-1');
+    await screen.findByText('Meta did not accept the connection. Please try again, or contact ReapLift.');
+  });
 });
 
 describe('asking before a change that cannot be undone quietly', () => {
@@ -254,5 +336,34 @@ describe('asking before a change that cannot be undone quietly', () => {
     const field = screen.getByLabelText(/First password/) as HTMLInputElement;
     expect(field.value).toMatch(/^[a-zA-Z2-9]{14}$/);
     expect(field.type).toBe('text');
+  });
+});
+
+describe('a locked login', () => {
+  const USER = { id: 'u2', name: 'Bala', email: 'b@n.com', role: 'client', status: 'active', locked: true };
+  const CLIENT_DETAIL = { id: 'c1', name: 'Northwind Labs', status: 'active', countryCallingCode: '91', contactEmail: 'a@n.com', lowBalanceAlertPaise: null, statusHistory: [], users: [USER], staff: [] };
+
+  it('shows Locked, and Unlock asks the server and clears it', async () => {
+    let locked = true;
+    const calls = open('/admin/clients/c1?tab=logins', 'super_admin', {
+      'GET /api/admin/clients/c1': () => ok({ ...CLIENT_DETAIL, users: [{ ...USER, locked }] }),
+      'POST /api/admin/users/u2/unlock': () => {
+        locked = false;
+        return ok({ unlocked: true });
+      },
+    });
+    await screen.findByText('Locked');
+    await userEvent.click(screen.getByRole('button', { name: 'Unlock' }));
+    await screen.findByText(/^Unlocked\./);
+    expect(calls.some((c) => c.method === 'POST' && c.path === '/api/admin/users/u2/unlock')).toBe(true);
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Unlock' })).toBeNull());
+  });
+
+  it('a login that is not locked offers no Unlock', async () => {
+    open('/admin/clients/c1?tab=logins', 'super_admin', {
+      'GET /api/admin/clients/c1': () => ok({ ...CLIENT_DETAIL, users: [{ ...USER, locked: false }] }),
+    });
+    await screen.findByText('Bala');
+    expect(screen.queryByRole('button', { name: 'Unlock' })).toBeNull();
   });
 });

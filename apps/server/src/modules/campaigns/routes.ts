@@ -156,6 +156,8 @@ export function registerCampaignRoutes(
     }
 
     const counts = await db.transaction().execute(async (trx) => {
+      // Confirm takes the same lock, so the numbers cannot change while a campaign on this list is charged.
+      await sql`select 1 from lists where id = ${list.id} and client_id = ${clientId} for update`.execute(trx);
       const rows = (
         await sql<{ row_number: number; value: string | null }>`
           select row_number, cells->>${column}::int as value from list_contacts
