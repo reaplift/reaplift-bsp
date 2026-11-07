@@ -357,6 +357,7 @@ Do them in order; each one builds on the last. A connect task goes right after t
 
 | Person   | Milestone     | Next task                                                                                         | Waiting on |
 | -------- | ------------- | ------------------------------------------------------------------------------------------------- | ---------- |
-| Anirudh  | Real Meta     | M4 real-phone demo when E1 and E2 are ready                                           | E1, E2 for the demo |
+| Owner    | Release       | Merge [PR #18](https://github.com/reaplift/reaplift-bsp/pull/18) into `main` with a merge commit (it fixes "The server sent something unexpected" on Admin pages; `main` has the bug until then), then bring `main` back into `anirudh-e2e-setup` (team-workflow.md step 4). Then review M3 and M5 to M9 | none |
+| Anirudh  | Real Meta     | M4 real-phone demo when E1 and E2 are ready. Before the pilot: the super admin's second login step (priority 1) and the Zod 4 and React Router 7 upgrades (decision log, 7 November 2026) | E1, E2 for the demo |
 | Suraj    | M10 10.1      | Built 6 November 2026; 10.2 onward wait on E4. Next task to agree with the owner and Anirudh       | owner      |
 | ReapLift | none          | E3 (Business Verification, App Review); continue E7 with Meta; E1, E2, E5; answer D10 to D12      | none       |

@@ -160,6 +160,16 @@ describe.sequential('1.3 lockout', () => {
     expect((await w.login('sales@greenleaf.in')).res.statusCode).toBe(423);
   });
 
+  it('admin lists say locked true or false, never empty', async () => {
+    const ravi = (await w.login('ravi@reaplift.com')).cookie;
+    const users = (await w.app.inject({ method: 'GET', url: '/api/admin/users', headers: { cookie: ravi } })).json().items;
+    expect(users.every((u: { locked: unknown }) => typeof u.locked === 'boolean')).toBe(true);
+    expect(users.find((u: { email: string }) => u.email === 'sales@greenleaf.in').locked).toBe(true);
+    const clientId = users.find((u: { email: string }) => u.email === 'sales@greenleaf.in').clientId;
+    const detail = (await w.app.inject({ method: 'GET', url: `/api/admin/clients/${clientId}`, headers: { cookie: ravi } })).json();
+    expect([...detail.users, ...detail.staff].every((u: { locked: unknown }) => typeof u.locked === 'boolean')).toBe(true);
+  });
+
   it('a super admin unlocks it, which is audited; the password works again', async () => {
     const id = (await w.pool.query(`select id from users where email = 'sales@greenleaf.in'`)).rows[0].id;
     const ravi = (await w.login('ravi@reaplift.com')).cookie;
