@@ -111,10 +111,10 @@ export function registerAdminRoutes(
     const client = (await sql`select ${CLIENT} from clients where id = ${id}`.execute(db)).rows[0];
     if (!client) return notFound(reply);
     const users = await sql`
-      select id, name, email, role, status, login_locked_at > now() - interval '24 hours' as locked from users where client_id = ${id} order by name
+      select id, name, email, role, status, coalesce(login_locked_at > now() - interval '24 hours', false) as locked from users where client_id = ${id} order by name
     `.execute(db);
     const staff = await sql`
-      select u.id, u.name, u.email, u.status, u.login_locked_at > now() - interval '24 hours' as locked from users u
+      select u.id, u.name, u.email, u.status, coalesce(u.login_locked_at > now() - interval '24 hours', false) as locked from users u
       join staff_clients sc on sc.staff_user_id = u.id
       where sc.client_id = ${id} order by u.name
     `.execute(db);
@@ -221,7 +221,7 @@ export function registerAdminRoutes(
     }
     const rows = await sql`
       select u.id, u.name, u.email, u.role, u.status, u.client_id as "clientId", u.last_login_at as "lastLoginAt",
-        u.login_locked_at > now() - interval '24 hours' as locked,
+        coalesce(u.login_locked_at > now() - interval '24 hours', false) as locked,
         coalesce((
           select jsonb_agg(sc.client_id) from staff_clients sc where sc.staff_user_id = u.id
         ), '[]'::jsonb) as "assignedClientIds",
